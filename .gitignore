@@ -7,6 +7,8 @@
 #Ignore byond config folder.
 /cfg/**/*
 
+/config/dbconfig.txt
+
 #Ignore compiled files and other files generated during compilation.
 *.mdme
 *.dmb
@@ -216,4 +218,3 @@ tools/MapAtmosFixer/MapAtmosFixer/bin/*
 !/config/jukebox_music/sounds/exclude
 /config/title_music/sounds/*
 !/config/title_music/sounds/exclude
-/config/dbconfig.txt

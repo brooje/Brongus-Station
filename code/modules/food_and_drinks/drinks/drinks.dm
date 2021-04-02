@@ -222,15 +222,11 @@
 	isGlass = FALSE
 	foodtype = BREAKFAST
 
-/obj/item/reagent_containers/food/drinks/dunkaccino
+/obj/item/reagent_containers/food/drinks/coffee/dunkaccino
 	name = "dunkaccino"
 	desc = "Sprite edited from the coffee sprite by Reyna. Say hello to my ketami- I mean, chocolate blend!"
 	icon_state = "coffee"
 	list_reagents = list(/datum/reagent/consumable/coffee = 20, /datum/reagent/consumable/cocoa = 20, /datum/reagent/drug/ketamine = 20)
-	spillable = TRUE
-	resistance_flags = FREEZE_PROOF
-	isGlass = FALSE
-	foodtype = BREAKFAST
 
 
 /obj/item/reagent_containers/food/drinks/ice

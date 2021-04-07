@@ -2062,3 +2062,11 @@
 	L.set_light(-1)
 
 	..()
+
+/datum/reagent/consumable/gravel
+	name = "Gravel"
+	description = "A blend of small rocks and dirt."
+	color = "#715E46"
+	taste_description = "rocks"
+	metabolization_rate = 0.15 * REAGENTS_METABOLISM
+	

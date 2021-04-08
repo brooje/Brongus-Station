@@ -46,6 +46,9 @@ All foods are distributed among various categories. Use common sense.
 	var/ignore_limit = FALSE // does the food ignore traditional food constraints?
 	var/static_message // custom message sent to you
 	var/static_message_nearby // custom message sent to nearby mobs
+	var/announce_taste = TRUE
+	var/eat_sound = 'sound/items/eatfood.ogg'
+	var/change_pitch = TRUE
 	var/dried_type = null
 	var/dry = 0
 	var/dunkable = FALSE // for dunkable food, make true
@@ -151,7 +154,11 @@ All foods are distributed among various categories. Use common sense.
 		if(reagents)								//Handle ingestion of the reagent.
 			if(M.satiety > -200)
 				M.satiety -= junkiness
-			playsound(M.loc,'sound/items/eatfood.ogg', rand(10,50), 1)
+			if(change_pitch)
+				playsound(M.loc, eat_sound, rand(10,50), 1)
+			else
+				playsound(M.loc, eat_sound, 30)
+
 			if(reagents.total_volume)
 				SEND_SIGNAL(src, COMSIG_FOOD_EATEN, M, user)
 				var/fraction = min(bitesize / reagents.total_volume, 1)

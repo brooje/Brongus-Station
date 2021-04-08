@@ -657,6 +657,8 @@
 	tastes = list("rocks" = 1)
 	filling_color = "#715E46"
 	ignore_limit = TRUE
+	eat_sound = 'sound/items/gravel.wav'
+	change_pitch = FALSE
 
 /obj/item/reagent_containers/food/snacks/attack(mob/living/M, mob/living/user, def_zone)
 	static_message = "You snort \the gravel through your asshole."

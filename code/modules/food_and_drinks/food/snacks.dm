@@ -44,8 +44,8 @@ All foods are distributed among various categories. Use common sense.
 	var/slices_num
 	var/eatverb
 	var/ignore_limit = FALSE // does the food ignore traditional food constraints?
-	var/funny_message // custom message sent to you
-	var/funny_message_nearby // custom message sent to nearby mobs
+	var/static_message // custom message sent to you
+	var/static_message_nearby // custom message sent to nearby mobs
 	var/dried_type = null
 	var/dry = 0
 	var/dunkable = FALSE // for dunkable food, make true
@@ -103,11 +103,15 @@ All foods are distributed among various categories. Use common sense.
 		for(var/datum/reagent/consumable/C in M.reagents.reagent_list) //we add the nutrition value of what we're currently digesting
 			fullness += C.nutriment_factor * C.volume / C.metabolization_rate
 
+		if(!static_message || !static_message_nearby)
+			 static_message = "You [eatverb] \the [src]."
+			 static_message_nearby = "[user] [eatverb]s \the [src]."
+
 		if(M == user)								//If you're eating it yourself.
 			if(junkiness && M.satiety < -150 && M.nutrition > NUTRITION_LEVEL_STARVING + 50 && !HAS_TRAIT(user, TRAIT_VORACIOUS))
 				to_chat(M, "<span class='notice'>You don't feel like eating any more junk food at the moment.</span>")
 				return FALSE
-			else if(!ignore_limit || !funny_message || !funny_message_nearby)
+			else if(!ignore_limit)
 				if(fullness <= 50)
 					user.visible_message("<span class='notice'>[user] hungrily [eatverb]s \the [src], gobbling it down!</span>", "<span class='notice'>You hungrily [eatverb] \the [src], gobbling it down!</span>")
 				else if(fullness > 50 && fullness < 150)
@@ -120,7 +124,7 @@ All foods are distributed among various categories. Use common sense.
 					user.visible_message("<span class='warning'>[user] cannot force any more of \the [src] to go down [user.p_their()] throat!</span>", "<span class='warning'>You cannot force any more of \the [src] to go down your throat!</span>")
 					return FALSE
 			else
-				user.visible_message("<span class='notice'>[funny_message_nearby]</span>", "<span class='notice'>[funny_message]</span>")
+				user.visible_message("<span class='notice'>[static_message_nearby]</span>", "<span class='notice'>[static_message]</span>")
 			if(HAS_TRAIT(M, TRAIT_VORACIOUS))
 				M.changeNext_move(CLICK_CD_MELEE * 0.5) //nom nom nom
 		else

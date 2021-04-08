@@ -647,3 +647,12 @@
 	filling_color = "#ECA735"
 	tastes = list("fried corn" = 1)
 	foodtype = JUNKFOOD | FRIED
+
+/obj/item/reagent_containers/food/snacks/gravel
+	name = "gravel"
+	desc = "It's a pot of gravel. What else did you expect?"
+	icon_state = "gravel"
+	list_reagents = list(/datum/reagent/consumable/gravel = 50)
+	bitesize = 3
+	tastes = list("rocks" = 1)
+	filling_color = "#715E46"

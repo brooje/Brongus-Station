@@ -656,3 +656,6 @@
 	bitesize = 3
 	tastes = list("rocks" = 1)
 	filling_color = "#715E46"
+	ignore_limit = TRUE
+	static_message = "You snort \the [src] through your asshole."
+	static_message_nearby = "[user] snorts \the [src] through their asshole."

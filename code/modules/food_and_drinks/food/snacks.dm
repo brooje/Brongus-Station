@@ -103,15 +103,16 @@ All foods are distributed among various categories. Use common sense.
 		for(var/datum/reagent/consumable/C in M.reagents.reagent_list) //we add the nutrition value of what we're currently digesting
 			fullness += C.nutriment_factor * C.volume / C.metabolization_rate
 
-		if(!static_message || !static_message_nearby)
-			 static_message = "You [eatverb] \the [src]."
-			 static_message_nearby = "[user] [eatverb]s \the [src]."
+		if(!static_message)
+			static_message = "You [eatverb] \the [src]."
+		if(!static_message_nearby)
+			static_message_nearby = "[user] [eatverb]s \the [src]."
 
 		if(M == user)								//If you're eating it yourself.
 			if(junkiness && M.satiety < -150 && M.nutrition > NUTRITION_LEVEL_STARVING + 50 && !HAS_TRAIT(user, TRAIT_VORACIOUS))
 				to_chat(M, "<span class='notice'>You don't feel like eating any more junk food at the moment.</span>")
 				return FALSE
-			else if(!ignore_limit)
+			else if(!ignore_limit || (static_message == "You [eatverb] \the [src]." && static_message_nearby == "[user] [eatverb]s \the [src]."))
 				if(fullness <= 50)
 					user.visible_message("<span class='notice'>[user] hungrily [eatverb]s \the [src], gobbling it down!</span>", "<span class='notice'>You hungrily [eatverb] \the [src], gobbling it down!</span>")
 				else if(fullness > 50 && fullness < 150)

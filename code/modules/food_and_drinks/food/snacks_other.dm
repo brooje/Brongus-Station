@@ -653,9 +653,12 @@
 	desc = "It's a pot of gravel. What else did you expect?"
 	icon_state = "gravel"
 	list_reagents = list(/datum/reagent/consumable/gravel = 50)
-	bitesize = 3
+	bitesize = 50
 	tastes = list("rocks" = 1)
 	filling_color = "#715E46"
 	ignore_limit = TRUE
-	static_message = "You snort \the [src] through your asshole."
-	static_message_nearby = "[user] snorts \the [src] through their asshole."
+
+/obj/item/reagent_containers/food/snacks/attack(mob/living/M, mob/living/user, def_zone)
+	static_message = "You snort \the gravel through your asshole."
+	static_message_nearby = "[user] snorts \the gravel through their asshole."
+	..()

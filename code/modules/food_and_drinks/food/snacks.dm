@@ -133,7 +133,8 @@ All foods are distributed among various categories. Use common sense.
 			if(HAS_TRAIT(M, TRAIT_VORACIOUS))
 				M.changeNext_move(CLICK_CD_MELEE * 0.5) //nom nom nom
 			if(say_on_eat)
-				M.say(say_on_eat)
+				M.say(say_on_eat, "default0", list(), FALSE, /datum/language/common, TRUE, TRUE)
+			if(ignore_cd)
 				M.changeNext_move(0)
 		else
 			if(!isbrain(M))		//If you're feeding it to someone else.

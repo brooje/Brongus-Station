@@ -49,6 +49,7 @@ All foods are distributed among various categories. Use common sense.
 	var/eat_sound = 'sound/items/eatfood.ogg'
 	var/change_pitch = TRUE
 	var/say_on_eat // what should the mob say when it eats the food? (string)
+	var/ignore_cd = FALSE
 	var/dried_type = null
 	var/dry = 0
 	var/dunkable = FALSE // for dunkable food, make true
@@ -133,6 +134,7 @@ All foods are distributed among various categories. Use common sense.
 				M.changeNext_move(CLICK_CD_MELEE * 0.5) //nom nom nom
 			if(say_on_eat)
 				M.say(say_on_eat)
+				M.changeNext_move(0)
 		else
 			if(!isbrain(M))		//If you're feeding it to someone else.
 				if(fullness <= (600 * (1 + M.overeatduration / 1000)))

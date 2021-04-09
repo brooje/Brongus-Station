@@ -660,6 +660,7 @@
 	eat_sound = 'sound/items/gravel.wav'
 	change_pitch = FALSE
 	say_on_eat = "mmmmm it tickles"
+	ignore_cd = TRUE
 
 /obj/item/reagent_containers/food/snacks/attack(mob/living/M, mob/living/user, def_zone)
 	static_message = "You snort \the gravel through your asshole."

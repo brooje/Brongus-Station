@@ -650,7 +650,7 @@
 
 /obj/item/reagent_containers/food/snacks/gravel
 	name = "gravel"
-	desc = "It's a pot of gravel. What else did you expect?"
+	desc = "Fun for the whole family!"
 	icon_state = "gravel"
 	list_reagents = list(/datum/reagent/consumable/gravel = 50)
 	bitesize = 50

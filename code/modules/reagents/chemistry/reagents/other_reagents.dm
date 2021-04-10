@@ -626,7 +626,7 @@
 	color = "#5EFF3B" //RGB: 94, 255, 59
 	race = /datum/species/squid
 	taste_description = "fish"
-	
+
 /datum/reagent/mutationtoxin/oozeling
 	name = "Oozeling Mutation Toxin"
 	description = "An oozing toxin"
@@ -2064,8 +2064,8 @@
 	..()
 
 /datum/reagent/consumable/gravel
-	name = "Gravel"
-	description = "A blend of small rocks and dirt."
+	name = "gravel"
+	description = "You snort this through your asshole. Don't ask."
 	color = "#715E46"
 	taste_description = "rocks"
 	metabolization_rate = 0.15 * REAGENTS_METABOLISM

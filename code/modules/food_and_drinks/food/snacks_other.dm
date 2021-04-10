@@ -650,7 +650,7 @@
 
 /obj/item/reagent_containers/food/snacks/gravel
 	name = "gravel"
-	desc = "Fun for the whole family!"
+	desc = "Sometimes I Really Like Snorting Gravel Up My Asshole\nIt's fun, gratifying, and makes my butt sting"
 	icon_state = "gravel"
 	list_reagents = list(/datum/reagent/consumable/gravel = 50)
 	bitesize = 50
@@ -666,3 +666,8 @@
 	static_message = "You snort \the gravel through your asshole."
 	static_message_nearby = "[user] snorts \the gravel through their asshole."
 	..()
+
+/obj/item/reagent_containers/food/snacks/gravel/debug
+	desc = "This bucket seems to go into a hammerspace filled with gravel. Impending doom approaches."
+	list_reagents = list(/datum/reagent/consumable/gravel = 999999)
+	bitesize = 100

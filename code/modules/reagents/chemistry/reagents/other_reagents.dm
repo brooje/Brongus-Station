@@ -2069,4 +2069,53 @@
 	color = "#715E46"
 	taste_description = "rocks"
 	metabolization_rate = 0.15 * REAGENTS_METABOLISM
-	
+	overdose_threshold = 800
+	var/fucked = FALSE
+
+/datum/reagent/consumable/gravel/proc/shit(mob/living/N)
+	sleep(200)
+	N.visible_message("<span class='warning'>[N] doesn't feel so good...</span>","<span class='warning'>uhh... i don't feel so good...</span>")
+	sleep(35)
+	N.visible_message("<span class='userdanger'>[N] can't hold in the gravel anymore! Get away!</span>","<span class='userdanger'>oh no im gonna shit out all the gravel!!!</span>")
+	sleep(35)
+	N.visible_message("<span class='userdanger'>[N] screams extremely loud!</span>","<span class='userdanger'>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</span>")
+	sleep(11)
+	var/T = get_turf(N)
+	var/datum/effect_system/reagents_explosion/e = new()
+	e.set_up(10, T, 0, 0)
+	e.start()
+	N.gib()
+
+/datum/reagent/consumable/gravel/on_mob_metabolize(mob/living/L)
+	sleep(120)
+	to_chat(L, "<span class='notice'>wow! you pressed the MAGIC MYSTERY BUTTON on your keyboard or mouse and now suddenly are faster! how convenient!</span>")
+	L.add_movespeed_modifier(MOVESPEED_ID_GRAVEL, TRUE, 100, override=TRUE, multiplicative_slowdown = -0.5)
+	..()
+
+/datum/reagent/consumable/gravel/on_mob_end_metabolize(mob/living/L)
+	sleep(120)
+	to_chat(L, "<span class='warning'>god cant help you now gay butthole ha ha hahha!</span>")
+	L.remove_movespeed_modifier(MOVESPEED_ID_GRAVEL, TRUE)
+	..()
+
+/datum/reagent/consumable/gravel/on_mob_life(mob/living/carbon/M)
+	if(!fucked)
+		..()
+	else
+		return
+
+/datum/reagent/consumable/gravel/on_mob_delete(mob/living/L)
+	to_chat(L, "<span class='notice'>My asshole is starving. Feed me, oh great gravel tower of the ancients.</span>")
+	return
+
+/datum/reagent/consumable/gravel/overdose_process(mob/living/M)
+	if(!fucked)
+		fucked = TRUE
+		shit(M)
+	..()
+
+/datum/reagent/consumable/gravel/overdose_start(mob/living/M)
+	to_chat(M, "<span class='userdanger'>Now you've fucked up.</span>")
+	SEND_SIGNAL(M, COMSIG_ADD_MOOD_EVENT, "[type]_overdose", /datum/mood_event/overdose, name)
+	return
+

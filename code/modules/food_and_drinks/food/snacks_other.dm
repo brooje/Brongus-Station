@@ -669,5 +669,5 @@
 
 /obj/item/reagent_containers/food/snacks/gravel/debug
 	desc = "This bucket seems to go into a hammerspace filled with gravel. Impending doom approaches."
-	list_reagents = list(/datum/reagent/consumable/gravel = 999999)
-	bitesize = 100
+	list_reagents = list(/datum/reagent/consumable/gravel = 1000)
+	bitesize = 1000

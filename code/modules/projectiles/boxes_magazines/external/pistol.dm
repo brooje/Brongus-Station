@@ -57,3 +57,12 @@
 	caliber = ".50"
 	max_ammo = 7
 	multiple_sprites = 1
+
+/obj/item/ammo_box/magazine/revolver
+	name = "Revolver magazine (.357)"
+	desc = "A revolver magazine? Really?"
+	icon_state = "9x19p"
+	ammo_type = /obj/item/ammo_casing/a357
+	caliber = "357"
+	max_ammo = 6
+	multiple_sprites = 2

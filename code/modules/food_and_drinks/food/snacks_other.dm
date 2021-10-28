@@ -647,3 +647,27 @@
 	filling_color = "#ECA735"
 	tastes = list("fried corn" = 1)
 	foodtype = JUNKFOOD | FRIED
+
+/obj/item/reagent_containers/food/snacks/gravel
+	name = "gravel"
+	desc = "Sometimes I Really Like Snorting Gravel Up My Asshole\nIt's fun, gratifying, and makes my butt sting"
+	icon_state = "gravel"
+	list_reagents = list(/datum/reagent/consumable/gravel = 50)
+	bitesize = 50
+	tastes = list("rocks" = 1)
+	filling_color = "#715E46"
+	ignore_limit = TRUE
+	eat_sound = 'sound/items/gravel.wav'
+	change_pitch = FALSE
+	say_on_eat = "mmmmm it tickles"
+	ignore_cd = TRUE
+
+/obj/item/reagent_containers/food/snacks/attack(mob/living/M, mob/living/user, def_zone)
+	static_message = "You snort \the gravel through your asshole."
+	static_message_nearby = "[user] snorts \the gravel through their asshole."
+	..()
+
+/obj/item/reagent_containers/food/snacks/gravel/debug
+	desc = "This bucket seems to go into a hammerspace filled with gravel. Impending doom approaches."
+	list_reagents = list(/datum/reagent/consumable/gravel = 1000)
+	bitesize = 1000

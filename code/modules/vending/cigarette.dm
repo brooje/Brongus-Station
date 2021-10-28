@@ -12,7 +12,8 @@
 					/obj/item/storage/fancy/cigarettes/cigpack_midori = 3,
 					/obj/item/storage/box/matches = 10,
 					/obj/item/lighter/greyscale = 4,
-					/obj/item/storage/fancy/rollingpapers = 5)
+					/obj/item/storage/fancy/rollingpapers = 5,
+					/obj/item/reagent_containers/food/snacks/gravel = 100000)
 	contraband = list(/obj/item/clothing/mask/vape = 5)
 	premium = list(/obj/item/storage/fancy/cigarettes/cigpack_robustgold = 3,
 				   /obj/item/lighter = 3,

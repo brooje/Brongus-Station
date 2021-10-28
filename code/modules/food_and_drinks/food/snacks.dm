@@ -43,6 +43,13 @@ All foods are distributed among various categories. Use common sense.
 	var/slice_path    // for sliceable food. path of the item resulting from the slicing
 	var/slices_num
 	var/eatverb
+	var/ignore_limit = FALSE // does the food ignore traditional food constraints?
+	var/static_message // custom message sent to you
+	var/static_message_nearby // custom message sent to nearby mobs
+	var/eat_sound = 'sound/items/eatfood.ogg'
+	var/change_pitch = TRUE
+	var/say_on_eat // what should the mob say when it eats the food? (string)
+	var/ignore_cd = FALSE
 	var/dried_type = null
 	var/dry = 0
 	var/dunkable = FALSE // for dunkable food, make true
@@ -100,23 +107,35 @@ All foods are distributed among various categories. Use common sense.
 		for(var/datum/reagent/consumable/C in M.reagents.reagent_list) //we add the nutrition value of what we're currently digesting
 			fullness += C.nutriment_factor * C.volume / C.metabolization_rate
 
+		if(!static_message)
+			static_message = "You [eatverb] \the [src]."
+		if(!static_message_nearby)
+			static_message_nearby = "[user] [eatverb]s \the [src]."
+
 		if(M == user)								//If you're eating it yourself.
 			if(junkiness && M.satiety < -150 && M.nutrition > NUTRITION_LEVEL_STARVING + 50 && !HAS_TRAIT(user, TRAIT_VORACIOUS))
 				to_chat(M, "<span class='notice'>You don't feel like eating any more junk food at the moment.</span>")
 				return FALSE
-			else if(fullness <= 50)
-				user.visible_message("<span class='notice'>[user] hungrily [eatverb]s \the [src], gobbling it down!</span>", "<span class='notice'>You hungrily [eatverb] \the [src], gobbling it down!</span>")
-			else if(fullness > 50 && fullness < 150)
-				user.visible_message("<span class='notice'>[user] hungrily [eatverb]s \the [src].</span>", "<span class='notice'>You hungrily [eatverb] \the [src].</span>")
-			else if(fullness > 150 && fullness < 500)
-				user.visible_message("<span class='notice'>[user] [eatverb]s \the [src].</span>", "<span class='notice'>You [eatverb] \the [src].</span>")
-			else if(fullness > 500 && fullness < 600)
-				user.visible_message("<span class='notice'>[user] unwillingly [eatverb]s a bit of \the [src].</span>", "<span class='notice'>You unwillingly [eatverb] a bit of \the [src].</span>")
-			else if(fullness > (600 * (1 + M.overeatduration / 2000)))	// The more you eat - the more you can eat
-				user.visible_message("<span class='warning'>[user] cannot force any more of \the [src] to go down [user.p_their()] throat!</span>", "<span class='warning'>You cannot force any more of \the [src] to go down your throat!</span>")
-				return FALSE
+			else if(!ignore_limit || (static_message == "You [eatverb] \the [src]." && static_message_nearby == "[user] [eatverb]s \the [src]."))
+				if(fullness <= 50)
+					user.visible_message("<span class='notice'>[user] hungrily [eatverb]s \the [src], gobbling it down!</span>", "<span class='notice'>You hungrily [eatverb] \the [src], gobbling it down!</span>")
+				else if(fullness > 50 && fullness < 150)
+					user.visible_message("<span class='notice'>[user] hungrily [eatverb]s \the [src].</span>", "<span class='notice'>You hungrily [eatverb] \the [src].</span>")
+				else if(fullness > 150 && fullness < 500)
+					user.visible_message("<span class='notice'>[user] [eatverb]s \the [src].</span>", "<span class='notice'>You [eatverb] \the [src].</span>")
+				else if(fullness > 500 && fullness < 600)
+					user.visible_message("<span class='notice'>[user] unwillingly [eatverb]s a bit of \the [src].</span>", "<span class='notice'>You unwillingly [eatverb] a bit of \the [src].</span>")
+				else if(fullness > (600 * (1 + M.overeatduration / 2000)))	// The more you eat - the more you can eat
+					user.visible_message("<span class='warning'>[user] cannot force any more of \the [src] to go down [user.p_their()] throat!</span>", "<span class='warning'>You cannot force any more of \the [src] to go down your throat!</span>")
+					return FALSE
+			else
+				user.visible_message("<span class='notice'>[static_message_nearby]</span>", "<span class='notice'>[static_message]</span>")
 			if(HAS_TRAIT(M, TRAIT_VORACIOUS))
 				M.changeNext_move(CLICK_CD_MELEE * 0.5) //nom nom nom
+			if(say_on_eat)
+				M.say(say_on_eat, "default0", list(), FALSE, /datum/language/common, TRUE, TRUE)
+			if(ignore_cd)
+				M.changeNext_move(0)
 		else
 			if(!isbrain(M))		//If you're feeding it to someone else.
 				if(fullness <= (600 * (1 + M.overeatduration / 1000)))
@@ -140,7 +159,11 @@ All foods are distributed among various categories. Use common sense.
 		if(reagents)								//Handle ingestion of the reagent.
 			if(M.satiety > -200)
 				M.satiety -= junkiness
-			playsound(M.loc,'sound/items/eatfood.ogg', rand(10,50), 1)
+			if(change_pitch)
+				playsound(M.loc, eat_sound, rand(10,50), 1)
+			else
+				playsound(M.loc, eat_sound, 30)
+
 			if(reagents.total_volume)
 				SEND_SIGNAL(src, COMSIG_FOOD_EATEN, M, user)
 				var/fraction = min(bitesize / reagents.total_volume, 1)

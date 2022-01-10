@@ -1,32 +1,36 @@
-/datum/round_event_control/blob //god, we really need a "latest start" var, because blobs spawning an hour in is cringe
-	name = "Blob"
-	typepath = /datum/round_event/ghost_role/blob
-	weight = 5
-	max_occurrences = 1
+/datum/event/blob
+	announceWhen	= 180
+	endWhen			= 240
+	var/successSpawn = FALSE	//So we don't make a command report if nothing gets spawned.
 
-	min_players = 20
+/datum/event/blob/announce()
+	if(successSpawn)
+		GLOB.event_announcement.Announce("Confirmed outbreak of level 5 biohazard aboard [station_name()]. All personnel must contain the outbreak.", "Biohazard Alert", 'sound/AI/outbreak5.ogg')
+	else
+		log_and_message_admins("Warning: Could not spawn any mobs for event Blob")
 
-	dynamic_should_hijack = TRUE
+/datum/event/blob/start()
+	var/turf/T = pick(GLOB.blobstart)
+	if(!T)
+		return kill()
+	INVOKE_ASYNC(src, .proc/make_blob)
 
-	gamemode_blacklist = list("blob") //Just in case a blob survives that long
+/datum/event/blob/proc/make_blob()
+	var/list/candidates = SSghost_spawns.poll_candidates("Do you want to play as a blob infested mouse?", ROLE_BLOB, TRUE, source = /mob/living/simple_animal/mouse/blobinfected)
+	if(!length(candidates))
+		return kill()
 
-/datum/round_event/ghost_role/blob
-	announceChance	= 0
-	role_name = "blob overmind"
-	fakeable = TRUE
+	var/list/vents = get_valid_vent_spawns(exclude_mobs_nearby = TRUE, exclude_visible_by_mobs = TRUE)
+	if(!length(vents))
+		return
+	var/obj/vent = pick(vents)
+	var/mob/living/simple_animal/mouse/blobinfected/B = new(vent.loc)
+	var/mob/M = pick(candidates)
+	B.key = M.key
+	B.mind.special_role = SPECIAL_ROLE_BLOB
+	SSticker.mode.update_blob_icons_added(B.mind)
 
-/datum/round_event/ghost_role/blob/announce(fake)
-	priority_announce("Confirmed outbreak of level 5 biohazard aboard [station_name()]. All personnel must contain the outbreak.", "Biohazard Alert", 'sound/ai/outbreak5.ogg')
-
-/datum/round_event/ghost_role/blob/spawn_role()
-	if(!GLOB.blobstart.len)
-		return MAP_ERROR
-	var/list/candidates = get_candidates(ROLE_BLOB, null, ROLE_BLOB)
-	if(!candidates.len)
-		return NOT_ENOUGH_PLAYERS
-	var/mob/dead/observer/new_blob = pick(candidates)
-	var/mob/camera/blob/BC = new_blob.become_overmind()
-	spawned_mobs += BC
-	message_admins("[ADMIN_LOOKUPFLW(BC)] has been made into a blob overmind by an event.")
-	log_game("[key_name(BC)] was spawned as a blob overmind by an event.")
-	return SUCCESSFUL_SPAWN
+	to_chat(B, "<span class='userdanger'>You are now a mouse, infected with blob spores. Find somewhere isolated... before you burst and become the blob! Use ventcrawl (alt-click on vents) to move around.</span>")
+	to_chat(B, "<span class='motd'>For more information, check the wiki page: ([GLOB.configuration.url.wiki_url]/index.php/Blob)</span>")
+	notify_ghosts("Infected Mouse has appeared in [get_area(B)].", source = B, action = NOTIFY_FOLLOW)
+	successSpawn = TRUE

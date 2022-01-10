@@ -1,250 +1,172 @@
 /datum/datacore
-	var/medical[] = list()
-	var/medicalPrintCount = 0
-	var/general[] = list()
-	var/security[] = list()
-	var/securityPrintCount = 0
-	var/securityCrimeCounter = 0
+	var/list/medical = list()
+	var/list/general = list()
+	var/list/security = list()
 	//This list tracks characters spawned in the world and cannot be modified in-game. Currently referenced by respawn_character().
-	var/locked[] = list()
+	var/list/locked = list()
 
-/datum/data
-	var/name = "data"
+/*
+We can't just insert in HTML into the TGUI so we need the raw data to play with.
+Instead of creating this list over and over when someone leaves their PDA open to the page
+we'll only update it when it changes.  The PDA_Manifest global list is zeroed out upon any change
+using /datum/datacore/proc/manifest_inject(), or manifest_insert()
+*/
 
-/datum/data/record
-	name = "record"
-	var/list/fields = list()
+GLOBAL_LIST_EMPTY(PDA_Manifest)
 
-/datum/data/record/Destroy()
-	if(src in GLOB.data_core.medical)
-		GLOB.data_core.medical -= src
-	if(src in GLOB.data_core.security)
-		GLOB.data_core.security -= src
-	if(src in GLOB.data_core.general)
-		GLOB.data_core.general -= src
-	if(src in GLOB.data_core.locked)
-		GLOB.data_core.locked -= src
-	. = ..()
+/datum/datacore/proc/get_manifest_json()
+	if(GLOB.PDA_Manifest.len)
+		return
+	var/heads[0]
+	var/sec[0]
+	var/eng[0]
+	var/med[0]
+	var/sci[0]
+	var/ser[0]
+	var/sup[0]
+	var/bot[0]
+	var/misc[0]
+	for(var/datum/data/record/t in GLOB.data_core.general)
+		var/name = sanitize(t.fields["name"])
+		var/rank = sanitize(t.fields["rank"])
+		var/real_rank = t.fields["real_rank"]
 
-/datum/data/crime
-	name = "crime"
-	var/crimeName = ""
-	var/crimeDetails = ""
-	var/author = ""
-	var/time = ""
-	var/fine = 0
-	var/paid = 0
-	var/dataId = 0
+		var/isactive = t.fields["p_stat"]
+		var/department = 0
+		var/depthead = 0 			// Department Heads will be placed at the top of their lists.
+		if(real_rank in GLOB.command_positions)
+			heads[++heads.len] = list("name" = name, "rank" = rank, "active" = isactive)
+			department = 1
+			depthead = 1
+			if(rank == "Captain" && heads.len != 1)
+				heads.Swap(1,  heads.len)
 
-/datum/datacore/proc/createCrimeEntry(cname = "", cdetails = "", author = "", time = "", fine = 0)
-	var/datum/data/crime/c = new /datum/data/crime
-	c.crimeName = cname
-	c.crimeDetails = cdetails
-	c.author = author
-	c.time = time
-	c.fine = fine
-	c.paid = 0
-	c.dataId = ++securityCrimeCounter
-	return c
+		if(real_rank in GLOB.security_positions)
+			sec[++sec.len] = list("name" = name, "rank" = rank, "active" = isactive)
+			department = 1
+			if(depthead && sec.len != 1)
+				sec.Swap(1, sec.len)
 
-/datum/datacore/proc/addCitation(id = "", datum/data/crime/crime)
-	for(var/datum/data/record/R in security)
-		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["citation"]
-			crimes |= crime
-			return
+		if(real_rank in GLOB.engineering_positions)
+			eng[++eng.len] = list("name" = name, "rank" = rank, "active" = isactive)
+			department = 1
+			if(depthead && eng.len != 1)
+				eng.Swap(1, eng.len)
 
-/datum/datacore/proc/removeCitation(id, cDataId)
-	for(var/datum/data/record/R in security)
-		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["citation"]
-			for(var/datum/data/crime/crime in crimes)
-				if(crime.dataId == text2num(cDataId))
-					crimes -= crime
-					return
+		if(real_rank in GLOB.medical_positions)
+			med[++med.len] = list("name" = name, "rank" = rank, "active" = isactive)
+			department = 1
+			if(depthead && med.len != 1)
+				med.Swap(1, med.len)
 
-/datum/datacore/proc/payCitation(id, cDataId, amount)
-	for(var/datum/data/record/R in security)
-		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["citation"]
-			for(var/datum/data/crime/crime in crimes)
-				if(crime.dataId == text2num(cDataId))
-					crime.paid = crime.paid + amount
-					var/datum/bank_account/D = SSeconomy.get_dep_account(ACCOUNT_SEC)
-					D.adjust_money(amount)
-					return
+		if(real_rank in GLOB.science_positions)
+			sci[++sci.len] = list("name" = name, "rank" = rank, "active" = isactive)
+			department = 1
+			if(depthead && sci.len != 1)
+				sci.Swap(1, sci.len)
 
-/**
-  * Adds crime to security record.
-  *
-  * Is used to add single crime to someone's security record.
-  * Arguments:
-  * * id - record id.
-  * * datum/data/crime/crime - premade array containing every variable, usually created by createCrimeEntry.
-  */
-/datum/datacore/proc/addCrime(id = "", datum/data/crime/crime)
-	for(var/datum/data/record/R in security)
-		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["crim"]
-			crimes |= crime
-			return
+		if(real_rank in GLOB.service_positions)
+			ser[++ser.len] = list("name" = name, "rank" = rank, "active" = isactive)
+			department = 1
+			if(depthead && ser.len != 1)
+				ser.Swap(1, ser.len)
 
-/**
-  * Deletes crime from security record.
-  *
-  * Is used to delete single crime to someone's security record.
-  * Arguments:
-  * * id - record id.
-  * * cDataId - id of already existing crime.
-  */
-/datum/datacore/proc/removeCrime(id, cDataId)
-	for(var/datum/data/record/R in security)
-		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["crim"]
-			for(var/datum/data/crime/crime in crimes)
-				if(crime.dataId == text2num(cDataId))
-					crimes -= crime
-					return
+		if(real_rank in GLOB.supply_positions)
+			sup[++sup.len] = list("name" = name, "rank" = rank, "active" = isactive)
+			department = 1
+			if(depthead && sup.len != 1)
+				sup.Swap(1, sup.len)
 
-/**
-  * Adds details to a crime.
-  *
-  * Is used to add or replace details to already existing crime.
-  * Arguments:
-  * * id - record id.
-  * * cDataId - id of already existing crime.
-  * * details - data you want to add.
-  */
-/datum/datacore/proc/addCrimeDetails(id, cDataId, details)
-	for(var/datum/data/record/R in security)
-		if(R.fields["id"] == id)
-			var/list/crimes = R.fields["crim"]
-			for(var/datum/data/crime/crime in crimes)
-				if(crime.dataId == text2num(cDataId))
-					crime.crimeDetails = details
-					return
+		if(real_rank in GLOB.nonhuman_positions)
+			bot[++bot.len] = list("name" = name, "rank" = rank, "active" = isactive)
+			department = 1
+
+		if(!department && !(name in heads))
+			misc[++misc.len] = list("name" = name, "rank" = rank, "active" = isactive)
+
+
+	GLOB.PDA_Manifest = list(\
+		"heads" = heads,\
+		"sec" = sec,\
+		"eng" = eng,\
+		"med" = med,\
+		"sci" = sci,\
+		"ser" = ser,\
+		"sup" = sup,\
+		"bot" = bot,\
+		"misc" = misc\
+		)
+	return
+
+
 
 /datum/datacore/proc/manifest()
-	for(var/i in GLOB.new_player_list)
-		var/mob/dead/new_player/N = i
-		if(N.new_character)
-			log_manifest(N.ckey,N.new_character.mind,N.new_character)
-		if(ishuman(N.new_character))
-			manifest_inject(N.new_character, N.client)
-		CHECK_TICK
+	for(var/mob/living/carbon/human/H in GLOB.player_list)
+		manifest_inject(H)
 
 /datum/datacore/proc/manifest_modify(name, assignment)
-	var/datum/data/record/foundrecord = find_record("name", name, GLOB.data_core.general)
+	if(GLOB.PDA_Manifest.len)
+		GLOB.PDA_Manifest.Cut()
+	var/datum/data/record/foundrecord
+	var/real_title = assignment
+
+	for(var/datum/data/record/t in GLOB.data_core.general)
+		if(t)
+			if(t.fields["name"] == name)
+				foundrecord = t
+				break
+
+	var/list/all_jobs = get_job_datums()
+
+	for(var/datum/job/J in all_jobs)
+		var/list/alttitles = get_alternate_titles(J.title)
+		if(!J)	continue
+		if(assignment in alttitles)
+			real_title = J.title
+			break
+
 	if(foundrecord)
 		foundrecord.fields["rank"] = assignment
+		foundrecord.fields["real_rank"] = real_title
 
-/datum/datacore/proc/get_manifest()
-	var/list/manifest_out = list()
-	var/list/departments = list(
-		"Command" = GLOB.command_positions,
-		"Security" = GLOB.security_positions,
-		"Engineering" = GLOB.engineering_positions,
-		"Medical" = GLOB.medical_positions,
-		"Science" = GLOB.science_positions,
-		"Supply" = GLOB.supply_positions,
-		"Civilian" = GLOB.civilian_positions | GLOB.gimmick_positions,
-		"Silicon" = GLOB.nonhuman_positions
-	)
-	for(var/datum/data/record/t in GLOB.data_core.general)
-		var/name = t.fields["name"]
-		var/rank = t.fields["rank"]
-		var/has_department = FALSE
-		for(var/department in departments)
-			var/list/jobs = departments[department]
-			if(rank in jobs)
-				if(!manifest_out[department])
-					manifest_out[department] = list()
-				manifest_out[department] += list(list(
-					"name" = name,
-					"rank" = rank
-				))
-				has_department = TRUE
-				break
-		if(!has_department)
-			if(!manifest_out["Misc"])
-				manifest_out["Misc"] = list()
-			manifest_out["Misc"] += list(list(
-				"name" = name,
-				"rank" = rank
-			))
-	return manifest_out
+GLOBAL_VAR_INIT(record_id_num, 1001)
+/datum/datacore/proc/manifest_inject(mob/living/carbon/human/H)
+	if(GLOB.PDA_Manifest.len)
+		GLOB.PDA_Manifest.Cut()
 
-/datum/datacore/proc/get_manifest_html(monochrome = FALSE)
-	var/list/manifest = get_manifest()
-	var/dat = {"
-	<head><style>
-		.manifest {border-collapse:collapse;}
-		.manifest td, th {border:1px solid [monochrome?"black":"#DEF; background-color:white; color:black"]; padding:.25em}
-		.manifest th {height: 2em; [monochrome?"border-top-width: 3px":"background-color: #48C; color:white"]}
-		.manifest tr.head th { [monochrome?"border-top-width: 1px":"background-color: #488;"] }
-		.manifest tr.alt td {[monochrome?"border-top-width: 2px":"background-color: #DEF"]}
-	</style></head>
-	<table class="manifest" width='350px'>
-	<tr class='head'><th>Name</th><th>Rank</th></tr>
-	"}
-	for(var/department in manifest)
-		var/list/entries = manifest[department]
-		dat += "<tr><th colspan=3>[department]</th></tr>"
-		//JUST
-		var/even = FALSE
-		for(var/entry in entries)
-			var/list/entry_list = entry
-			dat += "<tr[even ? " class='alt'" : ""]><td>[entry_list["name"]]</td><td>[entry_list["rank"]]</td></tr>"
-			even = !even
-
-	dat += "</table>"
-	dat = replacetext(dat, "\n", "")
-	dat = replacetext(dat, "\t", "")
-	return dat
-
-
-/datum/datacore/proc/manifest_inject(mob/living/carbon/human/H, client/C)
-	set waitfor = FALSE
-	var/static/list/show_directions = list(SOUTH, WEST)
 	if(H.mind && (H.mind.assigned_role != H.mind.special_role))
 		var/assignment
-		if(H.mind.assigned_role)
+		if(H.mind.role_alt_title)
+			assignment = H.mind.role_alt_title
+		else if(H.mind.assigned_role)
 			assignment = H.mind.assigned_role
 		else if(H.job)
 			assignment = H.job
 		else
 			assignment = "Unassigned"
 
-		var/static/record_id_num = 1001
-		var/id = num2hex(record_id_num++,6)
-		if(!C)
-			C = H.client
-		var/image = get_id_photo(H, C, show_directions)
-		var/datum/picture/pf = new
-		var/datum/picture/ps = new
-		pf.picture_name = "[H]"
-		ps.picture_name = "[H]"
-		pf.picture_desc = "This is [H]."
-		ps.picture_desc = "This is [H]."
-		pf.picture_image = icon(image, dir = SOUTH)
-		ps.picture_image = icon(image, dir = WEST)
-		var/obj/item/photo/photo_front = new(null, pf)
-		var/obj/item/photo/photo_side = new(null, ps)
+		var/id = num2hex(GLOB.record_id_num++, 6)
 
-		//These records should ~really~ be merged or something
+
 		//General Record
 		var/datum/data/record/G = new()
 		G.fields["id"]			= id
 		G.fields["name"]		= H.real_name
+		G.fields["real_rank"]	= H.mind.assigned_role
 		G.fields["rank"]		= assignment
 		G.fields["age"]			= H.age
-		G.fields["species"]	= H.dna.species.name
-		G.fields["fingerprint"]	= rustg_hash_string(RUSTG_HASH_MD5, H.dna.uni_identity)
+		G.fields["fingerprint"]	= md5(H.dna.uni_identity)
 		G.fields["p_stat"]		= "Active"
 		G.fields["m_stat"]		= "Stable"
-		G.fields["sex"]			= H.gender
-		G.fields["photo_front"]	= photo_front
-		G.fields["photo_side"]	= photo_side
+		G.fields["sex"]			= capitalize(H.gender)
+		G.fields["species"]		= H.dna.species.name
+		G.fields["photo"]		= get_id_photo(H)
+		G.fields["photo-south"] = "data:image/png;base64,[icon2base64(icon(G.fields["photo"], dir = SOUTH))]"
+		G.fields["photo-west"] = "data:image/png;base64,[icon2base64(icon(G.fields["photo"], dir = WEST))]"
+		if(H.gen_record && !jobban_isbanned(H, ROLEBAN_RECORDS))
+			G.fields["notes"] = H.gen_record
+		else
+			G.fields["notes"] = "No notes found."
 		general += G
 
 		//Medical Record
@@ -261,7 +183,10 @@
 		M.fields["alg_d"]		= "No allergies have been detected in this patient."
 		M.fields["cdi"]			= "None"
 		M.fields["cdi_d"]		= "No diseases have been diagnosed at the moment."
-		M.fields["notes"]		= "No notes."
+		if(H.med_record && !jobban_isbanned(H, ROLEBAN_RECORDS))
+			M.fields["notes"] = H.med_record
+		else
+			M.fields["notes"] = "No notes found."
 		medical += M
 
 		//Security Record
@@ -269,33 +194,326 @@
 		S.fields["id"]			= id
 		S.fields["name"]		= H.real_name
 		S.fields["criminal"]	= "None"
-		S.fields["citation"]	= list()
-		S.fields["crim"]		= list()
+		S.fields["mi_crim"]		= "None"
+		S.fields["mi_crim_d"]	= "No minor crime convictions."
+		S.fields["ma_crim"]		= "None"
+		S.fields["ma_crim_d"]	= "No major crime convictions."
 		S.fields["notes"]		= "No notes."
+		if(H.sec_record && !jobban_isbanned(H, ROLEBAN_RECORDS))
+			S.fields["notes"] = H.sec_record
+		else
+			S.fields["notes"] = "No notes found."
+		LAZYINITLIST(S.fields["comments"])
 		security += S
 
 		//Locked Record
 		var/datum/data/record/L = new()
-		L.fields["id"]			= rustg_hash_string(RUSTG_HASH_MD5, "[H.real_name][H.mind.assigned_role]")	//surely this should just be id, like the others?
+		L.fields["id"]			= md5("[H.real_name][H.mind.assigned_role]")
 		L.fields["name"]		= H.real_name
 		L.fields["rank"] 		= H.mind.assigned_role
 		L.fields["age"]			= H.age
-		L.fields["sex"]			= H.gender
+		L.fields["sex"]			= capitalize(H.gender)
 		L.fields["blood_type"]	= H.dna.blood_type
 		L.fields["b_dna"]		= H.dna.unique_enzymes
-		L.fields["identity"]	= H.dna.uni_identity
-		L.fields["species"]		= H.dna.species.type
-		L.fields["features"]	= H.dna.features
-		L.fields["image"]		= image
-		L.fields["mindref"]		= H.mind
+		L.fields["enzymes"]		= H.dna.SE // Used in respawning
+		L.fields["identity"]	= H.dna.UI // "
+		L.fields["image"]		= getFlatIcon(H)	//This is god-awful
 		locked += L
 	return
 
-/datum/datacore/proc/get_id_photo(mob/living/carbon/human/H, client/C, show_directions = list(SOUTH))
-	var/datum/job/J = SSjob.GetJob(H.mind.assigned_role)
-	var/datum/preferences/P
-	if(!C)
-		C = H.client
-	if(C)
-		P = C.prefs
-	return get_flat_human_icon(null, J, P, DUMMY_HUMAN_SLOT_MANIFEST, show_directions)
+/proc/get_id_photo(mob/living/carbon/human/H, custom_job = null)
+	var/icon/preview_icon = null
+	var/obj/item/organ/external/head/head_organ = H.get_organ("head")
+	var/obj/item/organ/internal/eyes/eyes_organ = H.get_int_organ(/obj/item/organ/internal/eyes)
+
+	var/g = "m"
+	if(H.gender == FEMALE)
+		g = "f"
+
+	var/icon/icobase = head_organ.icobase //At this point all the organs would have the same icobase, so this is just recycling.
+
+	preview_icon = new /icon(icobase, "torso_[g]")
+	var/icon/temp
+	temp = new /icon(icobase, "groin_[g]")
+	preview_icon.Blend(temp, ICON_OVERLAY)
+	var/head = "head"
+	if(head_organ.alt_head && head_organ.dna.species.bodyflags & HAS_ALT_HEADS)
+		var/datum/sprite_accessory/alt_heads/alternate_head = GLOB.alt_heads_list[head_organ.alt_head]
+		if(alternate_head.icon_state)
+			head = alternate_head.icon_state
+	temp = new /icon(icobase, "[head]_[g]")
+	preview_icon.Blend(temp, ICON_OVERLAY)
+
+	//Tail
+	if(H.body_accessory && istype(H.body_accessory, /datum/body_accessory/tail))
+		temp = new/icon("icon" = H.body_accessory.icon, "icon_state" = H.body_accessory.icon_state)
+		preview_icon.Blend(temp, ICON_OVERLAY)
+	else if(H.tail && H.dna.species.bodyflags & HAS_TAIL)
+		temp = new/icon("icon" = 'icons/effects/species.dmi', "icon_state" = "[H.tail]_s")
+		preview_icon.Blend(temp, ICON_OVERLAY)
+
+	for(var/obj/item/organ/external/E in H.bodyparts)
+		preview_icon.Blend(E.get_icon(), ICON_OVERLAY)
+
+	// Skin tone
+	if(H.dna.species.bodyflags & HAS_SKIN_TONE)
+		if(H.s_tone >= 0)
+			preview_icon.Blend(rgb(H.s_tone, H.s_tone, H.s_tone), ICON_ADD)
+		else
+			preview_icon.Blend(rgb(-H.s_tone,  -H.s_tone,  -H.s_tone), ICON_SUBTRACT)
+
+	// Proper Skin color - Fix, you can't have HAS_SKIN_TONE *and* HAS_SKIN_COLOR
+	if(H.dna.species.bodyflags & HAS_SKIN_COLOR)
+		preview_icon.Blend(H.skin_colour, ICON_ADD)
+
+	//Tail Markings
+	var/icon/t_marking_s
+	if(H.dna.species.bodyflags & HAS_TAIL_MARKINGS)
+		var/tail_marking = H.m_styles["tail"]
+		var/datum/sprite_accessory/tail_marking_style = GLOB.marking_styles_list[tail_marking]
+		if(tail_marking_style && tail_marking_style.species_allowed)
+			t_marking_s = new/icon("icon" = tail_marking_style.icon, "icon_state" = "[tail_marking_style.icon_state]_s")
+			t_marking_s.Blend(H.m_colours["tail"], ICON_ADD)
+			if(!(H.body_accessory && istype(H.body_accessory, /datum/body_accessory/body)))
+				preview_icon.Blend(t_marking_s, ICON_OVERLAY)
+
+	var/icon/face_s = new/icon("icon" = 'icons/mob/human_face.dmi', "icon_state" = "bald_s")
+	if(!(H.dna.species.bodyflags & NO_EYES))
+		var/icon/eyes_s = new/icon("icon" = 'icons/mob/human_face.dmi', "icon_state" = H.dna.species ? H.dna.species.eyes : "eyes_s")
+		if(!eyes_organ)
+			return
+		eyes_s.Blend(eyes_organ.eye_color, ICON_ADD)
+		face_s.Blend(eyes_s, ICON_OVERLAY)
+
+	var/datum/sprite_accessory/hair_style = GLOB.hair_styles_full_list[head_organ.h_style]
+	if(hair_style)
+		var/icon/hair_s = new/icon("icon" = hair_style.icon, "icon_state" = "[hair_style.icon_state]_s")
+		// I'll want to make a species-specific proc for this sooner or later
+		// But this'll do for now
+		if(istype(head_organ.dna.species, /datum/species/slime))
+			hair_s.Blend("[H.skin_colour]A0", ICON_AND) //A0 = 160 alpha.
+		else
+			hair_s.Blend(head_organ.hair_colour, ICON_ADD)
+
+		if(hair_style.secondary_theme)
+			var/icon/hair_secondary_s = new/icon("icon" = hair_style.icon, "icon_state" = "[hair_style.icon_state]_[hair_style.secondary_theme]_s")
+			if(!hair_style.no_sec_colour)
+				hair_secondary_s.Blend(head_organ.sec_hair_colour, ICON_ADD)
+			hair_s.Blend(hair_secondary_s, ICON_OVERLAY)
+
+		face_s.Blend(hair_s, ICON_OVERLAY)
+
+	//Head Accessory
+	if(head_organ.dna.species.bodyflags & HAS_HEAD_ACCESSORY)
+		var/datum/sprite_accessory/head_accessory_style = GLOB.head_accessory_styles_list[head_organ.ha_style]
+		if(head_accessory_style && head_accessory_style.species_allowed)
+			var/icon/head_accessory_s = new/icon("icon" = head_accessory_style.icon, "icon_state" = "[head_accessory_style.icon_state]_s")
+			head_accessory_s.Blend(head_organ.headacc_colour, ICON_ADD)
+			face_s.Blend(head_accessory_s, ICON_OVERLAY)
+
+	var/datum/sprite_accessory/facial_hair_style = GLOB.facial_hair_styles_list[head_organ.f_style]
+	if(facial_hair_style && facial_hair_style.species_allowed)
+		var/icon/facial_s = new/icon("icon" = facial_hair_style.icon, "icon_state" = "[facial_hair_style.icon_state]_s")
+		if(istype(head_organ.dna.species, /datum/species/slime))
+			facial_s.Blend("[H.skin_colour]A0", ICON_ADD) //A0 = 160 alpha.
+		else
+			facial_s.Blend(head_organ.facial_colour, ICON_ADD)
+
+		if(facial_hair_style.secondary_theme)
+			var/icon/facial_secondary_s = new/icon("icon" = facial_hair_style.icon, "icon_state" = "[facial_hair_style.icon_state]_[facial_hair_style.secondary_theme]_s")
+			if(!facial_hair_style.no_sec_colour)
+				facial_secondary_s.Blend(head_organ.sec_facial_colour, ICON_ADD)
+			facial_s.Blend(facial_secondary_s, ICON_OVERLAY)
+
+		face_s.Blend(facial_s, ICON_OVERLAY)
+
+	//Markings
+	if((H.dna.species.bodyflags & HAS_HEAD_MARKINGS) || (H.dna.species.bodyflags & HAS_BODY_MARKINGS))
+		if(H.dna.species.bodyflags & HAS_BODY_MARKINGS) //Body markings.
+			var/body_marking = H.m_styles["body"]
+			var/datum/sprite_accessory/body_marking_style = GLOB.marking_styles_list[body_marking]
+			if(body_marking_style && body_marking_style.species_allowed)
+				var/icon/b_marking_s = new/icon("icon" = body_marking_style.icon, "icon_state" = "[body_marking_style.icon_state]_s")
+				b_marking_s.Blend(H.m_colours["body"], ICON_ADD)
+				face_s.Blend(b_marking_s, ICON_OVERLAY)
+		if(H.dna.species.bodyflags & HAS_HEAD_MARKINGS) //Head markings.
+			var/head_marking = H.m_styles["head"]
+			var/datum/sprite_accessory/head_marking_style = GLOB.marking_styles_list[head_marking]
+			if(head_marking_style && head_marking_style.species_allowed)
+				var/icon/h_marking_s = new/icon("icon" = head_marking_style.icon, "icon_state" = "[head_marking_style.icon_state]_s")
+				h_marking_s.Blend(H.m_colours["head"], ICON_ADD)
+				face_s.Blend(h_marking_s, ICON_OVERLAY)
+
+	preview_icon.Blend(face_s, ICON_OVERLAY)
+
+
+	var/icon/clothes_s = null
+	var/job_clothes = null
+	if(custom_job)
+		job_clothes = custom_job
+	else if(H.mind)
+		job_clothes = H.mind.assigned_role
+	switch(job_clothes)
+		if("Head of Personnel")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "hop_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "brown"), ICON_UNDERLAY)
+		if("Nanotrasen Representative")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "officer_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "laceups"), ICON_UNDERLAY)
+		if("Blueshield")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "officer_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "jackboots"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/hands.dmi', "swat_gl"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/suit.dmi', "blueshield"), ICON_OVERLAY)
+		if("Magistrate")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "really_black_suit_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "laceups"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/suit.dmi', "judge"), ICON_OVERLAY)
+		if("Bartender")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "ba_suit_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+		if("Botanist")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "hydroponics_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+		if("Chef")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "chef_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+		if("Janitor")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "janitor_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+		if("Librarian")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "red_suit_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+		if("Barber")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "barber_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+		if("Clown")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "clown_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "clown"), ICON_UNDERLAY)
+		if("Mime")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "mime_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+		if("Quartermaster")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "qm_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "brown"), ICON_UNDERLAY)
+		if("Cargo Technician")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "cargotech_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+		if("Shaft Miner")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "explorer_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "explorer"), ICON_UNDERLAY)
+		if("Lawyer")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "internalaffairs_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "brown"), ICON_UNDERLAY)
+		if("Chaplain")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "chapblack_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+		if("Research Director")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "director_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "brown"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/suit.dmi', "labcoat_open"), ICON_OVERLAY)
+		if("Scientist")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "toxinswhite_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "white"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/suit.dmi', "labcoat_tox_open"), ICON_OVERLAY)
+		if("Chemist")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "chemistrywhite_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "white"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/suit.dmi', "labcoat_chem_open"), ICON_OVERLAY)
+		if("Chief Medical Officer")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "cmo_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "brown"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/suit.dmi', "labcoat_cmo_open"), ICON_OVERLAY)
+		if("Medical Doctor")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "medical_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "white"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/suit.dmi', "labcoat_open"), ICON_OVERLAY)
+		if("Coroner")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "scrubsblack_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "white"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/suit.dmi', "labcoat_mort_open"), ICON_OVERLAY)
+		if("Geneticist")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "geneticswhite_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "white"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/suit.dmi', "labcoat_gen_open"), ICON_OVERLAY)
+		if("Virologist")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "virologywhite_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "white"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/suit.dmi', "labcoat_vir_open"), ICON_OVERLAY)
+		if("Psychiatrist")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "psych_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "laceups"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/suit.dmi', "labcoat_open"), ICON_UNDERLAY)
+		if("Paramedic")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "paramedic_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+		if("Captain")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "captain_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "brown"), ICON_UNDERLAY)
+		if("Head of Security")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "hosred_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "jackboots"), ICON_UNDERLAY)
+		if("Warden")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "warden_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "jackboots"), ICON_UNDERLAY)
+		if("Detective")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "detective_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "brown"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/suit.dmi', "detective"), ICON_OVERLAY)
+		if("Security Officer")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "secred_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "jackboots"), ICON_UNDERLAY)
+		if("Chief Engineer")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "chief_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "brown"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/belt.dmi', "utility"), ICON_OVERLAY)
+		if("Station Engineer")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "engine_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "orange"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/belt.dmi', "utility"), ICON_OVERLAY)
+		if("Life Support Specialist")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "atmos_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/belt.dmi', "utility"), ICON_OVERLAY)
+		if("Roboticist")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "robotics_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/suit.dmi', "labcoat_open"), ICON_OVERLAY)
+		if("Syndicate Agent")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "syndicate_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+		if("Syndicate Officer")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "syndicate_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "jackboots"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/hands.dmi', "swat_gl"), ICON_UNDERLAY)
+		if("Syndicate Nuclear Operative")
+			clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "syndicate_s")
+			clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "jackboots"), ICON_UNDERLAY)
+			clothes_s.Blend(new /icon('icons/mob/clothing/hands.dmi', "swat_gl"), ICON_UNDERLAY)
+		else
+			if(H.mind && (H.mind.assigned_role in get_all_centcom_jobs()))
+				clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "officer_s")
+				clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "laceups"), ICON_UNDERLAY)
+			else
+				clothes_s = new /icon('icons/mob/clothing/uniform.dmi', "grey_s")
+				clothes_s.Blend(new /icon('icons/mob/clothing/feet.dmi', "black"), ICON_UNDERLAY)
+
+	preview_icon.Blend(face_s, ICON_OVERLAY) // Why do we do this twice
+	if(clothes_s)
+		preview_icon.Blend(clothes_s, ICON_OVERLAY)
+	//Bus body accessories that go over clothes.
+	if(H.body_accessory && istype(H.body_accessory, /datum/body_accessory/body))
+		temp = new/icon("icon" = H.body_accessory.icon, "icon_state" = H.body_accessory.icon_state)
+		if(H.body_accessory.pixel_x_offset)
+			temp.Shift(EAST, H.body_accessory.pixel_x_offset)
+		if(H.body_accessory.pixel_y_offset)
+			temp.Shift(NORTH, H.body_accessory.pixel_y_offset)
+		if(H.dna.species.bodyflags & HAS_SKIN_COLOR)
+			temp.Blend(H.skin_colour, H.body_accessory.blend_mode)
+		if(t_marking_s)
+			temp.Blend(t_marking_s, ICON_OVERLAY)
+		preview_icon.Blend(temp, ICON_OVERLAY)
+	qdel(face_s)
+	qdel(clothes_s)
+
+	return preview_icon

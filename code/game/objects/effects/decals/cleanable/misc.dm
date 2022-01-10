@@ -1,33 +1,22 @@
 /obj/effect/decal/cleanable/generic
 	name = "clutter"
 	desc = "Someone should clean that up."
+	gender = PLURAL
+	density = FALSE
+	anchored = TRUE
+	layer = TURF_LAYER
 	icon = 'icons/obj/objects.dmi'
 	icon_state = "shards"
 
 /obj/effect/decal/cleanable/ash
 	name = "ashes"
 	desc = "Ashes to ashes, dust to dust, and into space."
+	gender = PLURAL
 	icon = 'icons/obj/objects.dmi'
 	icon_state = "ash"
+	anchored = TRUE
+	scoop_reagents = list("ash" = 10)
 	mergeable_decal = FALSE
-
-/obj/effect/decal/cleanable/ash/Initialize()
-	. = ..()
-	reagents.add_reagent(/datum/reagent/ash, 30)
-	pixel_x = rand(-5, 5)
-	pixel_y = rand(-5, 5)
-
-/obj/effect/decal/cleanable/ash/crematorium
-//crematoriums need their own ash cause default ash deletes itself if created in an obj
-	turf_loc_check = FALSE
-
-/obj/effect/decal/cleanable/ash/large
-	name = "large pile of ashes"
-	icon_state = "big_ash"
-
-/obj/effect/decal/cleanable/ash/large/Initialize()
-	. = ..()
-	reagents.add_reagent(/datum/reagent/ash, 30) //double the amount of ash.
 
 /obj/effect/decal/cleanable/glass
 	name = "tiny shards"
@@ -35,9 +24,9 @@
 	icon = 'icons/obj/shards.dmi'
 	icon_state = "tiny"
 
-/obj/effect/decal/cleanable/glass/Initialize()
+/obj/effect/decal/cleanable/glass/Initialize(mapload)
 	. = ..()
-	setDir(pick(GLOB.cardinals))
+	setDir(pick(GLOB.cardinal))
 
 /obj/effect/decal/cleanable/glass/ex_act()
 	qdel(src)
@@ -48,63 +37,89 @@
 /obj/effect/decal/cleanable/dirt
 	name = "dirt"
 	desc = "Someone should clean that up."
+	gender = PLURAL
+	density = FALSE
+	anchored = TRUE
+	layer = TURF_LAYER
+	icon = 'icons/effects/dirt.dmi'
 	icon_state = "dirt"
-	canSmoothWith = list(/obj/effect/decal/cleanable/dirt, /turf/closed/wall, /obj/structure/falsewall)
-	smooth = SMOOTH_FALSE
-	mouse_opacity = MOUSE_OPACITY_TRANSPARENT
+	base_icon_state = "dirt"
+	smoothing_flags = NONE
+	smoothing_groups = list(SMOOTH_GROUP_CLEANABLE_DIRT)
+	canSmoothWith = list(SMOOTH_GROUP_CLEANABLE_DIRT, SMOOTH_GROUP_WALLS)
+	mouse_opacity = FALSE
 
 /obj/effect/decal/cleanable/dirt/Initialize()
 	. = ..()
-	var/turf/T = get_turf(src)
-	if(T.tiled_dirt)
-		smooth = SMOOTH_MORE
-		icon = 'icons/effects/dirt.dmi'
-		icon_state = ""
-		queue_smooth(src)
-	queue_smooth_neighbors(src)
+	QUEUE_SMOOTH_NEIGHBORS(src)
+	if(smoothing_flags & (SMOOTH_CORNERS|SMOOTH_BITMASK))
+		QUEUE_SMOOTH_NEIGHBORS(src)
 
 /obj/effect/decal/cleanable/dirt/Destroy()
-	queue_smooth_neighbors(src)
+	QUEUE_SMOOTH_NEIGHBORS(src)
+	if(smoothing_flags & (SMOOTH_CORNERS|SMOOTH_BITMASK))
+		QUEUE_SMOOTH_NEIGHBORS(src)
 	return ..()
 
-/obj/effect/decal/cleanable/dirt/dust
-	name = "dust"
-	desc = "A thin layer of dust coating the floor."
+/obj/effect/decal/cleanable/dirt/blackpowder
+	name = "black powder"
+	mouse_opacity = TRUE
+	no_scoop = TRUE
+	scoop_reagents = list("blackpowder" = 40) // size 2 explosion when activated
+
+/obj/effect/decal/cleanable/flour
+	name = "flour"
+	desc = "It's still good. Four second rule!"
+	gender = PLURAL
+	density = FALSE
+	anchored = TRUE
+	layer = TURF_LAYER
+	icon = 'icons/effects/effects.dmi'
+	icon_state = "flour"
+
+/obj/effect/decal/cleanable/flour/foam
+	name = "Fire fighting foam"
+	desc = "It's foam."
+	color = "#EBEBEB"
+
+/obj/effect/decal/cleanable/flour/foam/Initialize(mapload)
+	. = ..()
+	QDEL_IN(src, 15 SECONDS)
 
 /obj/effect/decal/cleanable/greenglow
 	name = "glowing goo"
 	desc = "Jeez. I hope that's not for lunch."
+	gender = PLURAL
+	density = FALSE
+	anchored = TRUE
+	layer = TURF_LAYER
+	light_range = 1
+	icon = 'icons/effects/effects.dmi'
 	icon_state = "greenglow"
-	light_power = 3
-	light_range = 2
-	light_color = LIGHT_COLOR_GREEN
+
+/obj/effect/decal/cleanable/greenglow/Initialize(mapload)
+	. = ..()
+	QDEL_IN(src, 2 MINUTES)
 
 /obj/effect/decal/cleanable/greenglow/ex_act()
 	return
 
-/obj/effect/decal/cleanable/greenglow/filled/Initialize()
-	. = ..()
-	reagents.add_reagent(pick(/datum/reagent/uranium, /datum/reagent/uranium/radium), 5)
-
-/obj/effect/decal/cleanable/greenglow/ecto
-	name = "ectoplasmic puddle"
-	desc = "You know who to call."
-	light_power = 2
-
 /obj/effect/decal/cleanable/cobweb
 	name = "cobweb"
 	desc = "Somebody should remove that."
-	gender = NEUTER
-	layer = WALL_OBJ_LAYER
+	density = FALSE
+	anchored = TRUE
+	layer = OBJ_LAYER
+	icon = 'icons/effects/effects.dmi'
 	icon_state = "cobweb1"
 	resistance_flags = FLAMMABLE
-
-/obj/effect/decal/cleanable/cobweb/cobweb2
-	icon_state = "cobweb2"
 
 /obj/effect/decal/cleanable/molten_object
 	name = "gooey grey mass"
 	desc = "It looks like a melted... something."
+	density = FALSE
+	anchored = TRUE
+	layer = OBJ_LAYER
 	gender = NEUTER
 	icon = 'icons/effects/effects.dmi'
 	icon_state = "molten"
@@ -114,60 +129,34 @@
 	name = "big gooey grey mass"
 	icon_state = "big_molten"
 
-//Vomit (sorry)
+/obj/effect/decal/cleanable/cobweb2
+	name = "cobweb"
+	desc = "Somebody should remove that."
+	density = FALSE
+	anchored = TRUE
+	layer = OBJ_LAYER
+	icon = 'icons/effects/effects.dmi'
+	icon_state = "cobweb2"
+
 /obj/effect/decal/cleanable/vomit
 	name = "vomit"
 	desc = "Gosh, how unpleasant."
+	gender = PLURAL
+	density = FALSE
+	anchored = TRUE
+	layer = TURF_LAYER
 	icon = 'icons/effects/blood.dmi'
 	icon_state = "vomit_1"
 	random_icon_states = list("vomit_1", "vomit_2", "vomit_3", "vomit_4")
+	no_clear = TRUE
+	scoop_reagents = list("vomit" = 5)
 
-/obj/effect/decal/cleanable/vomit/attack_hand(mob/user)
-	. = ..()
-	if(.)
-		return
-	if(ishuman(user))
-		var/mob/living/carbon/human/H = user
-		if(isflyperson(H))
-			playsound(get_turf(src), 'sound/items/drink.ogg', 50, 1) //slurp
-			H.visible_message("<span class='alert'>[H] extends a small proboscis into the vomit pool, sucking it with a slurping sound.</span>")
-			if(reagents)
-				for(var/datum/reagent/R in reagents.reagent_list)
-					if (istype(R, /datum/reagent/consumable))
-						var/datum/reagent/consumable/nutri_check = R
-						if(nutri_check.nutriment_factor > 0)
-							H.adjust_nutrition(nutri_check.nutriment_factor * nutri_check.volume * 15) //Volume is typically really low so it needs a multiplier
-							reagents.remove_reagent(nutri_check.type,nutri_check.volume)
-			reagents.trans_to(H, reagents.total_volume, transfered_by = user)
-			qdel(src)
-
-/obj/effect/decal/cleanable/vomit/old
-	name = "crusty dried vomit"
-	desc = "You try not to look at the chunks, and fail."
-	var/list/disease = list()
-
-/obj/effect/decal/cleanable/vomit/old/Initialize(mapload, list/datum/disease/diseases)
-	. = ..()
-	icon_state += "-old"
-	if(prob(90))//vomit is much more likely to be diseased than blood is
-		var/datum/disease/advance/R = new /datum/disease/advance/random(rand(2, 6), 6+(rand(1, 3)))
-		disease += R
-
-/obj/effect/decal/cleanable/vomit/old/extrapolator_act(mob/user, var/obj/item/extrapolator/E, scan = TRUE)
-	if(!disease.len)
-		return FALSE
-	if(scan)
-		E.scan(src, disease, user)
-	else
-		E.extrapolate(src, disease, user)
-	return TRUE
-
-/obj/effect/decal/cleanable/chem_pile
-	name = "chemical pile"
-	desc = "A pile of chemicals. You can't quite tell what's inside it."
-	gender = NEUTER
-	icon = 'icons/obj/objects.dmi'
-	icon_state = "ash"
+/obj/effect/decal/cleanable/vomit/green
+	name = "green vomit"
+	desc = "It's all gummy. Ew."
+	icon_state = "gvomit_1"
+	random_icon_states = list("gvomit_1", "gvomit_2", "gvomit_3", "gvomit_4")
+	scoop_reagents = list("green_vomit" = 5)
 
 /obj/effect/decal/cleanable/shreds
 	name = "shreds"
@@ -180,41 +169,72 @@
 	if(severity == 1) //so shreds created during an explosion aren't deleted by the explosion.
 		qdel(src)
 
-/obj/effect/decal/cleanable/shreds/Initialize()
+/obj/effect/decal/cleanable/shreds/Initialize(mapload)
 	pixel_x = rand(-10, 10)
 	pixel_y = rand(-10, 10)
 	. = ..()
 
-/obj/effect/decal/cleanable/glitter
-	name = "generic glitter pile"
-	desc = "The herpes of arts and crafts."
-	icon = 'icons/effects/atmospherics.dmi'
-	icon_state = "plasma_old"
-	gender = NEUTER
-	mouse_opacity = MOUSE_OPACITY_TRANSPARENT
-
-/obj/effect/decal/cleanable/glitter/pink
-	name = "pink glitter"
-	icon_state = "plasma"
-
-/obj/effect/decal/cleanable/glitter/white
-	name = "white glitter"
-	icon_state = "nitrous_oxide"
-
-/obj/effect/decal/cleanable/glitter/blue
-	name = "blue glitter"
-	icon_state = "freon"
-
-/obj/effect/decal/cleanable/plasma
-	name = "stabilized plasma"
-	desc = "A puddle of stabilized plasma."
-	icon_state = "flour"
+/obj/effect/decal/cleanable/tomato_smudge
+	name = "tomato smudge"
+	desc = "It's red."
+	density = FALSE
+	anchored = TRUE
+	layer = TURF_LAYER
 	icon = 'icons/effects/tomatodecal.dmi'
-	color = "#C8A5DC"
+	random_icon_states = list("tomato_floor1", "tomato_floor2", "tomato_floor3")
+
+/obj/effect/decal/cleanable/plant_smudge
+	name = "plant smudge"
+	density = FALSE
+	anchored = TRUE
+	layer = TURF_LAYER
+	gender = NEUTER
+	icon = 'icons/effects/tomatodecal.dmi'
+	random_icon_states = list("smashed_plant")
+
+/obj/effect/decal/cleanable/egg_smudge
+	name = "smashed egg"
+	desc = "Seems like this one won't hatch."
+	density = FALSE
+	anchored = TRUE
+	layer = TURF_LAYER
+	icon = 'icons/effects/tomatodecal.dmi'
+	random_icon_states = list("smashed_egg1", "smashed_egg2", "smashed_egg3")
+
+/obj/effect/decal/cleanable/pie_smudge //honk
+	name = "smashed pie"
+	desc = "It's pie cream from a cream pie."
+	density = FALSE
+	anchored = TRUE
+	layer = TURF_LAYER
+	icon = 'icons/effects/tomatodecal.dmi'
+	random_icon_states = list("smashed_pie")
+
+/obj/effect/decal/cleanable/fungus
+	name = "space fungus"
+	desc = "A fungal growth. Looks pretty nasty."
+	density = FALSE
+	anchored = TRUE
+	layer = TURF_LAYER
+	plane = GAME_PLANE
+	icon = 'icons/effects/effects.dmi'
+	icon_state = "flour"
+	color = "#D5820B"
+	scoop_reagents = list("fungus" = 10)
+
+/obj/effect/decal/cleanable/confetti //PARTY TIME!
+	name = "confetti"
+	desc = "Party time!"
+	gender = PLURAL
+	icon = 'icons/obj/objects.dmi'
+	icon_state = "confetti1"
+	random_icon_states = list("confetti1", "confetti2", "confetti3")
+	anchored = TRUE
 
 /obj/effect/decal/cleanable/insectguts
-	name = "insect guts"
+	name = "bug guts"
 	desc = "One bug squashed. Four more will rise in its place."
 	icon = 'icons/effects/blood.dmi'
 	icon_state = "xfloor1"
 	random_icon_states = list("xfloor1", "xfloor2", "xfloor3", "xfloor4", "xfloor5", "xfloor6", "xfloor7")
+	anchored = TRUE

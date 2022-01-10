@@ -1,209 +1,339 @@
-/proc/random_blood_type()
-	return pick(4;"O-", 36;"O+", 3;"A-", 28;"A+", 1;"B-", 20;"B+", 1;"AB-", 5;"AB+")
+/proc/GetOppositeDir(dir)
+	switch(dir)
+		if(NORTH)     return SOUTH
+		if(SOUTH)     return NORTH
+		if(EAST)      return WEST
+		if(WEST)      return EAST
+		if(SOUTHWEST) return NORTHEAST
+		if(NORTHWEST) return SOUTHEAST
+		if(NORTHEAST) return SOUTHWEST
+		if(SOUTHEAST) return NORTHWEST
+	return 0
 
-/proc/random_eye_color()
-	switch(pick(20;"brown",20;"hazel",20;"grey",15;"blue",15;"green",1;"amber",1;"albino"))
-		if("brown")
-			return "630"
-		if("hazel")
-			return "542"
-		if("grey")
-			return pick("666","777","888","999","aaa","bbb","ccc")
-		if("blue")
-			return "36c"
-		if("green")
-			return "060"
-		if("amber")
-			return "fc0"
-		if("albino")
-			return pick("c","d","e","f") + pick("0","1","2","3","4","5","6","7","8","9") + pick("0","1","2","3","4","5","6","7","8","9")
-		else
-			return "000"
-
-/proc/random_underwear(gender)
-	if(!GLOB.underwear_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/underwear, GLOB.underwear_list, GLOB.underwear_m, GLOB.underwear_f)
+/proc/random_underwear(gender, species = "Human")
+	var/list/pick_list = list()
 	switch(gender)
-		if(MALE)
-			return pick(GLOB.underwear_m)
-		if(FEMALE)
-			return pick(GLOB.underwear_f)
-		else
-			return pick(GLOB.underwear_list)
+		if(MALE)	pick_list = GLOB.underwear_m
+		if(FEMALE)	pick_list = GLOB.underwear_f
+		else		pick_list = GLOB.underwear_list
+	return pick_species_allowed_underwear(pick_list, species)
 
-/proc/random_undershirt(gender)
-	if(!GLOB.undershirt_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/undershirt, GLOB.undershirt_list, GLOB.undershirt_m, GLOB.undershirt_f)
+/proc/random_undershirt(gender, species = "Human")
+	var/list/pick_list = list()
 	switch(gender)
-		if(MALE)
-			return pick(GLOB.undershirt_m)
-		if(FEMALE)
-			return pick(GLOB.undershirt_f)
-		else
-			return pick(GLOB.undershirt_list)
+		if(MALE)	pick_list = GLOB.undershirt_m
+		if(FEMALE)	pick_list = GLOB.undershirt_f
+		else		pick_list = GLOB.undershirt_list
+	return pick_species_allowed_underwear(pick_list, species)
 
-/proc/random_socks()
-	if(!GLOB.socks_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/socks, GLOB.socks_list)
-	return pick(GLOB.socks_list)
-
-/proc/random_features()
-	if(!GLOB.tails_list_human.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/tails/human, GLOB.tails_list_human)
-	if(!GLOB.tails_list_lizard.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/tails/lizard, GLOB.tails_list_lizard)
-	if(!GLOB.snouts_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/snouts, GLOB.snouts_list)
-	if(!GLOB.horns_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/horns, GLOB.horns_list)
-	if(!GLOB.ears_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/ears, GLOB.horns_list)
-	if(!GLOB.frills_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/frills, GLOB.frills_list)
-	if(!GLOB.spines_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/spines, GLOB.spines_list)
-	if(!GLOB.legs_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/legs, GLOB.legs_list)
-	if(!GLOB.body_markings_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/body_markings, GLOB.body_markings_list)
-	if(!GLOB.wings_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/wings, GLOB.wings_list)
-	if(!GLOB.moth_wings_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/moth_wings, GLOB.moth_wings_list)
-	if(!GLOB.ipc_screens_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/ipc_screens, GLOB.ipc_screens_list)
-	if(!GLOB.ipc_antennas_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/ipc_antennas, GLOB.ipc_antennas_list)
-	if(!GLOB.ipc_chassis_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/ipc_chassis, GLOB.ipc_chassis_list)
-	if(!GLOB.insect_type_list.len)
-		init_sprite_accessory_subtypes(/datum/sprite_accessory/insect_type, GLOB.insect_type_list)
-	//For now we will always return none for tail_human and ears.
-	return(list("mcolor" = pick("FFFFFF","7F7F7F", "7FFF7F", "7F7FFF", "FF7F7F", "7FFFFF", "FF7FFF", "FFFF7F"),"ethcolor" = GLOB.color_list_ethereal[pick(GLOB.color_list_ethereal)], "tail_lizard" = pick(GLOB.tails_list_lizard), "tail_human" = "None", "wings" = "None", "snout" = pick(GLOB.snouts_list), "horns" = pick(GLOB.horns_list), "ears" = "None", "frills" = pick(GLOB.frills_list), "spines" = pick(GLOB.spines_list), "body_markings" = pick(GLOB.body_markings_list), "legs" = "Normal Legs", "caps" = pick(GLOB.caps_list), "moth_wings" = pick(GLOB.moth_wings_list), "ipc_screen" = pick(GLOB.ipc_screens_list), "ipc_antenna" = pick(GLOB.ipc_antennas_list),"ipc_chassis" = pick(GLOB.ipc_chassis_list), "insect_type" = pick(GLOB.insect_type_list)))
-
-/proc/random_hair_style(gender)
+/proc/random_socks(gender, species = "Human")
+	var/list/pick_list = list()
 	switch(gender)
-		if(MALE)
-			return pick(GLOB.hair_styles_male_list)
-		if(FEMALE)
-			return pick(GLOB.hair_styles_female_list)
-		else
-			return pick(GLOB.hair_styles_list)
+		if(MALE)	pick_list = GLOB.socks_m
+		if(FEMALE)	pick_list = GLOB.socks_f
+		else		pick_list = GLOB.socks_list
+	return pick_species_allowed_underwear(pick_list, species)
 
-/proc/random_facial_hair_style(gender)
-	switch(gender)
-		if(MALE)
-			return pick(GLOB.facial_hair_styles_male_list)
-		if(FEMALE)
-			return pick(GLOB.facial_hair_styles_female_list)
-		else
-			return pick(GLOB.facial_hair_styles_list)
+/proc/pick_species_allowed_underwear(list/all_picks, species)
+	var/list/valid_picks = list()
+	for(var/test in all_picks)
+		var/datum/sprite_accessory/S = all_picks[test]
+		if(!(species in S.species_allowed))
+			continue
+		valid_picks += test
 
-/proc/random_unique_name(gender, attempts_to_find_unique_name=10)
-	for(var/i in 1 to attempts_to_find_unique_name)
+	if(!valid_picks.len) valid_picks += "Nude"
+
+	return pick(valid_picks)
+
+/proc/random_hair_style(gender, species = "Human", datum/robolimb/robohead)
+	var/h_style = "Bald"
+	var/list/valid_hairstyles = list()
+	for(var/hairstyle in GLOB.hair_styles_public_list)
+		var/datum/sprite_accessory/S = GLOB.hair_styles_public_list[hairstyle]
+
+		if(hairstyle == "Bald") //Just in case.
+			valid_hairstyles += hairstyle
+			continue
+		if((gender == MALE && S.gender == FEMALE) || (gender == FEMALE && S.gender == MALE))
+			continue
+		if(species == "Machine") //If the user is a species who can have a robotic head...
+			if(!robohead)
+				robohead = GLOB.all_robolimbs["Morpheus Cyberkinetics"]
+			if((species in S.species_allowed) && robohead.is_monitor && ((S.models_allowed && (robohead.company in S.models_allowed)) || !S.models_allowed)) //If this is a hair style native to the user's species, check to see if they have a head with an ipc-style screen and that the head's company is in the screen style's allowed models list.
+				valid_hairstyles += hairstyle //Give them their hairstyles if they do.
+			else
+				if(!robohead.is_monitor && ("Human" in S.species_allowed)) /*If the hairstyle is not native to the user's species and they're using a head with an ipc-style screen, don't let them access it.
+																			But if the user has a robotic humanoid head and the hairstyle can fit humans, let them use it as a wig. */
+					valid_hairstyles += hairstyle
+		else //If the user is not a species who can have robotic heads, use the default handling.
+			if(species in S.species_allowed) //If the user's head is of a species the hairstyle allows, add it to the list.
+				valid_hairstyles += hairstyle
+
+	if(valid_hairstyles.len)
+		h_style = pick(valid_hairstyles)
+
+	return h_style
+
+/proc/random_facial_hair_style(gender, species = "Human", datum/robolimb/robohead)
+	var/f_style = "Shaved"
+	var/list/valid_facial_hairstyles = list()
+	for(var/facialhairstyle in GLOB.facial_hair_styles_list)
+		var/datum/sprite_accessory/S = GLOB.facial_hair_styles_list[facialhairstyle]
+
+		if(facialhairstyle == "Shaved") //Just in case.
+			valid_facial_hairstyles += facialhairstyle
+			continue
+		if((gender == MALE && S.gender == FEMALE) || (gender == FEMALE && S.gender == MALE))
+			continue
+		if(species == "Machine") //If the user is a species who can have a robotic head...
+			if(!robohead)
+				robohead = GLOB.all_robolimbs["Morpheus Cyberkinetics"]
+			if((species in S.species_allowed) && robohead.is_monitor && ((S.models_allowed && (robohead.company in S.models_allowed)) || !S.models_allowed)) //If this is a facial hair style native to the user's species, check to see if they have a head with an ipc-style screen and that the head's company is in the screen style's allowed models list.
+				valid_facial_hairstyles += facialhairstyle //Give them their facial hairstyles if they do.
+			else
+				if(!robohead.is_monitor && ("Human" in S.species_allowed)) /*If the facial hairstyle is not native to the user's species and they're using a head with an ipc-style screen, don't let them access it.
+																			But if the user has a robotic humanoid head and the facial hairstyle can fit humans, let them use it as a wig. */
+					valid_facial_hairstyles += facialhairstyle
+		else //If the user is not a species who can have robotic heads, use the default handling.
+			if(species in S.species_allowed) //If the user's head is of a species the facial hair style allows, add it to the list.
+				valid_facial_hairstyles += facialhairstyle
+
+	if(valid_facial_hairstyles.len)
+		f_style = pick(valid_facial_hairstyles)
+
+	return f_style
+
+/proc/random_head_accessory(species = "Human")
+	var/ha_style = "None"
+	var/list/valid_head_accessories = list()
+	for(var/head_accessory in GLOB.head_accessory_styles_list)
+		var/datum/sprite_accessory/S = GLOB.head_accessory_styles_list[head_accessory]
+
+		if(!(species in S.species_allowed))
+			continue
+		valid_head_accessories += head_accessory
+
+	if(valid_head_accessories.len)
+		ha_style = pick(valid_head_accessories)
+
+	return ha_style
+
+/proc/random_marking_style(location = "body", species = "Human", datum/robolimb/robohead, body_accessory, alt_head)
+	var/m_style = "None"
+	var/list/valid_markings = list()
+	for(var/marking in GLOB.marking_styles_list)
+		var/datum/sprite_accessory/body_markings/S = GLOB.marking_styles_list[marking]
+		if(S.name == "None")
+			valid_markings += marking
+			continue
+		if(S.marking_location != location) //If the marking isn't for the location we desire, skip.
+			continue
+		if(!(species in S.species_allowed)) //If the user's head is not of a species the marking style allows, skip it. Otherwise, add it to the list.
+			continue
+		if(location == "tail")
+			if(!body_accessory)
+				if(S.tails_allowed)
+					continue
+			else
+				if(!S.tails_allowed || !(body_accessory in S.tails_allowed))
+					continue
+		if(location == "head")
+			var/datum/sprite_accessory/body_markings/head/M = GLOB.marking_styles_list[S.name]
+			if(species == "Machine")//If the user is a species that can have a robotic head...
+				if(!robohead)
+					robohead = GLOB.all_robolimbs["Morpheus Cyberkinetics"]
+				if(!(S.models_allowed && (robohead.company in S.models_allowed))) //Make sure they don't get markings incompatible with their head.
+					continue
+			else if(alt_head && alt_head != "None") //If the user's got an alt head, validate markings for that head.
+				if(!("All" in M.heads_allowed) && !(alt_head in M.heads_allowed))
+					continue
+			else
+				if(M.heads_allowed && !("All" in M.heads_allowed))
+					continue
+		valid_markings += marking
+
+	if(valid_markings.len)
+		m_style = pick(valid_markings)
+
+	return m_style
+
+/proc/random_body_accessory(species = "Vulpkanin")
+	var/body_accessory = null
+	var/list/valid_body_accessories = list()
+	for(var/B in GLOB.body_accessory_by_name)
+		var/datum/body_accessory/A = GLOB.body_accessory_by_name[B]
+		if(!istype(A))
+			valid_body_accessories += "None" //The only null entry should be the "None" option.
+			continue
+		if(species in A.allowed_species) //If the user is not of a species the body accessory style allows, skip it. Otherwise, add it to the list.
+			valid_body_accessories += B
+
+	if(valid_body_accessories.len)
+		body_accessory = pick(valid_body_accessories)
+
+	return body_accessory
+
+/proc/random_name(gender, species = "Human")
+
+	var/datum/species/current_species
+	if(species)
+		current_species = GLOB.all_species[species]
+
+	if(!current_species || current_species.name == "Human")
 		if(gender==FEMALE)
-			. = capitalize(pick(GLOB.first_names_female)) + " " + capitalize(pick(GLOB.last_names))
+			return capitalize(pick(GLOB.first_names_female)) + " " + capitalize(pick(GLOB.last_names))
 		else
-			. = capitalize(pick(GLOB.first_names_male)) + " " + capitalize(pick(GLOB.last_names))
+			return capitalize(pick(GLOB.first_names_male)) + " " + capitalize(pick(GLOB.last_names))
+	else
+		return current_species.get_random_name(gender)
 
-		if(!findname(.))
-			break
+/proc/random_skin_tone(species = "Human")
+	if(species == "Human" || species == "Drask")
+		switch(pick(60;"caucasian", 15;"afroamerican", 10;"african", 10;"latino", 5;"albino"))
+			if("caucasian")		. = -10
+			if("afroamerican")	. = -115
+			if("african")		. = -165
+			if("latino")		. = -55
+			if("albino")		. = 34
+			else				. = rand(-185, 34)
+		return min(max(. + rand(-25, 25), -185), 34)
+	else if(species == "Vox")
+		. = rand(1, 6)
+		return .
 
-/proc/random_unique_lizard_name(gender, attempts_to_find_unique_name=10)
-	for(var/i in 1 to attempts_to_find_unique_name)
-		. = capitalize(lizard_name(gender))
-
-		if(!findname(.))
-			break
-
-/proc/random_unique_apid_name(gender, attempts_to_find_unique_name=10)
-	for(var/i in 1 to attempts_to_find_unique_name)
-		. = capitalize(apid_name(gender))
-
-		if(!findname(.))
-			break
-
-/proc/random_unique_plasmaman_name(attempts_to_find_unique_name=10)
-	for(var/i in 1 to attempts_to_find_unique_name)
-		. = capitalize(plasmaman_name())
-
-		if(!findname(.))
-			break
-
-/proc/random_unique_ipc_name(attempts_to_find_unique_name=10)
-	for(var/i in 1 to attempts_to_find_unique_name)
-		. = capitalize(ipc_name())
-
-		if(!findname(.))
-			break
-
-
-/proc/random_unique_ethereal_name(attempts_to_find_unique_name=10)
-	for(var/i in 1 to attempts_to_find_unique_name)
-		. = capitalize(ethereal_name())
-
-		if(!findname(.))
-			break
-
-/proc/random_unique_moth_name(attempts_to_find_unique_name=10)
-	for(var/i in 1 to attempts_to_find_unique_name)
-		. = capitalize(pick(GLOB.moth_first)) + " " + capitalize(pick(GLOB.moth_last))
-
-		if(!findname(.))
-			break
-
-/proc/random_unique_ooze_name(attempts_to_find_unique_name=10)
-	for(var/i in 1 to attempts_to_find_unique_name)
-		. = capitalize(pick(GLOB.oozeling_first_names)) + " " + capitalize(pick(GLOB.oozeling_last_names))
-
-		if(!findname(.))
-			break
-
-
-/proc/random_skin_tone()
-	return pick(GLOB.skin_tones)
-
-GLOBAL_LIST_INIT(skin_tones, sortList(list(
-	"albino",
-	"caucasian1",
-	"caucasian2",
-	"caucasian3",
-	"latino",
-	"mediterranean",
-	"asian1",
-	"asian2",
-	"arab",
-	"indian",
-	"african1",
-	"african2"
-	)))
-
-GLOBAL_LIST_EMPTY(species_list)
+/proc/skintone2racedescription(tone, species = "Human")
+	if(species == "Human")
+		switch(tone)
+			if(30 to INFINITY)		return "albino"
+			if(20 to 30)			return "pale"
+			if(5 to 15)				return "light skinned"
+			if(-10 to 5)			return "white"
+			if(-25 to -10)			return "tan"
+			if(-45 to -25)			return "darker skinned"
+			if(-65 to -45)			return "brown"
+			if(-INFINITY to -65)	return "black"
+			else					return "unknown"
+	else if(species == "Vox")
+		switch(tone)
+			if(2)					return "dark green"
+			if(3)					return "brown"
+			if(4)					return "gray"
+			if(5)					return "emerald"
+			if(6)					return "azure"
+			else					return "green"
+	else
+		return "unknown"
 
 /proc/age2agedescription(age)
 	switch(age)
-		if(0 to 1)
-			return "infant"
-		if(1 to 3)
-			return "toddler"
-		if(3 to 13)
-			return "child"
-		if(13 to 19)
-			return "teenager"
-		if(19 to 30)
-			return "young adult"
-		if(30 to 45)
-			return "adult"
-		if(45 to 60)
-			return "middle-aged"
-		if(60 to 70)
-			return "aging"
-		if(70 to INFINITY)
-			return "elderly"
-		else
-			return "unknown"
+		if(0 to 1)			return "infant"
+		if(1 to 3)			return "toddler"
+		if(3 to 13)			return "child"
+		if(13 to 19)		return "teenager"
+		if(19 to 30)		return "young adult"
+		if(30 to 45)		return "adult"
+		if(45 to 60)		return "middle-aged"
+		if(60 to 70)		return "aging"
+		if(70 to INFINITY)	return "elderly"
+		else				return "unknown"
 
-/proc/do_mob(mob/user , mob/target, time = 30, uninterruptible = 0, progress = 1, datum/callback/extra_checks = null)
+/proc/set_criminal_status(mob/living/user, datum/data/record/target_records , criminal_status, comment, user_rank, list/authcard_access = list(), user_name)
+	var/status = criminal_status
+	var/their_name = target_records.fields["name"]
+	var/their_rank = target_records.fields["rank"]
+	switch(criminal_status)
+		if("arrest", SEC_RECORD_STATUS_ARREST)
+			status = SEC_RECORD_STATUS_ARREST
+		if("none", SEC_RECORD_STATUS_NONE)
+			status = SEC_RECORD_STATUS_NONE
+		if("execute", SEC_RECORD_STATUS_EXECUTE)
+			if((ACCESS_MAGISTRATE in authcard_access) || (ACCESS_ARMORY in authcard_access))
+				status = SEC_RECORD_STATUS_EXECUTE
+				message_admins("[ADMIN_FULLMONTY(usr)] authorized <span class='warning'>EXECUTION</span> for [their_rank] [their_name], with comment: [comment]")
+			else
+				return 0
+		if("search", SEC_RECORD_STATUS_SEARCH)
+			status = SEC_RECORD_STATUS_SEARCH
+		if("monitor", SEC_RECORD_STATUS_MONITOR)
+			status = SEC_RECORD_STATUS_MONITOR
+		if("demote", SEC_RECORD_STATUS_DEMOTE)
+			message_admins("[ADMIN_FULLMONTY(usr)] set criminal status to <span class='warning'>DEMOTE</span> for [their_rank] [their_name], with comment: [comment]")
+			status = SEC_RECORD_STATUS_DEMOTE
+		if("incarcerated", SEC_RECORD_STATUS_INCARCERATED)
+			status = SEC_RECORD_STATUS_INCARCERATED
+		if("parolled", SEC_RECORD_STATUS_PAROLLED)
+			status = SEC_RECORD_STATUS_PAROLLED
+		if("released", SEC_RECORD_STATUS_RELEASED)
+			status = SEC_RECORD_STATUS_RELEASED
+	target_records.fields["criminal"] = status
+	log_admin("[key_name_admin(user)] set secstatus of [their_rank] [their_name] to [status], comment: [comment]")
+	target_records.fields["comments"] += "Set to [status] by [user_name || user.name] ([user_rank]) on [GLOB.current_date_string] [station_time_timestamp()], comment: [comment]"
+	update_all_mob_security_hud()
+	return 1
+
+/**
+ * Creates attack (old and new) logs for the user and defense logs for the target.
+ * Will message admins depending on the custom_level, user and target.
+ *
+ * custom_level will determine the log level set. Unless the target is SSD and there is a user doing it
+ * If custom_level is not set then the log level will be determined using the user and the target.
+ *
+ * * Arguments:
+ * * user - The thing doing it. Can be null
+ * * target - The target of the attack
+ * * what_done - What has happened
+ * * custom_level - The log level override
+ */
+/proc/add_attack_logs(atom/user, target, what_done, custom_level)
+	if(islist(target)) // Multi-victim adding
+		var/list/targets = target
+		for(var/t in targets)
+			add_attack_logs(user, t, what_done, custom_level)
+		return
+
+	var/user_str = key_name_log(user) + COORD(user)
+	var/target_str
+	var/target_info
+	if(isatom(target))
+		var/atom/AT = target
+		target_str = key_name_log(AT) + COORD(AT)
+		target_info = key_name_admin(target)
+	else
+		target_str = target
+		target_info = target
+	var/mob/MU = user
+	var/mob/MT = target
+	if(istype(MU))
+		MU.create_log(ATTACK_LOG, what_done, target, get_turf(user))
+		MU.create_attack_log("<font color='red'>Attacked [target_str]: [what_done]</font>")
+	if(istype(MT))
+		MT.create_log(DEFENSE_LOG, what_done, user, get_turf(MT))
+		MT.create_attack_log("<font color='orange'>Attacked by [user_str]: [what_done]</font>")
+	log_attack(user_str, target_str, what_done)
+
+	var/loglevel = ATKLOG_MOST
+	if(!isnull(custom_level))
+		loglevel = custom_level
+	else if(istype(MT))
+		if(istype(MU))
+			if(!MU.ckey && !MT.ckey) // Attacks between NPCs are only shown to admins with ATKLOG_ALL
+				loglevel = ATKLOG_ALL
+			else if(!MU.ckey || !MT.ckey || (MU.ckey == MT.ckey)) // Player v NPC combat is de-prioritized. Also no self-harm, nobody cares
+				loglevel = ATKLOG_ALMOSTALL
+		else
+			var/area/A = get_area(MT)
+			if(A && A.hide_attacklogs)
+				loglevel = ATKLOG_ALMOSTALL
+	else
+		loglevel = ATKLOG_ALL // Hitting an object. Not a mob
+	if(user && isLivingSSD(target))  // Attacks on SSDs are shown to admins with any log level except ATKLOG_NONE. Overrides custom level
+		loglevel = ATKLOG_FEW
+
+
+	msg_admin_attack("[key_name_admin(user)] vs [target_info]: [what_done]", loglevel)
+
+/proc/do_mob(mob/user, mob/target, time = 30, progress = 1, list/extra_checks = list(), only_use_extra_checks = FALSE)
 	if(!user || !target)
 		return 0
 	var/user_loc = user.loc
@@ -214,169 +344,137 @@ GLOBAL_LIST_EMPTY(species_list)
 
 	var/target_loc = target.loc
 
-	var/holding = user.get_active_held_item()
+	var/holding = user.get_active_hand()
 	var/datum/progressbar/progbar
-	if (progress)
+	if(progress)
 		progbar = new(user, time, target)
 
 	var/endtime = world.time+time
 	var/starttime = world.time
 	. = 1
-	while (world.time < endtime)
-		stoplag(1)
-		if (progress)
+	while(world.time < endtime)
+		sleep(1)
+		if(progress)
 			progbar.update(world.time - starttime)
-		if(QDELETED(user) || QDELETED(target))
+		if(!user || !target)
 			. = 0
 			break
-		if(uninterruptible)
+		if(only_use_extra_checks)
+			if(check_for_true_callbacks(extra_checks))
+				break
 			continue
 
 		if(drifting && !user.inertia_dir)
 			drifting = 0
 			user_loc = user.loc
 
-		if((!drifting && user.loc != user_loc) || target.loc != target_loc || user.get_active_held_item() != holding || user.incapacitated() || (extra_checks && !extra_checks.Invoke()))
+		if((!drifting && user.loc != user_loc) || target.loc != target_loc || user.get_active_hand() != holding || user.incapacitated() || user.lying || check_for_true_callbacks(extra_checks))
 			. = 0
 			break
-	if (progress)
+	if(progress)
 		qdel(progbar)
 
-
-//some additional checks as a callback for for do_afters that want to break on losing health or on the mob taking action
-/mob/proc/break_do_after_checks(list/checked_health, check_clicks)
-	if(check_clicks && next_move > world.time)
-		return FALSE
-	return TRUE
-
-//pass a list in the format list("health" = mob's health var) to check health during this
-/mob/living/break_do_after_checks(list/checked_health, check_clicks)
-	if(islist(checked_health))
-		if(health < checked_health["health"])
-			return FALSE
-		checked_health["health"] = health
-	return ..()
-
-/proc/do_after(mob/user, var/delay, needhand = 1, atom/target = null, progress = 1, datum/callback/extra_checks = null)
+/*	Use this proc when you want to have code under it execute after a delay, and ensure certain conditions are met during that delay...
+ *	Such as the user not being interrupted via getting stunned or by moving off the tile they're currently on.
+ *
+ *	Example usage:
+ *
+ *	if(do_after(user, 50, target = sometarget, extra_checks = list(callback_check1, callback_check2)))
+ *		do_stuff()
+ *
+ *	This will create progress bar that lasts for 5 seconds. If the user doesn't move or otherwise do something that would cause the checks to fail in those 5 seconds, do_stuff() would execute.
+ *	The Proc returns TRUE upon success (the progress bar reached the end), or FALSE upon failure (the user moved or some other check failed)
+ */
+/proc/do_after(mob/user, delay, needhand = 1, atom/target = null, progress = 1, list/extra_checks = list(), use_default_checks = TRUE)
 	if(!user)
-		return 0
+		return FALSE
 	var/atom/Tloc = null
-	if(target && !isturf(target))
+	if(target)
 		Tloc = target.loc
 
 	var/atom/Uloc = user.loc
 
-	var/drifting = 0
+	var/drifting = FALSE
 	if(!user.Process_Spacemove(0) && user.inertia_dir)
-		drifting = 1
+		drifting = TRUE
 
-	var/holding = user.get_active_held_item()
+	var/holding = user.get_active_hand()
 
-	var/holdingnull = 1 //User's hand started out empty, check for an empty hand
+	var/holdingnull = TRUE //User's hand started out empty, check for an empty hand
 	if(holding)
-		holdingnull = 0 //Users hand started holding something, check to see if it's still holding that
-
-	delay *= user.do_after_coefficent()
+		holdingnull = FALSE //Users hand started holding something, check to see if it's still holding that
 
 	var/datum/progressbar/progbar
-	if (progress)
+	if(progress)
 		progbar = new(user, delay, target)
 
 	var/endtime = world.time + delay
 	var/starttime = world.time
-	. = 1
-	while (world.time < endtime)
-		stoplag(1)
-		if (progress)
+	. = TRUE
+
+	// By default, checks for weakness and stunned get added to the extra_checks list.
+	// Setting `use_default_checks` to FALSE means that you don't want the do_after to check for these statuses, or that you will be supplying your own checks.
+	if(use_default_checks)
+		extra_checks += CALLBACK(user, /mob.proc/IsWeakened)
+		extra_checks += CALLBACK(user, /mob.proc/IsStunned)
+
+	while(world.time < endtime)
+		sleep(1)
+		if(progress)
 			progbar.update(world.time - starttime)
 
 		if(drifting && !user.inertia_dir)
-			drifting = 0
+			drifting = FALSE
 			Uloc = user.loc
 
-		if(QDELETED(user) || user.stat || (!drifting && user.loc != Uloc) || (extra_checks && !extra_checks.Invoke()))
-			. = 0
+		if(!user || user.stat || (!drifting && user.loc != Uloc) || check_for_true_callbacks(extra_checks))
+			. = FALSE
 			break
 
-		if(isliving(user))
-			var/mob/living/L = user
-			if(L.IsStun() || L.IsParalyzed())
-				. = 0
-				break
-
-		if(!QDELETED(Tloc) && (QDELETED(target) || Tloc != target.loc))
-			if((Uloc != Tloc || Tloc != user) && !drifting)
-				. = 0
-				break
+		if(Tloc && (!target || Tloc != target.loc))
+			. = FALSE
+			break
 
 		if(needhand)
 			//This might seem like an odd check, but you can still need a hand even when it's empty
 			//i.e the hand is used to pull some item/tool out of the construction
 			if(!holdingnull)
 				if(!holding)
-					. = 0
+					. = FALSE
 					break
-			if(user.get_active_held_item() != holding)
-				. = 0
+			if(user.get_active_hand() != holding)
+				. = FALSE
 				break
-	if (progress)
-		qdel(progbar)
-
-/mob/proc/do_after_coefficent() // This gets added to the delay on a do_after, default 1
-	. = 1
-	return
-
-/proc/do_after_mob(mob/user, list/targets, time = 30, uninterruptible = 0, progress = 1, datum/callback/extra_checks, required_mobility_flags = MOBILITY_STAND)
-	if(!user || !targets)
-		return 0
-	if(!islist(targets))
-		targets = list(targets)
-	var/user_loc = user.loc
-
-	var/drifting = 0
-	if(!user.Process_Spacemove(0) && user.inertia_dir)
-		drifting = 1
-
-	var/list/originalloc = list()
-	for(var/atom/target in targets)
-		originalloc[target] = target.loc
-
-	var/holding = user.get_active_held_item()
-	var/datum/progressbar/progbar
 	if(progress)
-		progbar = new(user, time, targets[1])
-
-	var/endtime = world.time + time
-	var/starttime = world.time
-	var/mob/living/L
-	if(isliving(user))
-		L = user
-	. = 1
-	mainloop:
-		while(world.time < endtime)
-			stoplag(1)
-			if(progress)
-				progbar.update(world.time - starttime)
-			if(QDELETED(user) || !targets)
-				. = 0
-				break
-			if(uninterruptible)
-				continue
-
-			if(drifting && !user.inertia_dir)
-				drifting = 0
-				user_loc = user.loc
-
-			if(L && !CHECK_MULTIPLE_BITFIELDS(L.mobility_flags, required_mobility_flags))
-				. = 0
-				break
-
-			for(var/atom/target in targets)
-				if((!drifting && user_loc != user.loc) || QDELETED(target) || originalloc[target] != target.loc || user.get_active_held_item() != holding || user.incapacitated() || (extra_checks && !extra_checks.Invoke()))
-					. = 0
-					break mainloop
-	if(progbar)
 		qdel(progbar)
+
+// Upon any of the callbacks in the list returning TRUE, the proc will return TRUE.
+/proc/check_for_true_callbacks(list/extra_checks)
+	for(var/datum/callback/CB in extra_checks)
+		if(CB.Invoke())
+			return TRUE
+	return FALSE
+
+#define DOAFTERONCE_MAGIC "Magic~~"
+GLOBAL_LIST_INIT(do_after_once_tracker, list())
+/proc/do_after_once(mob/user, delay, needhand = 1, atom/target = null, progress = 1, attempt_cancel_message = "Attempt cancelled.")
+	if(!user || !target)
+		return
+
+	var/cache_key = "[user.UID()][target.UID()]"
+	if(GLOB.do_after_once_tracker[cache_key])
+		GLOB.do_after_once_tracker[cache_key] = DOAFTERONCE_MAGIC
+		to_chat(user, "<span class='warning'>[attempt_cancel_message]</span>")
+		return FALSE
+	GLOB.do_after_once_tracker[cache_key] = TRUE
+	. = do_after(user, delay, needhand, target, progress, extra_checks = list(CALLBACK(GLOBAL_PROC, .proc/do_after_once_checks, cache_key)))
+	GLOB.do_after_once_tracker[cache_key] = FALSE
+
+/proc/do_after_once_checks(cache_key)
+	if(GLOB.do_after_once_tracker[cache_key] && GLOB.do_after_once_tracker[cache_key] == DOAFTERONCE_MAGIC)
+		GLOB.do_after_once_tracker[cache_key] = FALSE
+		return TRUE
+	return FALSE
 
 /proc/is_species(A, species_datum)
 	. = FALSE
@@ -393,101 +491,123 @@ GLOBAL_LIST_EMPTY(species_list)
 	var/list/new_args = list(T)
 	if(extra_args)
 		new_args += extra_args
-	var/atom/X
-	for(var/j in 1 to amount)
-		X = new spawn_type(arglist(new_args))
-		if (admin_spawn)
-			X.flags_1 |= ADMIN_SPAWNED_1
-	return X //return the last mob spawned
-
-/proc/spawn_and_random_walk(spawn_type, target, amount, walk_chance=100, max_walk=3, always_max_walk=FALSE, admin_spawn=FALSE)
-	var/turf/T = get_turf(target)
-	var/step_count = 0
-	if(!T)
-		CRASH("attempt to spawn atom type: [spawn_type] in nullspace")
-
-	var/list/spawned_mobs = new(amount)
 
 	for(var/j in 1 to amount)
-		var/atom/movable/X
+		var/atom/X = new spawn_type(arglist(new_args))
+		X.admin_spawned = admin_spawn
 
-		if (istype(spawn_type, /list))
-			var/mob_type = pick(spawn_type)
-			X = new mob_type(T)
+/proc/admin_mob_info(mob/M, mob/user = usr)
+	if(!ismob(M))
+		to_chat(user, "This can only be used on instances of type /mob")
+		return
+
+	var/location_description = ""
+	var/special_role_description = ""
+	var/health_description = ""
+	var/gender_description = ""
+	var/turf/T = get_turf(M)
+
+	//Location
+	if(isturf(T))
+		if(isarea(T.loc))
+			location_description = "([M.loc == T ? "at coordinates " : "in [M.loc] at coordinates "] [T.x], [T.y], [T.z] in area <b>[T.loc]</b>)"
 		else
-			X = new spawn_type(T)
+			location_description = "([M.loc == T ? "at coordinates " : "in [M.loc] at coordinates "] [T.x], [T.y], [T.z])"
 
-		if (admin_spawn)
-			X.flags_1 |= ADMIN_SPAWNED_1
+	//Job + antagonist
+	if(M.mind)
+		special_role_description = "Role: <b>[M.mind.assigned_role]</b>; Antagonist: <font color='red'><b>[M.mind.special_role]</b></font>; Has been rev: [(M.mind.has_been_rev)?"Yes":"No"]"
+	else
+		special_role_description = "Role: <i>Mind datum missing</i> Antagonist: <i>Mind datum missing</i>; Has been rev: <i>Mind datum missing</i>;"
 
-		spawned_mobs[j] = X
+	//Health
+	if(isliving(M))
+		var/mob/living/L = M
+		var/status
+		switch(M.stat)
+			if(CONSCIOUS)
+				status = "Alive"
+			if(UNCONSCIOUS)
+				status = "<font color='orange'><b>Unconscious</b></font>"
+			if(DEAD)
+				status = "<font color='red'><b>Dead</b></font>"
+		health_description = "Status = [status]"
+		health_description += "<BR>Oxy: [L.getOxyLoss()] - Tox: [L.getToxLoss()] - Fire: [L.getFireLoss()] - Brute: [L.getBruteLoss()] - Clone: [L.getCloneLoss()] - Brain: [L.getBrainLoss()]"
+	else
+		health_description = "This mob type has no health to speak of."
 
-		if(always_max_walk || prob(walk_chance))
-			if(always_max_walk)
-				step_count = max_walk
-			else
-				step_count = rand(1, max_walk)
-
-			for(var/i in 1 to step_count)
-				step(X, pick(NORTH, SOUTH, EAST, WEST))
-
-	return spawned_mobs
-
-/proc/deadchat_broadcast(message, mob/follow_target=null, turf/turf_target=null, speaker_key=null, message_type=DEADCHAT_REGULAR)
-	message = "<span class='linkify'>[message]</span>"
-	for(var/mob/M in GLOB.player_list)
-		var/chat_toggles = TOGGLES_DEFAULT_CHAT
-		var/toggles = TOGGLES_DEFAULT
-		var/list/ignoring
-		if(M?.client.prefs)
-			var/datum/preferences/prefs = M.client.prefs
-			chat_toggles = prefs.chat_toggles
-			toggles = prefs.toggles
-			ignoring = prefs.ignoring
-
-
-		var/override = FALSE
-		if(M?.client.holder && (chat_toggles & CHAT_DEAD))
-			override = TRUE
-		if(HAS_TRAIT(M, TRAIT_SIXTHSENSE))
-			override = TRUE
-		if(SSticker.current_state == GAME_STATE_FINISHED)
-			override = TRUE
-		if(isnewplayer(M) && !override)
-			continue
-		if(M.stat != DEAD && !override)
-			continue
-		if(speaker_key && (speaker_key in ignoring))
-			continue
-
-		switch(message_type)
-			if(DEADCHAT_DEATHRATTLE)
-				if(toggles & DISABLE_DEATHRATTLE)
-					continue
-			if(DEADCHAT_ARRIVALRATTLE)
-				if(toggles & DISABLE_ARRIVALRATTLE)
-					continue
-			if(DEADCHAT_LAWCHANGE)
-				if(!(chat_toggles & CHAT_GHOSTLAWS))
-					continue
-
-		if(isobserver(M))
-			var/rendered_message = message
-
-			if(follow_target)
-				var/F
-				if(turf_target)
-					F = FOLLOW_OR_TURF_LINK(M, follow_target, turf_target)
-				else
-					F = FOLLOW_LINK(M, follow_target)
-				rendered_message = "[F] [message]"
-			else if(turf_target)
-				var/turf_link = TURF_LINK(M, turf_target)
-				rendered_message = "[turf_link] [message]"
-
-			to_chat(M, rendered_message)
+	//Gener
+	switch(M.gender)
+		if(MALE, FEMALE)
+			gender_description = "[M.gender]"
 		else
-			to_chat(M, message)
+			gender_description = "<font color='red'><b>[M.gender]</b></font>"
+
+	to_chat(user, "<b>Info about [M.name]:</b> ")
+	to_chat(user, "Mob type = [M.type]; Gender = [gender_description] Damage = [health_description]")
+	to_chat(user, "Name = <b>[M.name]</b>; Real_name = [M.real_name]; Mind_name = [M.mind?"[M.mind.name]":""]; Key = <b>[M.key]</b>;")
+	to_chat(user, "Location = [location_description];")
+	to_chat(user, "[special_role_description]")
+	to_chat(user, "(<a href='?src=[usr.UID()];priv_msg=[M.client?.ckey]'>PM</a>) ([ADMIN_PP(M,"PP")]) ([ADMIN_VV(M,"VV")]) ([ADMIN_TP(M,"TP")]) ([ADMIN_SM(M,"SM")]) ([ADMIN_FLW(M,"FLW")])")
+
+// Gets the first mob contained in an atom, and warns the user if there's not exactly one
+/proc/get_mob_in_atom_with_warning(atom/A, mob/user = usr)
+	if(!istype(A))
+		return null
+	if(ismob(A))
+		return A
+
+	. = null
+	for(var/mob/M in A)
+		if(!.)
+			. = M
+		else
+			to_chat(user, "<span class='warning'>Multiple mobs in [A], using first mob found...</span>")
+			break
+	if(!.)
+		to_chat(user, "<span class='warning'>No mob located in [A].</span>")
+
+// Suppress the mouse macros
+/client/var/next_mouse_macro_warning
+/mob/proc/LogMouseMacro(verbused, params)
+	if(!client)
+		return
+	if(!client.next_mouse_macro_warning) // Log once
+		log_admin("[key_name(usr)] attempted to use a mouse macro: [verbused] [params]")
+		message_admins("[key_name_admin(usr)] attempted to use a mouse macro: [verbused] [html_encode(params)]")
+	if(client.next_mouse_macro_warning < world.time) // Warn occasionally
+		SEND_SOUND(usr, sound('sound/misc/sadtrombone.ogg'))
+		client.next_mouse_macro_warning = world.time + 600
+/mob/verb/ClickSubstitute(params as command_text)
+	set hidden = 1
+	set name = ".click"
+	LogMouseMacro(".click", params)
+/mob/verb/DblClickSubstitute(params as command_text)
+	set hidden = 1
+	set name = ".dblclick"
+	LogMouseMacro(".dblclick", params)
+/mob/verb/MouseSubstitute(params as command_text)
+	set hidden = 1
+	set name = ".mouse"
+	LogMouseMacro(".mouse", params)
+
+/proc/update_all_mob_security_hud()
+	for(var/thing in GLOB.human_list)
+		var/mob/living/carbon/human/H = thing
+		H.sec_hud_set_security_status()
+
+/proc/getviewsize(view)
+	var/viewX
+	var/viewY
+	if(isnum(view))
+		var/totalviewrange = 1 + 2 * view
+		viewX = totalviewrange
+		viewY = totalviewrange
+	else
+		var/list/viewrangelist = splittext(view, "x")
+		viewX = text2num(viewrangelist[1])
+		viewY = text2num(viewrangelist[2])
+	return list(viewX, viewY)
 
 //Used in chemical_mob_spawn. Generates a random mob based on a given gold_core_spawnable value.
 /proc/create_random_mob(spawn_location, mob_class = HOSTILE_SPAWN)
@@ -511,47 +631,33 @@ GLOBAL_LIST_EMPTY(species_list)
 	var/mob/living/simple_animal/C = new chosen(spawn_location)
 	return C
 
-/proc/passtable_on(target, source)
-	var/mob/living/L = target
-	if (!HAS_TRAIT(L, TRAIT_PASSTABLE) && L.pass_flags & PASSTABLE)
-		ADD_TRAIT(L, TRAIT_PASSTABLE, INNATE_TRAIT)
-	ADD_TRAIT(L, TRAIT_PASSTABLE, source)
-	L.pass_flags |= PASSTABLE
+//determines the job of a mob, taking into account job transfers
+/proc/determine_role(mob/living/P)
+	var/datum/mind/M = P.mind
+	if(!M)
+		return
+	return M.playtime_role ? M.playtime_role : M.assigned_role	//returns current role
 
-/proc/passtable_off(target, source)
-	var/mob/living/L = target
-	REMOVE_TRAIT(L, TRAIT_PASSTABLE, source)
-	if(!HAS_TRAIT(L, TRAIT_PASSTABLE))
-		L.pass_flags &= ~PASSTABLE
-
-//Gets the sentient mobs that are not on centcom and are alive
-/proc/get_sentient_mobs()
-	. = list()
-	for(var/mob/living/player in GLOB.mob_living_list)
-		if(player.stat != DEAD && player.mind && !is_centcom_level(player.z) && !isnewplayer(player) && !isbrain(player))
-			. |= player
-
-//Gets all sentient humans that are alive
-/proc/get_living_crew()
-	. = list()
-	for(var/mob/living/carbon/human/player in GLOB.mob_living_list)
-		if(player.stat != DEAD && player.mind)
-			. |= player
-
-//Gets all sentient humans that are on the station
-/proc/get_living_station_crew()
-	. = list()
-	for(var/mob/living/carbon/human/player in GLOB.mob_living_list)
-		if(player.stat != DEAD && player.mind && is_station_level(player.z))
-			. |= player
-
-//Gets all the minds of humans that are on station
-/proc/get_living_station_minds()
-	. = list()
-	for(var/mob/living/carbon/human/player in GLOB.mob_living_list)
-		if(player.stat != DEAD && player.mind && is_station_level(player.z))
-			. |= player.mind
-
-/// Gets the client of the mob, allowing for mocking of the client.
-/// You only need to use this if you know you're going to be mocking clients somewhere else.
-#define GET_CLIENT(mob) (##mob.client || ##mob.mock_client)
+/**	checks the security force on station and returns a list of numbers, of the form:
+ * 	total, active, dead, antag
+ * 	where active is defined as conscious (STAT = 0) and not an antag
+*/
+/proc/check_active_security_force()
+	var/sec_positions = GLOB.security_positions - "Magistrate"
+	var/total = 0
+	var/active = 0
+	var/dead = 0
+	var/antag = 0
+	for(var/p in GLOB.human_list)	//contains only human mobs, so no type check needed
+		var/mob/living/carbon/human/player = p	//need to tell it what type it is or we can't access stat without the dreaded :
+		if(determine_role(player) in sec_positions)
+			total++
+			if(player.stat == DEAD)
+				dead++
+				continue
+			if(isAntag(player))
+				antag++
+				continue
+			if(player.stat == CONSCIOUS)
+				active++
+	return list(total, active, dead, antag)

@@ -16,14 +16,16 @@
 	if(!istype(spraycan) || user.a_intent == INTENT_HARM)
 		return
 	. = COMPONENT_NO_AFTERATTACK
-	if(spraycan.is_capped)
+	if(spraycan.capped)
 		to_chat(user, "<span class='warning'>Take the cap off first!</span>")
 		return
+	if(spraycan.uses < 2)
+		to_chat(user, "<span class ='warning'>There is not enough paint in the can!")
+		return
 	RemoveCurrentCoat()
-	if(spraycan.use_charges(user, 2))
-		var/colour = spraycan.paint_color
-		current_paint = colour
-		var/atom/A = parent
-		A.add_atom_colour(colour, FIXED_COLOUR_PRIORITY)
-		playsound(spraycan, 'sound/effects/spray.ogg', 5, 1, 5)
-		to_chat(user, "<span class='notice'>You spray [spraycan] on [A], painting it.</span>")
+	var/colour = spraycan.colour
+	current_paint = colour
+	var/atom/A = parent
+	A.add_atom_colour(colour, FIXED_COLOUR_PRIORITY)
+	playsound(spraycan, 'sound/effects/spray.ogg', 5, 1, 5)
+	to_chat(user, "<span class='notice'>You spray [spraycan] on [A], painting it.</span>")

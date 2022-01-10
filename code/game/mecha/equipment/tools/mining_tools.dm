@@ -4,7 +4,6 @@
 #define DRILL_BASIC 1
 #define DRILL_HARDENED 2
 
-
 /obj/item/mecha_parts/mecha_equipment/drill
 	name = "exosuit drill"
 	desc = "Equipment for engineering and combat exosuits. This is the drill that'll pierce the heavens!"
@@ -13,14 +12,9 @@
 	energy_drain = 10
 	force = 15
 	harmful = TRUE
-	tool_behaviour = TOOL_DRILL
-	toolspeed = 0.9
+	sharp = TRUE
 	var/drill_delay = 7
 	var/drill_level = DRILL_BASIC
-
-/obj/item/mecha_parts/mecha_equipment/drill/Initialize()
-	. = ..()
-	AddComponent(/datum/component/butchering, 50, 100)
 
 /obj/item/mecha_parts/mecha_equipment/drill/action(atom/target)
 	if(!action_checks(target))
@@ -31,13 +25,13 @@
 		var/obj/target_obj = target
 		if(target_obj.resistance_flags & UNACIDABLE)
 			return
-	target.visible_message("<span class='warning'>[chassis] starts to drill [target].</span>", \
-					"<span class='userdanger'>[chassis] starts to drill [target]...</span>", \
+	target.visible_message("<span class='warning'>[chassis] starts to drill [target].</span>",
+					"<span class='userdanger'>[chassis] starts to drill [target]...</span>",
 					 "<span class='italics'>You hear drilling.</span>")
 
 	if(do_after_cooldown(target))
 		set_ready_state(FALSE)
-		log_message("Started drilling [target]", LOG_MECHA)
+		log_message("Started drilling [target]")
 		if(isturf(target))
 			var/turf/T = target
 			T.drill_act(src)
@@ -46,11 +40,11 @@
 		while(do_after_mecha(target, drill_delay))
 			if(isliving(target))
 				drill_mob(target, chassis.occupant)
-				playsound(src,'sound/weapons/drill.ogg',40,1)
+				playsound(src, 'sound/weapons/drill.ogg', 40, TRUE)
 			else if(isobj(target))
 				var/obj/O = target
 				O.take_damage(15, BRUTE, 0, FALSE, get_dir(chassis, target))
-				playsound(src,'sound/weapons/drill.ogg',40,1)
+				playsound(src, 'sound/weapons/drill.ogg', 40, TRUE)
 			else
 				set_ready_state(TRUE)
 				return
@@ -59,93 +53,81 @@
 /turf/proc/drill_act(obj/item/mecha_parts/mecha_equipment/drill/drill)
 	return
 
-/turf/closed/wall/drill_act(obj/item/mecha_parts/mecha_equipment/drill/drill)
+/turf/simulated/wall/drill_act(obj/item/mecha_parts/mecha_equipment/drill/drill)
 	if(drill.do_after_mecha(src, 60 / drill.drill_level))
-		drill.log_message("Drilled through [src]", LOG_MECHA)
+		drill.log_message("Drilled through [src]")
 		dismantle_wall(TRUE, FALSE)
 
-/turf/closed/wall/r_wall/drill_act(obj/item/mecha_parts/mecha_equipment/drill/drill)
+/turf/simulated/wall/r_wall/drill_act(obj/item/mecha_parts/mecha_equipment/drill/drill)
 	if(drill.drill_level >= DRILL_HARDENED)
 		if(drill.do_after_mecha(src, 120 / drill.drill_level))
-			drill.log_message("Drilled through [src]", LOG_MECHA)
+			drill.log_message("Drilled through [src]")
 			dismantle_wall(TRUE, FALSE)
 	else
 		drill.occupant_message("<span class='danger'>[src] is too durable to drill through.</span>")
 
-/turf/closed/mineral/drill_act(obj/item/mecha_parts/mecha_equipment/drill/drill)
-	var/turf/T = get_turf(drill.chassis)
-	for(var/turf/closed/mineral/M in RANGE_TURFS(1, T))
-		if(get_dir(drill.chassis,M)&drill.chassis.dir)
+/turf/simulated/mineral/drill_act(obj/item/mecha_parts/mecha_equipment/drill/drill)
+	for(var/turf/simulated/mineral/M in range(drill.chassis, 1))
+		if(get_dir(drill.chassis, M) & drill.chassis.dir)
 			M.gets_drilled()
-	drill.log_message("Drilled through [src]", LOG_MECHA)
+	drill.log_message("Drilled through [src]")
 	drill.move_ores()
 
-/turf/open/floor/plating/asteroid/drill_act(obj/item/mecha_parts/mecha_equipment/drill/drill)
-	var/turf/T = get_turf(drill.chassis)
-	for(var/turf/open/floor/plating/asteroid/M in RANGE_TURFS(1, T))
-		if((get_dir(drill.chassis,M)&drill.chassis.dir) && !M.dug)
+/turf/simulated/floor/plating/asteroid/drill_act(obj/item/mecha_parts/mecha_equipment/drill/drill)
+	for(var/turf/simulated/floor/plating/asteroid/M in range(1, drill.chassis))
+		if((get_dir(drill.chassis, M) & drill.chassis.dir) && !M.dug)
 			M.getDug()
-	drill.log_message("Drilled through [src]", LOG_MECHA)
+	drill.log_message("Drilled through [src]")
 	drill.move_ores()
-
 
 /obj/item/mecha_parts/mecha_equipment/drill/proc/move_ores()
-	if(locate(/obj/item/mecha_parts/mecha_equipment/hydraulic_clamp) in chassis.equipment && istype(chassis, /obj/mecha/working/ripley))
+	if((locate(/obj/item/mecha_parts/mecha_equipment/hydraulic_clamp) in chassis.equipment) && istype(chassis, /obj/mecha/working/ripley))
 		var/obj/mecha/working/ripley/R = chassis //we could assume that it's a ripley because it has a clamp, but that's ~unsafe~ and ~bad practice~
 		R.collect_ore()
 
-/obj/item/mecha_parts/mecha_equipment/drill/can_attach(obj/mecha/M as obj)
+/obj/item/mecha_parts/mecha_equipment/drill/can_attach(obj/mecha/M)
 	if(..())
 		if(istype(M, /obj/mecha/working) || istype(M, /obj/mecha/combat))
 			return 1
 	return 0
 
-/obj/item/mecha_parts/mecha_equipment/drill/attach(obj/mecha/M)
-	..()
-	var/datum/component/butchering/butchering = src.GetComponent(/datum/component/butchering)
-	butchering.butchering_enabled = TRUE
-
-/obj/item/mecha_parts/mecha_equipment/drill/detach(atom/moveto)
-	..()
-	var/datum/component/butchering/butchering = src.GetComponent(/datum/component/butchering)
-	butchering.butchering_enabled = FALSE
-
 /obj/item/mecha_parts/mecha_equipment/drill/proc/drill_mob(mob/living/target, mob/user)
-	target.visible_message("<span class='danger'>[chassis] is drilling [target] with [src]!</span>", \
+	target.visible_message("<span class='danger'>[chassis] is drilling [target] with [src]!</span>",
 						"<span class='userdanger'>[chassis] is drilling you with [src]!</span>")
-	log_combat(user, target, "drilled", "[name]", "(INTENT: [uppertext(user.a_intent)]) (DAMTYPE: [uppertext(damtype)])")
+	add_attack_logs(user, target, "DRILLED with [src] ([uppertext(user.a_intent)]) ([uppertext(damtype)])")
 	if(target.stat == DEAD && target.getBruteLoss() >= 200)
-		log_combat(user, target, "gibbed", name)
-		if(LAZYLEN(target.butcher_results) || LAZYLEN(target.guaranteed_butcher_results))
-			var/datum/component/butchering/butchering = src.GetComponent(/datum/component/butchering)
-			butchering.Butcher(chassis, target)
+		add_attack_logs(user, target, "gibbed")
+		if(LAZYLEN(target.butcher_results))
+			target.harvest(chassis) // Butcher the mob with our drill.
 		else
 			target.gib()
 	else
-		//drill makes a hole
-		var/obj/item/bodypart/target_part = target.get_bodypart(ran_zone(BODY_ZONE_CHEST))
-		target.apply_damage(10, BRUTE, BODY_ZONE_CHEST, target.run_armor_check(target_part, "melee"))
-
-		//blood splatters
 		var/splatter_dir = get_dir(chassis, target)
-		if(isalien(target))
-			new /obj/effect/temp_visual/dir_setting/bloodsplatter/xenosplatter(target.drop_location(), splatter_dir)
-		else
-			new /obj/effect/temp_visual/dir_setting/bloodsplatter(target.drop_location(), splatter_dir)
+		if(ishuman(target))
+			var/mob/living/carbon/human/H = target
+			var/obj/item/organ/external/target_part = H.get_organ(ran_zone("chest"))
+			H.apply_damage(10, BRUTE, "chest", H.run_armor_check(target_part, MELEE))
 
-		//organs go everywhere
-		if(target_part && prob(10 * drill_level))
-			target_part.dismember(BRUTE)
+			//blood splatters
+			new /obj/effect/temp_visual/dir_setting/bloodsplatter(H.drop_location(), splatter_dir, H.dna.species.blood_color)
+
+					//organs go everywhere
+			if(target_part && prob(10 * drill_level))
+				target_part.droplimb()
+		else
+			target.adjustBruteLoss(10)
+			if(isalien(target))
+				new /obj/effect/temp_visual/dir_setting/bloodsplatter/xenosplatter(target.drop_location(), splatter_dir)
 
 /obj/item/mecha_parts/mecha_equipment/drill/diamonddrill
 	name = "diamond-tipped exosuit drill"
 	desc = "Equipment for engineering and combat exosuits. This is an upgraded version of the drill that'll pierce the heavens!"
 	icon_state = "mecha_diamond_drill"
+	origin_tech = "materials=4;engineering=4"
 	equip_cooldown = 10
 	drill_delay = 4
 	drill_level = DRILL_HARDENED
 	force = 15
-	toolspeed = 0.7
 
 
 /obj/item/mecha_parts/mecha_equipment/mining_scanner
@@ -156,9 +138,13 @@
 	equip_cooldown = 15
 	var/scanning_time = 0
 
-/obj/item/mecha_parts/mecha_equipment/mining_scanner/Initialize()
+/obj/item/mecha_parts/mecha_equipment/mining_scanner/Initialize(mapload)
 	. = ..()
 	START_PROCESSING(SSfastprocess, src)
+
+/obj/item/mecha_parts/mecha_equipment/mining_scanner/Destroy()
+	STOP_PROCESSING(SSfastprocess, src)
+	return ..()
 
 /obj/item/mecha_parts/mecha_equipment/mining_scanner/process()
 	if(!loc)

@@ -45,8 +45,6 @@ class Dmi:
     @classmethod
     def from_file(cls, fname):
         image = Image.open(fname)
-        if image.mode != 'RGBA':
-            image = image.convert('RGBA')
 
         # no metadata = regular image file
         if 'Description' not in image.info:
@@ -217,8 +215,7 @@ class State:
         return self.frames[self._frame_index(*args, **kwargs)]
 
 def escape(text):
-    text = text.replace('\\', '\\\\')
-    text = text.replace('"', '\\"')
+    assert '\\' not in text and '"' not in text
     return f'"{text}"'
 
 def unescape(text, quote='"'):
@@ -227,8 +224,7 @@ def unescape(text, quote='"'):
     if not (text.startswith(quote) and text.endswith(quote)):
         raise ValueError(text)
     text = text[1:-1]
-    text = text.replace('\\"', '"')
-    text = text.replace('\\\\', '\\')
+    assert '\\' not in text and quote not in text
     return text
 
 def parse_num(value):
@@ -241,7 +237,7 @@ def parse_bool(value):
         raise ValueError(value)
     return value == '1'
 
-def _self_test():
+if __name__ == '__main__':
     # test: can we load every DMI in the tree
     import os
 
@@ -251,31 +247,7 @@ def _self_test():
             dirnames.remove('.git')
         for filename in filenames:
             if filename.endswith('.dmi'):
-                fullpath = os.path.join(dirpath, filename)
-                try:
-                    Dmi.from_file(fullpath)
-                except:
-                    print('Failed on:', fullpath)
-                    raise
+                Dmi.from_file(os.path.join(dirpath, filename))
                 count += 1
 
     print(f"Successfully parsed {count} dmi files")
-
-def _usage():
-    import sys
-    print(f"Usage:")
-    print(f"    {sys.argv[0]} --test")
-    exit(1)
-
-def _main():
-    import sys
-    if len(sys.argv) < 2:
-        return _usage()
-
-    if sys.argv[1] == '--test':
-        return _self_test()
-
-    return _usage()
-
-if __name__ == '__main__':
-    _main()

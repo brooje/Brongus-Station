@@ -1,125 +1,138 @@
-//miscellaneous spacesuits
-/*
-Contains:
- - Captain's spacesuit
- - Death squad's hardsuit
- - SWAT suit
- - Officer's beret/spacesuit
- - NASA Voidsuit
- - Father Christmas' magical clothes
- - Pirate's spacesuit
- - ERT hardsuit: command, sec, engi, med, janitor
- - EVA spacesuit
- - Freedom's spacesuit (freedom from vacuum's oppression)
- - Carp hardsuit
- - Bounty hunter hardsuit
- - Emergency skinsuit
-*/
+	//Captain's space suit, not hardsuits because no flashlight!
+/obj/item/clothing/head/helmet/space/capspace
+	name = "captain's space helmet"
+	icon_state = "capspace"
+	item_state = "capspacehelmet"
+	desc = "A special helmet designed for only the most fashionable of military figureheads."
+	flags_inv = HIDEFACE
+	permeability_coefficient = 0.01
+	armor = list(MELEE = 40, BULLET = 50, LASER = 50, ENERGY = 25, BOMB = 50, BIO = 100, RAD = 50, FIRE = 100, ACID = 100)
+	species_restricted = list("exclude", "Wryn")
 
-	//Death squad armored space suits, not hardsuits!
-/obj/item/clothing/head/helmet/space/hardsuit/deathsquad
-	name = "MK.III SWAT Helmet"
-	desc = "An advanced tactical space helmet."
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/helmet.dmi',
+		"Grey" = 'icons/mob/clothing/species/grey/helmet.dmi'
+		)
+
+/obj/item/clothing/head/helmet/space/capspace/equipped(mob/living/carbon/human/user, slot)
+	if(ishuman(user) && slot == slot_head)
+		if(isvox(user))
+			if(flags & BLOCKHAIR)
+				flags &= ~BLOCKHAIR
+		else
+			if((initial(flags) & BLOCKHAIR) && !(flags & BLOCKHAIR))
+				flags |= BLOCKHAIR
+
+/obj/item/clothing/suit/space/captain
+	name = "captain's space suit"
+	desc = "A bulky, heavy-duty piece of exclusive Nanotrasen armor. YOU are in charge!"
+	icon_state = "caparmor"
+	item_state = "capspacesuit"
+	w_class = WEIGHT_CLASS_BULKY
+	allowed = list(/obj/item/tank/internals, /obj/item/flashlight,/obj/item/gun/energy, /obj/item/gun/projectile, /obj/item/ammo_box, /obj/item/ammo_casing, /obj/item/melee/baton,/obj/item/restraints/handcuffs)
+	armor = list(MELEE = 40, BULLET = 50, LASER = 50, ENERGY = 25, BOMB = 50, BIO = 100, RAD = 50, FIRE = 100, ACID = 100)
+	species_restricted = list("exclude", "Wryn")
+
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
+
+	//Deathsquad space suit, not hardsuits because no flashlight!
+/obj/item/clothing/head/helmet/space/deathsquad
+	name = "deathsquad helmet"
+	desc = "That's not red paint. That's real blood."
 	icon_state = "deathsquad"
 	item_state = "deathsquad"
-	armor = list("melee" = 80, "bullet" = 80, "laser" = 50, "energy" = 50, "bomb" = 100, "bio" = 100, "rad" = 100, "fire" = 100, "acid" = 100, "stamina" = 100)
-	strip_delay = 130
+	armor = list(MELEE = 80, BULLET = 80, LASER = 50, ENERGY = 50, BOMB = 100, BIO = 100, RAD = 100, FIRE = 100, ACID = 100)
 	max_heat_protection_temperature = FIRE_IMMUNITY_MAX_TEMP_PROTECT
 	resistance_flags = FIRE_PROOF | ACID_PROOF
-	actions_types = list()
+	vision_flags = SEE_MOBS
+	lighting_alpha = LIGHTING_PLANE_ALPHA_MOSTLY_INVISIBLE //don't render darkness while wearing these
+	see_in_dark = 8
+	HUDType = MEDHUD
+	strip_delay = 130
 
-/obj/item/clothing/head/helmet/space/hardsuit/deathsquad/attack_self(mob/user)
-	return
-
-/obj/item/clothing/suit/space/hardsuit/deathsquad
-	name = "MK.III SWAT Suit"
-	desc = "A prototype designed to replace the ageing MK.II SWAT suit. Based on the streamlined MK.II model, the traditional ceramic and graphene plate construction was replaced with plasteel, allowing superior armor against most threats. There's room for some kind of energy projection device on the back."
+/obj/item/clothing/suit/space/deathsquad
+	name = "deathsquad suit"
+	desc = "A heavily armored, advanced space suit that protects against most forms of damage."
 	icon_state = "deathsquad"
 	item_state = "swat_suit"
-	allowed = list(/obj/item/gun, /obj/item/ammo_box, /obj/item/ammo_casing, /obj/item/melee/baton, /obj/item/restraints/handcuffs, /obj/item/tank/internals, /obj/item/kitchen/knife/combat)
-	armor = list("melee" = 80, "bullet" = 80, "laser" = 50, "energy" = 50, "bomb" = 100, "bio" = 100, "rad" = 100, "fire" = 100, "acid" = 100, "stamina" = 100)
-	strip_delay = 130
+	allowed = list(/obj/item/gun,/obj/item/ammo_box,/obj/item/ammo_casing,/obj/item/melee/baton,/obj/item/restraints/handcuffs,/obj/item/tank/internals,/obj/item/kitchen/knife/combat)
+	armor = list(MELEE = 80, BULLET = 80, LASER = 50, ENERGY = 50, BOMB = 100, BIO = 100, RAD = 100, FIRE = 100, ACID = 100)
 	max_heat_protection_temperature = FIRE_IMMUNITY_MAX_TEMP_PROTECT
 	resistance_flags = FIRE_PROOF | ACID_PROOF
-	helmettype = /obj/item/clothing/head/helmet/space/hardsuit/deathsquad
+	strip_delay = 130
 	dog_fashion = /datum/dog_fashion/back/deathsquad
-	move_sound = list('sound/effects/suitstep1.ogg', 'sound/effects/suitstep2.ogg')
 
 	//NEW SWAT suit
 /obj/item/clothing/suit/space/swat
-	name = "MK.I SWAT Suit"
-	desc = "A tactical space suit first developed in a joint effort by the defunct IS-ERI and Nanotrasen in 20XX for military space operations. A tried and true workhorse, it is very difficult to move in but offers robust protection against all threats!"
+	name = "SWAT armor"
+	desc = "Space-proof tactical SWAT armor."
 	icon_state = "heavy"
 	item_state = "swat_suit"
-	allowed = list(/obj/item/gun, /obj/item/ammo_box, /obj/item/ammo_casing, /obj/item/melee/baton, /obj/item/restraints/handcuffs, /obj/item/tank/internals, /obj/item/kitchen/knife/combat)
-	armor = list("melee" = 40, "bullet" = 30, "laser" = 30,"energy" = 30, "bomb" = 50, "bio" = 90, "rad" = 20, "fire" = 100, "acid" = 100, "stamina" = 60)
+	allowed = list(/obj/item/gun,/obj/item/ammo_box,/obj/item/ammo_casing,/obj/item/melee/baton,/obj/item/restraints/handcuffs,/obj/item/tank/internals,/obj/item/kitchen/knife/combat)
+	armor = list(MELEE = 40, BULLET = 30, LASER = 30, ENERGY = 30, BOMB = 50, BIO = 90, RAD = 20, FIRE = 100, ACID = 100)
 	strip_delay = 120
 	resistance_flags = FIRE_PROOF | ACID_PROOF
-	move_sound = list('sound/effects/suitstep1.ogg', 'sound/effects/suitstep2.ogg')
+	species_restricted = list("exclude", "Wryn")
 
-/obj/item/clothing/head/helmet/space/beret
-	name = "officer's beret"
-	desc = "An armored beret commonly used by special operations officers. Uses advanced force field technology to protect the head from space."
-	icon_state = "dsberet"
-	dynamic_hair_suffix = "+generic"
-	dynamic_fhair_suffix = "+generic"
-	flags_inv = 0
-	armor = list("melee" = 80, "bullet" = 80, "laser" = 50, "energy" = 50, "bomb" = 100, "bio" = 100, "rad" = 100, "fire" = 100, "acid" = 100, "stamina" = 100)
-	strip_delay = 130
-	max_heat_protection_temperature = FIRE_IMMUNITY_MAX_TEMP_PROTECT
-	resistance_flags = FIRE_PROOF | ACID_PROOF
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
 
-/obj/item/clothing/suit/space/officer
-	name = "officer's jacket"
-	desc = "An armored, space-proof jacket used in special operations."
-	icon_state = "specops"
-	item_state = "specops"
+/obj/item/clothing/head/helmet/space/deathsquad/beret
+	name = "officer beret"
+	desc = "An armored beret commonly used by special operations officers."
+	icon_state = "beret_officer"
+	armor = list(MELEE = 80, BULLET = 80, LASER = 50, ENERGY = 50, BOMB = 100, BIO = 100, RAD = 100, FIRE = 100, ACID = 100)
+	flags =  STOPSPRESSUREDMAGE | THICKMATERIAL
+
+/obj/item/clothing/head/helmet/space/deathsquad/beret/solgov
+	name = "\improper Trans-Solar Federation commander's beret"
+	desc = "A camouflaged beret adorned with the star of the Trans-Solar Federation, worn by generals of the Trans-Solar Federation."
+	icon_state = "solgovceliteberet"
+
+/obj/item/clothing/suit/space/deathsquad/officer
+	name = "officer jacket"
+	desc = "An armored jacket used in special operations."
+	icon_state = "detective"
+	item_state = "det_suit"
 	blood_overlay_type = "coat"
-	slowdown = 0
 	flags_inv = 0
-	w_class = WEIGHT_CLASS_NORMAL
-	allowed = list(/obj/item/gun, /obj/item/ammo_box, /obj/item/ammo_casing, /obj/item/melee/baton, /obj/item/restraints/handcuffs, /obj/item/tank/internals)
-	armor = list("melee" = 80, "bullet" = 80, "laser" = 50, "energy" = 50, "bomb" = 100, "bio" = 100, "rad" = 100, "fire" = 100, "acid" = 100, "stamina" = 100)
-	strip_delay = 130
-	max_heat_protection_temperature = FIRE_IMMUNITY_MAX_TEMP_PROTECT
+	slowdown = 0
+	armor = list(MELEE = 80, BULLET = 80, LASER = 50, ENERGY = 50, BOMB = 100, BIO = 100, RAD = 100, FIRE = 100, ACID = 100)
 	resistance_flags = FIRE_PROOF | ACID_PROOF
+	w_class = WEIGHT_CLASS_NORMAL
 
-	//NASA Voidsuit
-/obj/item/clothing/head/helmet/space/nasavoid
-	name = "NASA Void Helmet"
-	desc = "An old, NASA CentCom branch designed, dark red space suit helmet."
-	icon_state = "void"
-	item_state = "void"
+/obj/item/clothing/suit/space/deathsquad/officer/solgov
+	name = "\improper Trans-Solar Federation commander's jacket"
+	icon_state = "solgovcommander"
+	item_state = "solgovcommander"
 
-/obj/item/clothing/suit/space/nasavoid
-	name = "NASA Voidsuit"
-	icon_state = "void"
-	item_state = "void"
-	desc = "An old, NASA CentCom branch designed, dark red space suit."
-	allowed = list(/obj/item/flashlight, /obj/item/tank/internals, /obj/item/multitool)
 
-/obj/item/clothing/head/helmet/space/nasavoid/old
-	name = "Engineering Void Helmet"
-	desc = "A CentCom engineering dark red space suit helmet. While old and dusty, it still gets the job done."
-	icon_state = "void"
-	item_state = "void"
-
-/obj/item/clothing/suit/space/nasavoid/old
-	name = "Engineering Voidsuit"
-	icon_state = "void"
-	item_state = "void"
-	desc = "A CentCom engineering dark red space suit. Age has degraded the suit making is difficult to move around in."
-	slowdown = 4
-	allowed = list(/obj/item/flashlight, /obj/item/tank/internals, /obj/item/multitool)
-
-	//Space santa outfit suit
+//Space santa outfit suit
 /obj/item/clothing/head/helmet/space/santahat
 	name = "Santa's hat"
 	desc = "Ho ho ho. Merrry X-mas!"
 	icon_state = "santahat"
-	flags_cover = HEADCOVERSEYES
 
+	sprite_sheets = list(
+		"Grey" = 'icons/mob/clothing/species/Grey/head.dmi',
+		"Drask" = 'icons/mob/clothing/species/Drask/helmet.dmi'
+		)
+	flags = BLOCKHAIR | STOPSPRESSUREDMAGE
+	flags_cover = HEADCOVERSEYES
 	dog_fashion = /datum/dog_fashion/head/santa
+
+/obj/item/clothing/head/helmet/space/santahat/attack_self(mob/user as mob)
+	if(src.icon_state == "santahat")
+		src.icon_state = "santahat_beard"
+		src.item_state = "santahat_beard"
+		to_chat(user, "Santa's beard expands out from the hat!")
+	else
+		src.icon_state = "santahat"
+		src.item_state = "santahat"
+		to_chat(user, "The beard slinks back into the hat...")
 
 /obj/item/clothing/suit/space/santa
 	name = "Santa's suit"
@@ -127,25 +140,20 @@ Contains:
 	icon_state = "santa"
 	item_state = "santa"
 	slowdown = 0
-	allowed = list(/obj/item) //for stuffing exta special presents
+	flags = STOPSPRESSUREDMAGE
+	allowed = list(/obj/item) //for stuffing extra special presents
 
-
-	//Space pirate outfit
+//Space pirate outfit
 /obj/item/clothing/head/helmet/space/pirate
 	name = "pirate hat"
 	desc = "Yarr."
 	icon_state = "pirate"
 	item_state = "pirate"
-	armor = list("melee" = 30, "bullet" = 50, "laser" = 30,"energy" = 15, "bomb" = 30, "bio" = 30, "rad" = 30, "fire" = 60, "acid" = 75, "stamina" = 20)
-	flags_inv = HIDEHAIR
-	strip_delay = 40
-	equip_delay_other = 20
+	armor = list(MELEE = 30, BULLET = 50, LASER = 30, ENERGY = 15, BOMB = 30, BIO = 30, RAD = 30, FIRE = 60, ACID = 75)
+	flags = BLOCKHAIR | STOPSPRESSUREDMAGE
 	flags_cover = HEADCOVERSEYES
-
-/obj/item/clothing/head/helmet/space/pirate/bandana
-	name = "pirate bandana"
-	icon_state = "bandana"
-	item_state = "bandana"
+	strip_delay = 40
+	put_on_delay = 20
 
 /obj/item/clothing/suit/space/pirate
 	name = "pirate coat"
@@ -153,402 +161,137 @@ Contains:
 	icon_state = "pirate"
 	item_state = "pirate"
 	w_class = WEIGHT_CLASS_NORMAL
-	flags_inv = 0
-	allowed = list(/obj/item/gun, /obj/item/ammo_box, /obj/item/ammo_casing, /obj/item/melee/baton, /obj/item/restraints/handcuffs, /obj/item/tank/internals, /obj/item/melee/transforming/energy/sword/pirate, /obj/item/clothing/glasses/eyepatch, /obj/item/reagent_containers/food/drinks/bottle/rum)
+	allowed = list(/obj/item/gun,/obj/item/ammo_box,/obj/item/ammo_casing,/obj/item/melee/baton,/obj/item/restraints/handcuffs,/obj/item/tank/internals)
 	slowdown = 0
-	armor = list("melee" = 30, "bullet" = 50, "laser" = 30,"energy" = 15, "bomb" = 30, "bio" = 30, "rad" = 30, "fire" = 60, "acid" = 75, "stamina" = 20)
+	armor = list(MELEE = 30, BULLET = 50, LASER = 30, ENERGY = 15, BOMB = 30, BIO = 30, RAD = 30, FIRE = 60, ACID = 75)
 	strip_delay = 40
-	equip_delay_other = 20
+	put_on_delay = 20
 
-	//Emergency Response Team suits
-/obj/item/clothing/head/helmet/space/hardsuit/ert
-	name = "emergency response team commander helmet"
-	desc = "The integrated helmet of an ERT hardsuit, this one has blue highlights."
-	icon_state = "hardsuit0-ert_commander"
-	item_state = "hardsuit0-ert_commander"
-	item_color = "ert_commander"
-	armor = list("melee" = 65, "bullet" = 50, "laser" = 50, "energy" = 50, "bomb" = 50, "bio" = 100, "rad" = 100, "fire" = 80, "acid" = 80, "stamina" = 70)
-	strip_delay = 130
-	brightness_on = 7
-	resistance_flags = FIRE_PROOF
-	max_heat_protection_temperature = FIRE_IMMUNITY_MAX_TEMP_PROTECT
-	actions_types = list(
-		/datum/action/item_action/toggle_helmet_light,
-		/datum/action/item_action/toggle_beacon_hud
-	)
-	var/beacon_colour = "#4b48ec"
+//Paramedic EVA suit
+/obj/item/clothing/head/helmet/space/eva/paramedic
+	name = "paramedic EVA helmet"
+	desc = "A brand new paramedic EVA helmet. It seems to mold to your head shape. Used for retrieving bodies in space."
+	icon_state = "paramedic-eva-helmet"
+	item_state = "paramedic-eva-helmet"
+	armor = list(melee = 0, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 100, rad = 20, fire = 50, acid = 65)
+	species_restricted = list("exclude", "Wryn")
 
-/obj/item/clothing/head/helmet/space/hardsuit/ert/Initialize()
-	. = ..()
-	ADD_TRAIT(src, TRAIT_NODROP, LOCKED_HELMET_TRAIT)
-	//Link
-	if(istype(loc, /obj/item/clothing/suit/space/hardsuit/ert))
-		var/obj/linkedsuit = loc
-		//NOTE FOR COPY AND PASTING: BEACON MUST BE MADE FIRST
-		//Add the monitor (Default to null - No tracking)
-		var/datum/component/tracking_beacon/component_beacon = linkedsuit.AddComponent(/datum/component/tracking_beacon, "cent", null, null, TRUE, beacon_colour)
-		//Add the monitor (Default to null - No tracking)
-		component_beacon.attached_monitor = AddComponent(/datum/component/team_monitor, "cent", null, component_beacon)
-	else
-		AddComponent(/datum/component/team_monitor, "cent", null)
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/helmet.dmi',
+		"Grey" = 'icons/mob/clothing/species/grey/helmet.dmi',
+		"Skrell" = 'icons/mob/clothing/species/skrell/helmet.dmi',
+		"Tajaran" = 'icons/mob/clothing/species/tajaran/helmet.dmi',
+		"Drask" = 'icons/mob/clothing/species/drask/helmet.dmi',
+		"Unathi" = 'icons/mob/clothing/species/unathi/helmet.dmi',
+		"Vulpkanin" = 'icons/mob/clothing/species/vulpkanin/helmet.dmi',
+		)
+	sprite_sheets_obj = list(
+		"Vox" = 'icons/obj/clothing/species/vox/hats.dmi'
+		)
 
-/obj/item/clothing/head/helmet/space/hardsuit/ert/ui_action_click(mob/user, datum/action)
-	switch(action.type)
-		if(/datum/action/item_action/toggle_helmet_light)
-			toggle_helmlight()
-		if(/datum/action/item_action/toggle_beacon_hud)
-			toggle_hud(user)
+/obj/item/clothing/suit/space/eva/paramedic
+	name = "paramedic EVA suit"
+	icon_state = "paramedic-eva"
+	item_state = "paramedic-eva"
+	desc = "A brand new paramedic EVA suit. The nitrile seems a bit too thin to be space proof. Used for retrieving bodies in space."
+	armor = list(melee = 0, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 100, rad = 20, fire = 50, acid = 65)
+	species_restricted = list("exclude", "Wryn")
 
-/obj/item/clothing/head/helmet/space/hardsuit/ert/proc/toggle_hud(mob/user)
-	var/datum/component/team_monitor/monitor = GetComponent(/datum/component/team_monitor)
-	if(!monitor)
-		to_chat(user, "<span class='notice'>The suit is not fitted with a tracking beacon.</span>")
-		return
-	monitor.toggle_hud(!monitor.hud_visible, user)
-	if(monitor.hud_visible)
-		to_chat(user, "<span class='notice'>You toggle the heads up display of your suit.</span>")
-	else
-		to_chat(user, "<span class='warning'>You disable the heads up display of your suit.</span>")
-
-/obj/item/clothing/suit/space/hardsuit/ert
-	name = "emergency response team commander hardsuit"
-	desc = "The standard issue hardsuit of the ERT, this one has blue highlights. Offers superb protection against environmental hazards."
-	icon_state = "ert_command"
-	item_state = "ert_command"
-	helmettype = /obj/item/clothing/head/helmet/space/hardsuit/ert
-	allowed = list(/obj/item/gun, /obj/item/ammo_box, /obj/item/ammo_casing, /obj/item/melee/baton, /obj/item/restraints/handcuffs, /obj/item/tank/internals)
-	armor = list("melee" = 65, "bullet" = 50, "laser" = 50, "energy" = 50, "bomb" = 50, "bio" = 100, "rad" = 100, "fire" = 80, "acid" = 80, "stamina" = 70)
-	slowdown = 0
-	strip_delay = 130
-	resistance_flags = FIRE_PROOF
-	max_heat_protection_temperature = FIRE_IMMUNITY_MAX_TEMP_PROTECT
-	jetpack = /obj/item/tank/jetpack/suit
-	actions_types = list(
-		/datum/action/item_action/toggle_helmet,
-		/datum/action/item_action/toggle_beacon,
-		/datum/action/item_action/toggle_beacon_frequency
-	)
-
-/obj/item/clothing/suit/space/hardsuit/ert/ui_action_click(mob/user, datum/actiontype)
-	switch(actiontype.type)
-		if(/datum/action/item_action/toggle_helmet)
-			ToggleHelmet()
-		if(/datum/action/item_action/toggle_beacon)
-			toggle_beacon(user)
-		if(/datum/action/item_action/toggle_beacon_frequency)
-			set_beacon_freq(user)
-
-/obj/item/clothing/suit/space/hardsuit/ert/proc/toggle_beacon(mob/user)
-	var/datum/component/tracking_beacon/beacon = GetComponent(/datum/component/tracking_beacon)
-	if(!beacon)
-		to_chat(user, "<span class='notice'>The suit is not fitted with a tracking beacon.</span>")
-		return
-	beacon.toggle_visibility(!beacon.visible)
-	if(beacon.visible)
-		to_chat(user, "<span class='notice'>You enable the tracking beacon on [src]. Anybody on the same frequency will now be able to track your location.</span>")
-	else
-		to_chat(user, "<span class='warning'>You disable the tracking beacon on [src].</span>")
-
-/obj/item/clothing/suit/space/hardsuit/ert/proc/set_beacon_freq(mob/user)
-	var/datum/component/tracking_beacon/beacon = GetComponent(/datum/component/tracking_beacon)
-	if(!beacon)
-		to_chat(user, "<span class='notice'>The suit is not fitted with a tracking beacon.</span>")
-		return
-	beacon.change_frequency(user)
-
-	//ERT Security
-/obj/item/clothing/head/helmet/space/hardsuit/ert/sec
-	name = "emergency response team security helmet"
-	desc = "The integrated helmet of an ERT hardsuit, this one has red highlights."
-	icon_state = "hardsuit0-ert_security"
-	item_state = "hardsuit0-ert_security"
-	item_color = "ert_security"
-	beacon_colour = "#ec4848"
-
-/obj/item/clothing/suit/space/hardsuit/ert/sec
-	name = "emergency response team security hardsuit"
-	desc = "The standard issue hardsuit of the ERT, this one has red highlights. Offers superb protection against environmental hazards."
-	icon_state = "ert_security"
-	item_state = "ert_security"
-	helmettype = /obj/item/clothing/head/helmet/space/hardsuit/ert/sec
-	jetpack = /obj/item/tank/jetpack/suit
-
-	//ERT Engineering
-/obj/item/clothing/head/helmet/space/hardsuit/ert/engi
-	name = "emergency response team engineering helmet"
-	desc = "The integrated helmet of an ERT hardsuit, this one has orange highlights."
-	icon_state = "hardsuit0-ert_engineer"
-	item_state = "hardsuit0-ert_engineer"
-	item_color = "ert_engineer"
-	beacon_colour = "#ecaa48"
-
-/obj/item/clothing/suit/space/hardsuit/ert/engi
-	name = "emergency response team engineering hardsuit"
-	desc = "The standard issue hardsuit of the ERT, this one has orange highlights. Offers superb protection against environmental hazards."
-	icon_state = "ert_engineer"
-	item_state = "ert_engineer"
-	helmettype = /obj/item/clothing/head/helmet/space/hardsuit/ert/engi
-	jetpack = /obj/item/tank/jetpack/suit
-
-	//ERT Medical
-/obj/item/clothing/head/helmet/space/hardsuit/ert/med
-	name = "emergency response team medical helmet"
-	desc = "The integrated helmet of an ERT hardsuit, this one has white highlights."
-	icon_state = "hardsuit0-ert_medical"
-	item_state = "hardsuit0-ert_medical"
-	item_color = "ert_medical"
-	beacon_colour = "#88ecec"
-
-/obj/item/clothing/suit/space/hardsuit/ert/med
-	name = "emergency response team medical hardsuit"
-	desc = "The standard issue hardsuit of the ERT, this one has white highlights. Offers superb protection against environmental hazards."
-	icon_state = "ert_medical"
-	item_state = "ert_medical"
-	helmettype = /obj/item/clothing/head/helmet/space/hardsuit/ert/med
-	jetpack = /obj/item/tank/jetpack/suit
-
-	//ERT Janitor
-/obj/item/clothing/head/helmet/space/hardsuit/ert/jani
-	name = "emergency response team janitorial helmet"
-	desc = "The integrated helmet of an ERT hardsuit, this one has purple highlights."
-	icon_state = "hardsuit0-ert_janitor"
-	item_state = "hardsuit0-ert_janitor"
-	item_color = "ert_janitor"
-	beacon_colour = "#be43ce"
-
-/obj/item/clothing/suit/space/hardsuit/ert/jani
-	name = "emergency response team janitorial hardsuit"
-	desc = "The standard issue hardsuit of the ERT, this one has purple highlights. Offers superb protection against environmental hazards. This one has extra clips for holding various janitorial tools."
-	icon_state = "ert_janitor"
-	item_state = "ert_janitor"
-	helmettype = /obj/item/clothing/head/helmet/space/hardsuit/ert/jani
-	allowed = list(/obj/item/storage/bag/trash, /obj/item/melee/flyswatter, /obj/item/mop, /obj/item/holosign_creator/janibarrier, /obj/item/reagent_containers/glass/bucket, /obj/item/reagent_containers/spray/chemsprayer/janitor)
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi',
+		"Skrell" = 'icons/mob/clothing/species/skrell/suit.dmi',
+		"Tajaran" = 'icons/mob/clothing/species/tajaran/suit.dmi',
+		"Drask" = 'icons/mob/clothing/species/drask/suit.dmi',
+		"Unathi" = 'icons/mob/clothing/species/unathi/suit.dmi',
+		"Vulpkanin" = 'icons/mob/clothing/species/vulpkanin/suit.dmi',
+		)
+	sprite_sheets_obj = list(
+		"Vox" = 'icons/obj/clothing/species/vox/suits.dmi'
+		)
 
 /obj/item/clothing/suit/space/eva
 	name = "EVA suit"
-	icon_state = "space"
-	item_state = "eva_suit"
+	icon_state = "spacenew"
+	item_state = "s_suit"
 	desc = "A lightweight space suit with the basic ability to protect the wearer from the vacuum of space during emergencies."
-	armor = list("melee" = 0, "bullet" = 0, "laser" = 0,"energy" = 0, "bomb" = 0, "bio" = 100, "rad" = 20, "fire" = 50, "acid" = 65, "stamina" = 0)
+	armor = list(melee = 0, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 100, rad = 20, fire = 50, acid = 65)
+	species_restricted = list("exclude", "Wryn")
+
+	sprite_sheets = list(
+		"Tajaran" = 'icons/mob/clothing/species/tajaran/suit.dmi',
+		"Unathi" = 'icons/mob/clothing/species/unathi/suit.dmi',
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi',
+		"Vulpkanin" = 'icons/mob/clothing/species/vulpkanin/suit.dmi',
+		)
+	sprite_sheets_obj = list(
+		"Tajaran" = 'icons/obj/clothing/species/tajaran/suits.dmi',
+		"Unathi" = 'icons/obj/clothing/species/unathi/suits.dmi',
+		"Vox" = 'icons/obj/clothing/species/vox/suits.dmi',
+		"Vulpkanin" = 'icons/obj/clothing/species/vulpkanin/suits.dmi'
+		)
 
 /obj/item/clothing/head/helmet/space/eva
 	name = "EVA helmet"
-	icon_state = "space"
-	item_state = "eva_helmet"
+	icon_state = "spacenew"
+	item_state = "s_helmet"
 	desc = "A lightweight space helmet with the basic ability to protect the wearer from the vacuum of space during emergencies."
+	flags_inv = HIDEMASK|HIDEEARS|HIDEEYES
+	armor = list(melee = 0, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 100, rad = 20, fire = 50, acid = 65)
 	flash_protect = 0
-	armor = list("melee" = 0, "bullet" = 0, "laser" = 0,"energy" = 0, "bomb" = 0, "bio" = 100, "rad" = 20, "fire" = 50, "acid" = 65, "stamina" = 0)
+	species_restricted = list("exclude", "Wryn")
+	sprite_sheets = list(
+		"Tajaran" = 'icons/mob/clothing/species/tajaran/helmet.dmi',
+		"Unathi" = 'icons/mob/clothing/species/unathi/helmet.dmi',
+		"Vox" = 'icons/mob/clothing/species/vox/helmet.dmi',
+		"Vulpkanin" = 'icons/mob/clothing/species/vulpkanin/helmet.dmi',
+		"Grey" = 'icons/mob/clothing/species/grey/helmet.dmi'
+		)
+	sprite_sheets_obj = list(
+		"Vox" = 'icons/obj/clothing/species/vox/hats.dmi',
+		"Vulpkanin" = 'icons/obj/clothing/species/vulpkanin/hats.dmi'
+		)
 
-/obj/item/clothing/head/helmet/space/freedom
-	name = "eagle helmet"
-	desc = "An advanced, space-proof helmet. It appears to be modeled after an old-world eagle."
-	icon_state = "griffinhat"
-	item_state = "griffinhat"
-	armor = list("melee" = 20, "bullet" = 40, "laser" = 30, "energy" = 25, "bomb" = 100, "bio" = 100, "rad" = 100, "fire" = 80, "acid" = 80, "stamina" = 10)
-	strip_delay = 130
-	max_heat_protection_temperature = FIRE_IMMUNITY_MAX_TEMP_PROTECT
-	resistance_flags = ACID_PROOF | FIRE_PROOF
+//Mime's Hardsuit
+/obj/item/clothing/head/helmet/space/eva/mime
+	name = "mime EVA helmet"
+//	icon = 'spaceciv.dmi'
+	desc = ". . ."
+	icon_state = "spacemimehelmet"
+	item_state = "spacemimehelmet"
+	species_restricted = list("exclude","Wryn")
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/helmet.dmi')
+	sprite_sheets_obj = null
 
-/obj/item/clothing/suit/space/freedom
-	name = "eagle suit"
-	desc = "An advanced, light suit, fabricated from a mixture of synthetic feathers and space-resistant material. A gun holster appears to be integrated into the suit and the wings appear to be stuck in 'freedom' mode."
-	icon_state = "freedom"
-	item_state = "freedom"
-	allowed = list(/obj/item/gun, /obj/item/ammo_box, /obj/item/ammo_casing, /obj/item/melee/baton, /obj/item/restraints/handcuffs, /obj/item/tank/internals)
-	armor = list("melee" = 20, "bullet" = 40, "laser" = 30,"energy" = 25, "bomb" = 100, "bio" = 100, "rad" = 100, "fire" = 80, "acid" = 80, "stamina" = 10)
-	strip_delay = 130
-	max_heat_protection_temperature = FIRE_IMMUNITY_MAX_TEMP_PROTECT
-	resistance_flags = ACID_PROOF | FIRE_PROOF
-	slowdown = 0
+/obj/item/clothing/suit/space/eva/mime
+	name = "mime EVA suit"
+//	icon = 'spaceciv.dmi'
+	desc = ". . ."
+	icon_state = "spacemime_suit"
+	item_state = "spacemime_items"
+	species_restricted = list("exclude","Wryn")
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi')
+	sprite_sheets_obj = null
 
-//Carpsuit, bestsuit, lovesuit
-/obj/item/clothing/head/helmet/space/hardsuit/carp
-	name = "carp helmet"
-	desc = "Spaceworthy and it looks like a space carp's head, smells like one too."
-	icon_state = "carp_helm"
-	item_state = "syndicate"
-	armor = list("melee" = 20, "bullet" = 10, "laser" = 20, "energy" = 20, "bomb" = 30, "bio" = 100, "rad" = 75, "fire" = 60, "acid" = 75, "stamina" = 40)
-	brightness_on = 0 //luminosity when on
-	actions_types = list()
+/obj/item/clothing/head/helmet/space/eva/clown
+	name = "clown EVA helmet"
+//	icon = 'spaceciv.dmi'
+	desc = "An EVA helmet specifically designed for the clown. SPESSHONK!"
+	icon_state = "clownhelmet"
+	item_state = "clownhelmet"
+	species_restricted = list("exclude","Wryn")
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/helmet.dmi')
+	sprite_sheets_obj = null
 
-/obj/item/clothing/head/helmet/space/hardsuit/carp/Initialize()
-	. = ..()
-	ADD_TRAIT(src, TRAIT_NODROP, LOCKED_HELMET_TRAIT)
-
-/obj/item/clothing/suit/space/hardsuit/carp
-	name = "carp space suit"
-	desc = "A slimming piece of dubious space carp technology."
-	icon_state = "carp_suit"
-	item_state = "space_suit_syndicate"
-	slowdown = 0	//Space carp magic, never stop believing
-	armor = list("melee" = 20, "bullet" = 10, "laser" = 20, "energy" = 20, "bomb" = 30, "bio" = 100, "rad" = 75, "fire" = 60, "acid" = 75, "stamina" = 40)
-	allowed = list(/obj/item/tank/internals, /obj/item/pneumatic_cannon/speargun, /obj/item/toy/plush/carpplushie/dehy_carp, /obj/item/toy/plush/carpplushie, /obj/item/reagent_containers/food/snacks/carpmeat)	//I'm giving you a hint here
-	helmettype = /obj/item/clothing/head/helmet/space/hardsuit/carp
-
-/obj/item/clothing/head/helmet/space/hardsuit/carp/equipped(mob/living/carbon/human/user, slot)
-	..()
-	if (slot == ITEM_SLOT_HEAD)
-		user.faction |= "carp"
-
-/obj/item/clothing/head/helmet/space/hardsuit/carp/dropped(mob/living/carbon/human/user)
-	..()
-	if (user.head == src)
-		user.faction -= "carp"
-
-/obj/item/clothing/head/helmet/space/hardsuit/ert/paranormal
-	name = "paranormal response team helmet"
-	desc = "A helmet worn by those who deal with paranormal threats for a living."
-	icon_state = "hardsuit0-prt"
-	item_state = "hardsuit0-prt"
-	item_color = "knight_grey"
-	max_heat_protection_temperature = FIRE_IMMUNITY_MAX_TEMP_PROTECT
-	actions_types = list()
-	resistance_flags = FIRE_PROOF
-	beacon_colour = "#9ddb56"
-
-/obj/item/clothing/suit/space/hardsuit/ert/paranormal
-	name = "paranormal response team hardsuit"
-	desc = "Powerful wards are built into this hardsuit, protecting the user from all manner of paranormal threats."
-	icon_state = "knight_grey"
-	item_state = "knight_grey"
-	helmettype = /obj/item/clothing/head/helmet/space/hardsuit/ert/paranormal
-	max_heat_protection_temperature = FIRE_IMMUNITY_MAX_TEMP_PROTECT
-	resistance_flags = FIRE_PROOF
-
-/obj/item/clothing/suit/space/hardsuit/ert/paranormal/Initialize()
-	. = ..()
-	AddComponent(/datum/component/anti_magic, TRUE, TRUE)
-
-//Lavaland suits
-
-/obj/item/clothing/suit/space/hardsuit/ert/paranormal/lavaland
-	desc = "Powerful wards are built into this hardsuit, protecting the user from all manner of paranormal threats with armor designed specifically for low pressures."
-	high_pressure_multiplier = 0.4
-
-/obj/item/clothing/head/helmet/space/hardsuit/ert/paranormal/lavaland
-	high_pressure_multiplier = 0.4
-
-/obj/item/clothing/suit/space/hardsuit/ert/paranormal/lavaland/beserker
-	name = "champion's hardsuit"
-	desc = "Voices echo from the hardsuit, driving the user insane."
-	icon_state = "hardsuit-beserker"
-	item_state = "hardsuit-beserker"
-	helmettype = /obj/item/clothing/head/helmet/space/hardsuit/ert/paranormal/lavaland/beserker
-
-/obj/item/clothing/head/helmet/space/hardsuit/ert/paranormal/lavaland/beserker
-	name = "champion's helmet"
-	desc = "Peering into the eyes of the helmet is enough to seal damnation."
-	icon_state = "hardsuit0-beserker"
-	item_state = "hardsuit0-beserker"
-
-/obj/item/clothing/suit/space/hardsuit/ert/paranormal/lavaland/inquisitor
-	name = "inquisitor's hardsuit"
-	icon_state = "hardsuit-inq"
-	item_state = "hardsuit-inq"
-	helmettype = /obj/item/clothing/head/helmet/space/hardsuit/ert/paranormal/lavaland/inquisitor
-
-/obj/item/clothing/head/helmet/space/hardsuit/ert/paranormal/lavaland/inquisitor
-	name = "inquisitor's helmet"
-	icon_state = "hardsuit0-inq"
-	item_state = "hardsuit0-inq"
-
-//End lavaland suits
-
-/obj/item/clothing/suit/space/hardsuit/ert/paranormal/inquisitor
-	name = "inquisitor's hardsuit"
-	icon_state = "hardsuit-inq"
-	item_state = "hardsuit-inq"
-	helmettype = /obj/item/clothing/head/helmet/space/hardsuit/ert/paranormal/inquisitor
-
-/obj/item/clothing/head/helmet/space/hardsuit/ert/paranormal/inquisitor
-	name = "inquisitor's helmet"
-	icon_state = "hardsuit0-inq"
-	item_state = "hardsuit0-inq"
-
-/obj/item/clothing/head/helmet/space/fragile
-	name = "emergency space helmet"
-	desc = "A bulky, air-tight helmet meant to protect the user during emergency situations. It doesn't look very durable."
-	icon_state = "syndicate-helm-orange"
-	item_state = "syndicate-helm-orange"
-	armor = list("melee" = 5, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 10, "rad" = 10, "fire" = 0, "acid" = 0, "stamina" = 0)
-	strip_delay = 65
-	flash_protect = 0
-
-/obj/item/clothing/suit/space/fragile
-	name = "emergency space suit"
-	desc = "A bulky, air-tight suit meant to protect the user during emergency situations. It doesn't look very durable."
-	var/torn = FALSE
-	icon_state = "syndicate-orange"
-	item_state = "syndicate-orange"
-	slowdown = 2
-	armor = list("melee" = 5, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 10, "rad" = 10, "fire" = 0, "acid" = 0, "stamina" = 0)
-	strip_delay = 65
-	w_class = WEIGHT_CLASS_NORMAL
-
-/obj/item/clothing/suit/space/fragile/hit_reaction(mob/living/carbon/human/owner, atom/movable/hitby, attack_text = "the attack", final_block_chance = 0, damage = 0, attack_type = MELEE_ATTACK)
-	if(!torn && prob(50))
-		to_chat(owner, "<span class='warning'>[src] tears from the damage, breaking the air-tight seal!</span>")
-		clothing_flags &= ~STOPSPRESSUREDAMAGE
-		name = "torn [src]"
-		desc = "A bulky suit meant to protect the user during emergency situations, at least until someone tore a hole in the suit."
-		torn = TRUE
-		playsound(loc, 'sound/weapons/slashmiss.ogg', 50, 1)
-		playsound(loc, 'sound/effects/refill.ogg', 50, 1)
-
-/obj/item/clothing/suit/space/hunter
-	name = "bounty hunting suit"
-	desc = "A custom version of the MK.II SWAT suit, modified to look rugged and tough. Works as a space suit, if you can find a helmet."
-	icon_state = "hunter"
-	item_state = "swat_suit"
-	allowed = list(/obj/item/gun, /obj/item/ammo_box, /obj/item/ammo_casing, /obj/item/melee/baton, /obj/item/restraints/handcuffs, /obj/item/tank/internals, /obj/item/kitchen/knife/combat)
-	armor = list(melee = 60, bullet = 40, laser = 40, energy = 50, bomb = 100, bio = 100, rad = 100, fire = 100, acid = 100, stamina = 70)
-	strip_delay = 130
-	resistance_flags = FIRE_PROOF | ACID_PROOF
-
-/obj/item/clothing/head/helmet/space/hardsuit/skinsuit
-	name = "skinsuit helmet"
-	icon = 'icons/obj/clothing/hats.dmi'
-	alternate_worn_icon = 'icons/mob/head.dmi'
-	icon_state = "skinsuit_helmet"
-	item_state = "skinsuit_helmet"
-	max_integrity = 200
-	desc = "An airtight helmet meant to protect the wearer during emergency situations."
-	permeability_coefficient = 0.01
-	armor = list("melee" = 0, "bullet" = 0, "laser" = 0,"energy" = 0, "bomb" = 0, "bio" = 20, "rad" = 0, "fire" = 0, "acid" = 0, "stamina" = 0)
-	min_cold_protection_temperature = EMERGENCY_HELM_MIN_TEMP_PROTECT
-	heat_protection = NONE
-	flash_protect = 0
-	bang_protect = 0
-	flags_inv = HIDEMASK|HIDEEARS|HIDEEYES|HIDEHAIR|HIDEFACIALHAIR
-	clothing_flags = STOPSPRESSUREDAMAGE | SHOWEROKAY | SNUG_FIT
-	max_heat_protection_temperature = 100
-	brightness_on = null
-	actions_types = null
-
-/obj/item/clothing/head/helmet/space/hardsuit/skinsuit/attack_self(mob/user)
-	return
-
-/obj/item/clothing/head/helmet/space/hardsuit/skinsuit/emp_act(severity)
-	return
-
-/obj/item/clothing/suit/space/hardsuit/skinsuit
-	name = "skinsuit"
-	desc = "A slim, compression-based spacesuit meant to protect the user during emergency situations. It's only a little warmer than your uniform."
-	icon = 'icons/obj/clothing/suits.dmi'
-	alternate_worn_icon = 'icons/mob/suit.dmi'
-	icon_state = "skinsuit"
-	item_state = "s_suit"
-	max_integrity = 200
-	slowdown = 3 //Higher is slower
-	clothing_flags = STOPSPRESSUREDAMAGE | SHOWEROKAY
-	gas_transfer_coefficient = 0.5
-	permeability_coefficient = 0.5
-	armor = list("melee" = 0, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 10, "rad" = 0, "fire" = 0, "acid" = 0, "stamina" = 0)
-	allowed = list(/obj/item/flashlight, /obj/item/tank/internals)
-	min_cold_protection_temperature = EMERGENCY_SUIT_MIN_TEMP_PROTECT
-	heat_protection = NONE
-	max_heat_protection_temperature = 100
-	helmettype = /obj/item/clothing/head/helmet/space/hardsuit/skinsuit
-
-/obj/item/clothing/suit/space/hardsuit/skinsuit/attackby(obj/item/I, mob/user, params)
-	return
+/obj/item/clothing/suit/space/eva/clown
+	name = "clown EVA suit"
+//	icon = 'spaceciv.dmi'
+	desc = "An EVA suit specifically designed for the clown. SPESSHONK!"
+	icon_state = "spaceclown_suit"
+	item_state = "spaceclown_items"
+	species_restricted = list("exclude","Wryn")
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi')
+	sprite_sheets_obj = null

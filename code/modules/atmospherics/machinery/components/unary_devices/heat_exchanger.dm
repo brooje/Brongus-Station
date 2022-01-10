@@ -1,42 +1,28 @@
-/obj/machinery/atmospherics/components/unary/heat_exchanger
-
-	icon_state = "he1"
+/obj/machinery/atmospherics/unary/heat_exchanger
+	icon = 'icons/obj/atmospherics/heat_exchanger.dmi'
+	icon_state = "intact"
 
 	name = "heat exchanger"
-	desc = "Exchanges heat between two input gases. Set up for fast heat transfer."
+	desc = "Exchanges heat between two input gases. Setup for fast heat transfer"
 
 	can_unwrench = TRUE
-	shift_underlay_only = FALSE // not really used
 
-	layer = LOW_OBJ_LAYER
-
-	var/obj/machinery/atmospherics/components/unary/heat_exchanger/partner = null
+	var/obj/machinery/atmospherics/unary/heat_exchanger/partner = null
 	var/update_cycle
 
-	pipe_state = "heunary"
+/obj/machinery/atmospherics/unary/heat_exchanger/update_icon()
+	..()
 
-/obj/machinery/atmospherics/components/unary/heat_exchanger/layer1
-	piping_layer = 1
-	icon_state = "he_map-1"
-
-/obj/machinery/atmospherics/components/unary/heat_exchanger/layer3
-	piping_layer = 3
-	icon_state = "he_map-3"
-
-/obj/machinery/atmospherics/components/unary/heat_exchanger/update_icon()
-	if(nodes[1])
-		icon_state = "he1"
-		var/obj/machinery/atmospherics/node = nodes[1]
-		add_atom_colour(node.color, FIXED_COLOUR_PRIORITY)
+	if(node)
+		icon_state = "intact"
 	else
-		icon_state = "he0"
-	PIPING_LAYER_SHIFT(src, piping_layer)
+		icon_state = "exposed"
 
-/obj/machinery/atmospherics/components/unary/heat_exchanger/atmosinit()
+/obj/machinery/atmospherics/unary/heat_exchanger/atmos_init()
 	if(!partner)
 		var/partner_connect = turn(dir,180)
 
-		for(var/obj/machinery/atmospherics/components/unary/heat_exchanger/target in get_step(src,partner_connect))
+		for(var/obj/machinery/atmospherics/unary/heat_exchanger/target in get_step(src,partner_connect))
 			if(target.dir & get_dir(src,target))
 				partner = target
 				partner.partner = src
@@ -44,33 +30,36 @@
 
 	..()
 
-/obj/machinery/atmospherics/components/unary/heat_exchanger/process_atmos()
+/obj/machinery/atmospherics/unary/heat_exchanger/process_atmos()
 	..()
-	if(!partner || SSair.times_fired <= update_cycle)
-		return
+	if(!partner)
+		return 0
+
+	if(!SSair || SSair.times_fired <= update_cycle)
+		return 0
 
 	update_cycle = SSair.times_fired
 	partner.update_cycle = SSair.times_fired
 
-	var/datum/gas_mixture/air_contents = airs[1]
-	var/datum/gas_mixture/partner_air_contents = partner.airs[1]
-
 	var/air_heat_capacity = air_contents.heat_capacity()
-	var/other_air_heat_capacity = partner_air_contents.heat_capacity()
+	var/other_air_heat_capacity = partner.air_contents.heat_capacity()
 	var/combined_heat_capacity = other_air_heat_capacity + air_heat_capacity
 
-	var/old_temperature = air_contents.return_temperature()
-	var/other_old_temperature = partner_air_contents.return_temperature()
+	var/old_temperature = air_contents.temperature
+	var/other_old_temperature = partner.air_contents.temperature
 
 	if(combined_heat_capacity > 0)
-		var/combined_energy = partner_air_contents.return_temperature()*other_air_heat_capacity + air_heat_capacity*air_contents.return_temperature()
+		var/combined_energy = partner.air_contents.temperature*other_air_heat_capacity + air_heat_capacity*air_contents.temperature
 
 		var/new_temperature = combined_energy/combined_heat_capacity
-		air_contents.set_temperature(new_temperature)
-		partner_air_contents.set_temperature(new_temperature)
+		air_contents.temperature = new_temperature
+		partner.air_contents.temperature = new_temperature
 
-	if(abs(old_temperature-air_contents.return_temperature()) > 1)
-		update_parents()
+	if(abs(old_temperature-air_contents.temperature) > 1)
+		parent.update = 1
 
-	if(abs(other_old_temperature-partner_air_contents.return_temperature()) > 1)
-		partner.update_parents()
+	if(abs(other_old_temperature-partner.air_contents.temperature) > 1)
+		partner.parent.update = 1
+
+
+	return 1

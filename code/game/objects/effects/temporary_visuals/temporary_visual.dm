@@ -8,10 +8,10 @@
 	var/randomdir = TRUE
 	var/timerid
 
-/obj/effect/temp_visual/Initialize()
+/obj/effect/temp_visual/Initialize(mapload)
 	. = ..()
 	if(randomdir)
-		setDir(pick(GLOB.cardinals))
+		setDir(pick(GLOB.cardinal))
 
 	timerid = QDEL_IN(src, duration)
 
@@ -36,4 +36,12 @@
 		setDir(set_dir)
 	. = ..()
 
+/obj/effect/temp_visual/target_angled
+	randomdir = FALSE
 
+/obj/effect/temp_visual/target_angled/Initialize(mapload, atom/target)
+	. = ..()
+	if(target)
+		var/matrix/M = new
+		M.Turn(get_angle(src, target))
+		transform = M

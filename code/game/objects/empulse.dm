@@ -1,31 +1,58 @@
-/proc/empulse(turf/epicenter, heavy_range, light_range, log=0)
-	if(!epicenter)
-		return
+/**
+ * Will cause an EMP on the given epicenter.
+ * This proc can sleep depending on the affected objects. So assume it sleeps!
+ *
+ * epicenter - The center of the EMP. Can be an atom, as long as the given atom is on a turf (in)directly
+ * heavy_range - The max distance from the epicenter where objects will be get heavy EMPed
+ * light_range - The max distance from the epicenter where objects will get light EMPed
+ * log - Whether or not this action should be logged or not. Will use the cause if provided
+ * cause - The cause of the EMP. Used for the logging
+ */
+/proc/empulse(turf/epicenter, heavy_range, light_range, log = FALSE, cause = null)
+	if(!epicenter) return
 
-	if(!isturf(epicenter))
+	if(!istype(epicenter, /turf))
 		epicenter = get_turf(epicenter.loc)
 
 	if(log)
-		message_admins("EMP with size ([heavy_range], [light_range]) in area [epicenter.loc.name] ")
-		log_game("EMP with size ([heavy_range], [light_range]) in area [epicenter.loc.name] ")
+		message_admins("EMP with size ([heavy_range], [light_range]) in area [epicenter.loc.name] [cause ? "(Cause: [cause])": ""] [ADMIN_COORDJMP(epicenter)]</a>")
+		log_game("EMP with size ([heavy_range], [light_range]) in area [epicenter.loc.name] [cause ? "(Cause: [cause])" : ""] [COORD(epicenter)]")
 
 	if(heavy_range > 1)
-		new /obj/effect/temp_visual/emp/pulse(epicenter)
+		if(cause == "cult")
+			new /obj/effect/temp_visual/emp/pulse/cult(epicenter)
+		else
+			new /obj/effect/temp_visual/emp/pulse(epicenter)
 
 	if(heavy_range > light_range)
 		light_range = heavy_range
 
-	for(var/atom/A as() in spiral_range(light_range, epicenter))
-		var/distance = get_dist(epicenter, A)
+	var/emp_sound = sound('sound/effects/empulse.ogg')
+	for(var/mob/M in range(heavy_range, epicenter))
+		SEND_SOUND(M, emp_sound)
+	for(var/atom/T in range(light_range, epicenter))
+		if(cause == "cult" && iscultist(T))
+			continue
+		var/distance = get_dist(epicenter, T)
+		var/will_affect = FALSE
+
 		if(distance < 0)
 			distance = 0
 		if(distance < heavy_range)
-			A.emp_act(EMP_HEAVY)
+			will_affect = T.emp_act(1)
+
 		else if(distance == heavy_range)
 			if(prob(50))
-				A.emp_act(EMP_HEAVY)
+				will_affect = T.emp_act(1)
 			else
-				A.emp_act(EMP_LIGHT)
+				will_affect = T.emp_act(2)
+
 		else if(distance <= light_range)
-			A.emp_act(EMP_LIGHT)
-	return 1
+			will_affect = T.emp_act(2)
+
+		if(will_affect)
+			if(cause == "cult")
+				new /obj/effect/temp_visual/emp/cult(T.loc)
+			else
+				new /obj/effect/temp_visual/emp(T.loc)
+	return TRUE

@@ -1,29 +1,29 @@
-# This list auto requests reviews from the specified org members
-# when a PR that modifies the file in question is opened
+# This list auto requests reviews from the specified maintainer when a PR that modifies the file in question is opened
 # This list is alphabetized by User -> Filename KEEP IT THAT WAY
-# In the event that multiple org members are to be informed of changes
-# to the same file or dir, add them to the end under Multiple Owners
+# In the event that multiple org members are to be informed of changes to the same file or dir, add them to the end under Multiple Owners
+# This is ONLY for taking ownership of server-critical code which must be written in a very specific way for the server to operate at all.
 
-# crossedfall
-# On-leave
+### AffectedArc07
+# Actual Code
+/code/controllers/subsystem/instancing.dm @AffectedArc07
+/code/controllers/subsystem/mapping.dm @AffectedArc07
+/code/controllers/subsystem/ticker.dm @AffectedArc07
 
-.dockerignore @crossedfall
-.github @crossedfall
-#/code/modules/tgs @crossedfall
-#/config @crossedfall
-dependencies.sh @crossedfall
-Dockerfile @crossedfall
-/SQL @crossedfall
-TGS3.json @crossedfall
-/tools @crossedfall
+# CI + Tooling
+/.github/workflows/ @AffectedArc07
+/code/modules/unit_tests/ @AffectedArc07
+/tools/ci/ @AffectedArc07
 
+# Executables that need to be security-cleared
+dreamchecker.exe @AffectedArc07
+rust_g.dll @AffectedArc07
 
-# ike709
+### dearmochi
+/tgui/ @dearmochi
 
-/code/modules/client/loadout @ike709
-
-
-# powerfulbacon
-
-/code/game/machinery/shuttle @powerfulbacon
-/code/modules/shuttle @powerfulbacon
+### Fox-McCloud
+/code/controllers/subsystem/air.dm @Fox-McCloud
+/code/controllers/subsystem/garbage.dm @Fox-McCloud
+/code/modules/atmospherics/ @Fox-McCloud
+/code/modules/reagents/chemistry/holder.dm @Fox-McCloud
+/code/modules/reagents/chemistry/reagents.dm @Fox-McCloud

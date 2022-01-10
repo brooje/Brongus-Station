@@ -9,9 +9,16 @@ SUBSYSTEM_DEF(weather)
 	flags = SS_BACKGROUND
 	wait = 10
 	runlevels = RUNLEVEL_GAME
+	offline_implications = "Ash storms will no longer trigger. No immediate action is needed."
 	var/list/processing = list()
 	var/list/eligible_zlevels = list()
 	var/list/next_hit_by_zlevel = list() //Used by barometers to know when the next storm is coming
+
+/datum/controller/subsystem/weather/get_metrics()
+	. = ..()
+	var/list/cust = list()
+	cust["processing"] = length(processing)
+	.["custom"] = cust
 
 /datum/controller/subsystem/weather/fire()
 	// process active weather
@@ -41,27 +48,27 @@ SUBSYSTEM_DEF(weather)
 		var/target_trait = initial(W.target_trait)
 
 		// any weather with a probability set may occur at random
-		if (probability)
-			for(var/z in SSmapping.levels_by_trait(target_trait))
+		if(probability)
+			for(var/z in levels_by_trait(target_trait))
 				LAZYINITLIST(eligible_zlevels["[z]"])
 				eligible_zlevels["[z]"][W] = probability
 	return ..()
 
 /datum/controller/subsystem/weather/proc/run_weather(datum/weather/weather_datum_type, z_levels)
-	if (istext(weather_datum_type))
-		for (var/V in subtypesof(/datum/weather))
+	if(istext(weather_datum_type))
+		for(var/V in subtypesof(/datum/weather))
 			var/datum/weather/W = V
-			if (initial(W.name) == weather_datum_type)
+			if(initial(W.name) == weather_datum_type)
 				weather_datum_type = V
 				break
-	if (!ispath(weather_datum_type, /datum/weather))
+	if(!ispath(weather_datum_type, /datum/weather))
 		CRASH("run_weather called with invalid weather_datum_type: [weather_datum_type || "null"]")
 
-	if (isnull(z_levels))
-		z_levels = SSmapping.levels_by_trait(initial(weather_datum_type.target_trait))
-	else if (isnum_safe(z_levels))
+	if(isnull(z_levels))
+		z_levels = levels_by_trait(initial(weather_datum_type.target_trait))
+	else if(isnum(z_levels))
 		z_levels = list(z_levels)
-	else if (!islist(z_levels))
+	else if(!islist(z_levels))
 		CRASH("run_weather called with invalid z_levels: [z_levels || "null"]")
 
 	var/datum/weather/W = new weather_datum_type(z_levels)

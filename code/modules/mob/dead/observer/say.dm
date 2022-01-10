@@ -1,36 +1,38 @@
-/mob/dead/observer/say(message, bubble_type, var/list/spans = list(), sanitize = TRUE, datum/language/language = null, ignore_spam = FALSE, forced = null)
-	message = trim(copytext_char(sanitize(message), 1, MAX_MESSAGE_LEN))
-	if (!message)
+/mob/dead/observer/say(message)
+	message = sanitize(copytext(message, 1, MAX_MESSAGE_LEN))
+
+	if(!message)
 		return
 
-	if(OOC_FILTER_CHECK(message))
-		to_chat(src, "<span class='warning'>That message contained a word prohibited in OOC chat! Consider reviewing the server rules.\n<span replaceRegex='show_filtered_ooc_chat'>\"[message]\"</span></span>")
+	return say_dead(message)
+
+
+/mob/dead/observer/emote(act, type, message, force)
+	message = sanitize(copytext(message, 1, MAX_MESSAGE_LEN))
+
+	if(!message)
 		return
 
-	var/list/message_mods = list()
-	message = get_message_mods(message, message_mods)
-
-	if(check_emote(message, forced))
+	if(act != "me")
 		return
 
-	. = say_dead(message)
+	log_ghostemote(message, src)
 
-/mob/dead/observer/Hear(message, atom/movable/speaker, message_language, raw_message, radio_freq, list/spans, list/message_mods = list())
-	. = ..()
-	var/atom/movable/to_follow = speaker
-	if(radio_freq)
-		var/atom/movable/virtualspeaker/V = speaker
+	if(src.client)
+		if(check_mute(client.ckey, MUTE_DEADCHAT))
+			to_chat(src, "<span class='warning'>You cannot emote in deadchat (muted).</span>")
+			return
 
-		if(isAI(V.source))
-			var/mob/living/silicon/ai/S = V.source
-			to_follow = S.eyeobj
-		else
-			to_follow = V.source
-	var/link = FOLLOW_LINK(src, to_follow)
-	// Create map text prior to modifying message for goonchat
-	if(client?.prefs.chat_on_map && (client.prefs.see_chat_non_mob || ismob(speaker)))
-		create_chat_message(speaker, message_language, raw_message, spans)
-	// Recompose the message, because it's scrambled by default
-	message = compose_message(speaker, message_language, raw_message, radio_freq, spans, message_mods)
-	to_chat(src, "[link] [message]")
+		if(src.client.handle_spam_prevention(message, MUTE_DEADCHAT))
+			return
 
+	. = src.emote_dead(message)
+
+/mob/dead/observer/handle_track(message, verb = "says", mob/speaker = null, speaker_name, atom/follow_target, hard_to_hear)
+	return "[speaker_name] ([ghost_follow_link(follow_target, ghost=src)])"
+
+/mob/dead/observer/handle_speaker_name(mob/speaker = null, vname, hard_to_hear)
+	var/speaker_name = ..()
+	if(speaker && (speaker_name != speaker.real_name) && !isAI(speaker) && !istype(speaker, /mob/living/automatedannouncer)) //Announce computer and various stuff that broadcasts doesn't use it's real name but AI's can't pretend to be other mobs.
+		speaker_name = "[speaker.real_name] ([speaker_name])"
+	return speaker_name

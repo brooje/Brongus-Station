@@ -9,56 +9,69 @@
 
 	Note that AI have no need for the adjacency proc, and so this proc is a lot cleaner.
 */
-/mob/living/silicon/ai/DblClickOn(var/atom/A, params)
-	if(control_disabled || incapacitated())
+/mob/living/silicon/ai/DblClickOn(atom/A, params)
+	if(client.click_intercept)
+		// Not doing a click intercept here, because otherwise we double-tap with the `ClickOn` proc.
+		// But we return here since we don't want to do regular dblclick handling
 		return
+
+	if(control_disabled || stat) return
 
 	if(ismob(A))
 		ai_actual_track(A)
 	else
 		A.move_camera_by_click()
 
-/mob/living/silicon/ai/ClickOn(var/atom/A, params)
-	if(world.time <= next_click)
-		return
-	next_click = world.time + 1
 
-	if(!can_interact_with(A))
+/mob/living/silicon/ai/ClickOn(atom/A, params)
+	if(client.click_intercept)
+		client.click_intercept.InterceptClickOn(src, params, A)
 		return
 
-	if(multicam_on)
-		var/turf/T = get_turf(A)
-		if(T)
-			for(var/atom/movable/screen/movable/pic_in_pic/ai/P in T.vis_locs)
-				if(P.ai == src)
-					P.Click(params)
-					break
+	if(next_click > world.time)
+		return
+	changeNext_click(1)
 
-	if(check_click_intercept(params,A))
+	if(control_disabled || stat)
 		return
 
-	if(control_disabled || incapacitated())
-		return
-
-	var/turf/pixel_turf = get_turf_pixel(A)
+	var/turf/pixel_turf = isturf(A) ? A : get_turf_pixel(A)
 	if(isnull(pixel_turf))
 		return
 	if(!can_see(A))
 		if(isturf(A)) //On unmodified clients clicking the static overlay clicks the turf underneath
-			return //So there's no point messaging admins
-		message_admins("[ADMIN_LOOKUPFLW(src)] might be running a modified client! (failed can_see on AI click of [A] (Turf Loc: [ADMIN_VERBOSEJMP(pixel_turf)]))")
-		var/message = "[key_name(src)] might be running a modified client! (failed can_see on AI click of [A] (Turf Loc: [AREACOORD(pixel_turf)]))"
+			return // So there's no point messaging admins
+		add_attack_logs(src, src, "[key_name_admin(src)] might be running a modified client! (failed can_see on AI click of [A]([ADMIN_COORDJMP(pixel_turf)]))", ATKLOG_ALL)
+		var/message = "[key_name(src)] might be running a modified client! (failed can_see on AI click of [A]([COORD(pixel_turf)]))"
 		log_admin(message)
-		if(REALTIMEOFDAY >= chnotify + 9000)
-			chnotify = REALTIMEOFDAY
-			send2irc_adminless_only("NOCHEAT", message)
-		return
+		SSdiscord.send2discord_simple_noadmins("**\[Warning]** [key_name(src)] might be running a modified client! (failed checkTurfVis on AI click of [A]([COORD(pixel_turf)]))")
+
+
+	var/turf_visible
+	if(pixel_turf)
+		turf_visible = GLOB.cameranet.checkTurfVis(pixel_turf)
+		if(!turf_visible)
+			if(istype(loc, /obj/item/aicard) && (pixel_turf in view(client.view, loc)))
+				turf_visible = TRUE
+			else
+				if(pixel_turf.obscured)
+					log_admin("[key_name_admin(src)] might be running a modified client! (failed checkTurfVis on AI click of [A]([COORD(pixel_turf)])")
+					add_attack_logs(src, src, "[key_name_admin(src)] might be running a modified client! (failed checkTurfVis on AI click of [A]([ADMIN_COORDJMP(pixel_turf)]))", ATKLOG_ALL)
+					SSdiscord.send2discord_simple_noadmins("**\[Warning]** [key_name(src)] might be running a modified client! (failed checkTurfVis on AI click of [A]([COORD(pixel_turf)]))")
+				return
 
 	var/list/modifiers = params2list(params)
 	if(modifiers["shift"] && modifiers["ctrl"])
 		CtrlShiftClickOn(A)
 		return
+	if(modifiers["shift"] && modifiers["alt"])
+		AltShiftClickOn(A)
+		return
+	if(modifiers["shift"] && modifiers["middle"])
+		ShiftMiddleClickOn(A)
+		return
 	if(modifiers["middle"])
+		MiddleClickOn(A)
 		if(controlled_mech) //Are we piloting a mech? Placed here so the modifiers are not overridden.
 			controlled_mech.click_action(A, src, params) //Override AI normal click behavior.
 		return
@@ -75,15 +88,22 @@
 	if(world.time <= next_move)
 		return
 
-	if(aicamera.in_camera_mode)
-		aicamera.camera_mode_off()
-		aicamera.captureimage(pixel_turf, usr)
-		return
-	if(waypoint_mode)
-		waypoint_mode = 0
-		set_waypoint(A)
+	if(aiCamera.in_camera_mode)
+		aiCamera.camera_mode_off()
+		aiCamera.captureimage(A, usr)
 		return
 
+	if(waypoint_mode)
+		set_waypoint(A)
+		waypoint_mode = 0
+		return
+	/*
+		AI restrained() currently does nothing
+	if(restrained())
+		RestrainedClickOn(A)
+	else
+	*/
+	A.add_hiddenprint(src)
 	A.attack_ai(src)
 
 /*
@@ -94,7 +114,8 @@
 */
 /mob/living/silicon/ai/UnarmedAttack(atom/A)
 	A.attack_ai(src)
-/mob/living/silicon/ai/RangedAttack(atom/A)
+
+/mob/living/silicon/ai/RangedAttack(atom/A, params)
 	A.attack_ai(src)
 
 /atom/proc/attack_ai(mob/user)
@@ -106,87 +127,104 @@
 	for AI shift, ctrl, and alt clicking.
 */
 
-/mob/living/silicon/ai/CtrlShiftClickOn(var/atom/A)
+/mob/living/silicon/ai/CtrlShiftClickOn(atom/A)
 	A.AICtrlShiftClick(src)
-/mob/living/silicon/ai/ShiftClickOn(var/atom/A)
+/mob/living/silicon/ai/AltShiftClickOn(atom/A)
+	A.AIAltShiftClick(src)
+/mob/living/silicon/ai/ShiftMiddleClickOn(atom/A)
+	A.AIShiftMiddleClick(src)
+/mob/living/silicon/ai/ShiftClickOn(atom/A)
 	A.AIShiftClick(src)
-/mob/living/silicon/ai/CtrlClickOn(var/atom/A)
+/mob/living/silicon/ai/CtrlClickOn(atom/A)
 	A.AICtrlClick(src)
-/mob/living/silicon/ai/AltClickOn(var/atom/A)
+/mob/living/silicon/ai/AltClickOn(atom/A)
 	A.AIAltClick(src)
+/mob/living/silicon/ai/MiddleClickOn(atom/A)
+    A.AIMiddleClick(src)
 
-/*
-	The following criminally helpful code is just the previous code cleaned up;
-	I have no idea why it was in atoms.dm instead of respective files.
-*/
-/* Questions: Instead of an Emag check on every function, can we not add to airlocks onclick if emag return? */
 
-/* Atom Procs */
-/atom/proc/AICtrlClick()
-	return
-/atom/proc/AIAltClick(mob/living/silicon/ai/user)
-	AltClick(user)
-	return
-/atom/proc/AIShiftClick()
-	return
-/atom/proc/AICtrlShiftClick()
+// DEFAULT PROCS TO OVERRIDE
+
+/atom/proc/AICtrlShiftClick(mob/user)  // Examines
+	if(user.client)
+		user.examinate(src)
 	return
 
-/* Airlocks */
-/obj/machinery/door/airlock/AICtrlClick() // Bolts doors
-	if(obj_flags & EMAGGED)
-		return
+/atom/proc/AIAltShiftClick()
+	return
 
-	toggle_bolt(usr)
-	add_hiddenprint(usr)
+/atom/proc/AIShiftMiddleClick()
+	return
 
-/obj/machinery/door/airlock/AIAltClick() // Eletrifies doors.
-	if(obj_flags & EMAGGED)
-		return
+/atom/proc/AIShiftClick(mob/living/user) // borgs use this too
+	if(user.client)
+		user.examinate(src)
+	return
 
-	if(!secondsElectrified)
-		shock_perm(usr)
-	else
-		shock_restore(usr)
+/atom/proc/AICtrlClick(mob/living/silicon/user)
+	return
 
-/obj/machinery/door/airlock/AIShiftClick()  // Opens and closes doors!
-	if(obj_flags & EMAGGED)
-		return
+/atom/proc/AIAltClick(atom/A)
+	AltClick(A)
 
-	user_toggle_open(usr)
-	add_hiddenprint(usr)
+/atom/proc/AIMiddleClick(mob/living/user)
+	return
 
-/obj/machinery/door/airlock/AICtrlShiftClick()  // Sets/Unsets Emergency Access Override
-	if(obj_flags & EMAGGED)
-		return
-
-	toggle_emergency(usr)
-	add_hiddenprint(usr)
-
-/* APC */
-/obj/machinery/power/apc/AICtrlClick() // turns off/on APCs.
-	if(can_use(usr, 1))
-		toggle_breaker(usr)
-
-/* AI Turrets */
-/obj/machinery/turretid/AIAltClick() //toggles lethal on turrets
-	if(ailock)
-		return
-	toggle_lethal(usr)
-
-/obj/machinery/turretid/AICtrlClick() //turns off/on Turrets
-	if(ailock)
-		return
-	toggle_on(usr)
-
-/* Holopads */
-/obj/machinery/holopad/AIAltClick(mob/living/silicon/ai/user)
-	hangup_all_calls()
-	add_hiddenprint(usr)
-
-//
-// Override TurfAdjacent for AltClicking
-//
-
-/mob/living/silicon/ai/TurfAdjacent(var/turf/T)
+/mob/living/silicon/ai/TurfAdjacent(turf/T)
 	return (GLOB.cameranet && GLOB.cameranet.checkTurfVis(T))
+
+
+// APC
+
+/obj/machinery/power/apc/AICtrlClick(mob/living/user) // turns off/on APCs.
+	toggle_breaker(user)
+
+
+// TURRETCONTROL
+
+/obj/machinery/turretid/AICtrlClick(mob/living/silicon/user) //turns off/on Turrets
+	enabled = !enabled
+	updateTurrets()
+
+/obj/machinery/turretid/AIAltClick() //toggles lethal on turrets
+	if(lethal_is_configurable)
+		lethal = !lethal
+		updateTurrets()
+
+// AIRLOCKS
+
+/obj/machinery/door/airlock/AIAltShiftClick(mob/user)  // Sets/Unsets Emergency Access Override
+	if(!ai_control_check(user))
+		return
+	toggle_emergency_status(user)
+
+/obj/machinery/door/airlock/AIShiftClick(mob/user)  // Opens and closes doors!
+	if(!ai_control_check(user))
+		return
+	open_close(user)
+
+/obj/machinery/door/airlock/AICtrlClick(mob/living/silicon/user) // Bolts doors
+	if(!ai_control_check(user))
+		return
+	toggle_bolt(user)
+
+/obj/machinery/door/airlock/AIAltClick(mob/living/silicon/user) // Electrifies doors.
+	if(!ai_control_check(user))
+		return
+	if(wires.is_cut(WIRE_ELECTRIFY))
+		to_chat(user, "<span class='warning'>The electrification wire is cut - Cannot electrify the door.</span>")
+	if(isElectrified())
+		electrify(0, user, TRUE) // un-shock
+	else
+		electrify(-1, user, TRUE) // permanent shock
+
+
+/obj/machinery/door/airlock/AIMiddleClick(mob/living/user) // Toggles door bolt lights.
+	if(!ai_control_check(user))
+		return
+	toggle_light(user)
+
+/obj/machinery/door/airlock/AIShiftMiddleClick(mob/user)  // Toggles door timings.
+	if(!ai_control_check(user))
+		return
+	toggle_speed(user)

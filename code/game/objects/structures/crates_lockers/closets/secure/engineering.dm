@@ -1,100 +1,132 @@
 /obj/structure/closet/secure_closet/engineering_chief
-	name = "\proper chief engineer's locker"
+	name = "chief engineer's locker"
 	req_access = list(ACCESS_CE)
 	icon_state = "ce"
+	open_door_sprite = "white_secure_door"
 
-/obj/structure/closet/secure_closet/engineering_chief/PopulateContents()
-	..()
+/obj/structure/closet/secure_closet/engineering_chief/populate_contents()
+	if(prob(50))
+		new /obj/item/storage/backpack/industrial(src)
+	else
+		new /obj/item/storage/backpack/satchel_eng(src)
+	new /obj/item/storage/backpack/duffel/engineering(src)
 	new /obj/item/clothing/head/beret/ce(src)
-	new /obj/item/clothing/neck/cloak/ce(src)
-	new /obj/item/clothing/under/rank/engineering/chief_engineer(src)
+	new /obj/item/areaeditor/blueprints/ce(src)
+	new /obj/item/storage/box/permits(src)
+	new /obj/item/clothing/under/rank/chief_engineer(src)
+	new /obj/item/clothing/under/rank/chief_engineer/skirt(src)
+	new /obj/item/clothing/suit/mantle/chief_engineer(src)
 	new /obj/item/clothing/head/hardhat/white(src)
-	new /obj/item/clothing/head/hardhat/weldhat/white(src)
-	new /obj/item/clothing/head/welding(src)
+	new /obj/item/clothing/glasses/welding/superior(src)
 	new /obj/item/clothing/gloves/color/yellow(src)
-	new /obj/item/clothing/shoes/sneakers/brown(src)
+	new /obj/item/clothing/shoes/brown(src)
 	new /obj/item/tank/jetpack/suit(src)
 	new /obj/item/cartridge/ce(src)
 	new /obj/item/radio/headset/heads/ce(src)
 	new /obj/item/storage/toolbox/mechanical(src)
-	new /obj/item/clothing/suit/hazardvest(src)
-	new /obj/item/megaphone/command(src)
-	new /obj/item/areaeditor/blueprints(src)
-	new /obj/item/airlock_painter(src)
-	new /obj/item/holosign_creator/engineering(src)
+	new /obj/item/clothing/suit/storage/hazardvest(src)
 	new /obj/item/clothing/mask/gas(src)
 	new /obj/item/multitool(src)
-	new /obj/item/assembly/flash/handheld(src)
+	new /obj/item/holosign_creator/engineering(src)
+	new /obj/item/flash(src)
+	new /obj/item/clothing/head/beret/eng(src)
 	new /obj/item/clothing/glasses/meson/engine(src)
 	new /obj/item/door_remote/chief_engineer(src)
-	new /obj/item/pipe_dispenser(src)
-	new /obj/item/inducer(src)
-	new /obj/item/circuitboard/machine/techfab/department/engineering(src)
-	new /obj/item/extinguisher/advanced(src)
-	new /obj/item/storage/photo_album/CE(src)
-	new /obj/item/card/id/departmental_budget/eng(src)
-	
+	new /obj/item/rpd(src)
+	new /obj/item/reagent_containers/food/drinks/mug/ce(src)
+	new /obj/item/organ/internal/eyes/cybernetic/meson(src)
+	new /obj/item/clothing/accessory/medal/engineering(src)
+	new /obj/item/holosign_creator/atmos(src)
+	new /obj/item/rcd/preloaded(src)
+
+
 /obj/structure/closet/secure_closet/engineering_electrical
 	name = "electrical supplies locker"
 	req_access = list(ACCESS_ENGINE_EQUIP)
-	icon_state = "eng"
-	icon_door = "eng_elec"
+	icon_state = "eng_elec"
+	open_door_sprite = "eng_door"
+	icon_opened = "eng_open"
 
-/obj/structure/closet/secure_closet/engineering_electrical/PopulateContents()
-	..()
-	var/static/items_inside = list(
-		/obj/item/clothing/gloves/color/yellow = 2,
-		/obj/item/inducer = 2,
-		/obj/item/storage/toolbox/electrical = 3,
-		/obj/item/electronics/apc = 3,
-		/obj/item/multitool = 3)
-	generate_items_inside(items_inside,src)
+/obj/structure/closet/secure_closet/engineering_electrical/populate_contents()
+	new /obj/item/clothing/gloves/color/yellow(src)
+	new /obj/item/clothing/gloves/color/yellow(src)
+	new /obj/item/storage/toolbox/electrical(src)
+	new /obj/item/storage/toolbox/electrical(src)
+	new /obj/item/storage/toolbox/electrical(src)
+	new /obj/item/apc_electronics(src)
+	new /obj/item/apc_electronics(src)
+	new /obj/item/apc_electronics(src)
+	new /obj/item/multitool(src)
+	new /obj/item/multitool(src)
+	new /obj/item/multitool(src)
+	new /obj/item/clothing/head/beret/eng
+
 
 /obj/structure/closet/secure_closet/engineering_welding
 	name = "welding supplies locker"
 	req_access = list(ACCESS_ENGINE_EQUIP)
-	icon_state = "eng"
-	icon_door = "eng_weld"
+	icon_state = "eng_weld"
+	open_door_sprite = "eng_door"
+	icon_opened = "eng_open"
 
-/obj/structure/closet/secure_closet/engineering_welding/PopulateContents()
-	..()
-	for(var/i in 1 to 3)
-		new /obj/item/clothing/head/welding(src)
-	for(var/i in 1 to 3)
-		new /obj/item/weldingtool(src)
+/obj/structure/closet/secure_closet/engineering_welding/populate_contents()
+	new /obj/item/clothing/head/welding(src)
+	new /obj/item/clothing/head/welding(src)
+	new /obj/item/clothing/head/welding(src)
+	new /obj/item/weldingtool/largetank(src)
+	new /obj/item/weldingtool/largetank(src)
+	new /obj/item/weldingtool/largetank(src)
+
 
 /obj/structure/closet/secure_closet/engineering_personal
 	name = "engineer's locker"
 	req_access = list(ACCESS_ENGINE_EQUIP)
 	icon_state = "eng_secure"
+	open_door_sprite = "eng_secure_door"
 
-/obj/structure/closet/secure_closet/engineering_personal/PopulateContents()
-	..()
-	new /obj/item/clothing/head/beret/eng(src)
-	new /obj/item/radio/headset/headset_eng(src)
+/obj/structure/closet/secure_closet/engineering_personal/populate_contents()
+	if(prob(50))
+		new /obj/item/storage/backpack/industrial(src)
+	else
+		new /obj/item/storage/backpack/satchel_eng(src)
+	new /obj/item/storage/backpack/duffel/engineering(src)
 	new /obj/item/storage/toolbox/mechanical(src)
-	new /obj/item/tank/internals/emergency_oxygen/engi(src)
 	new /obj/item/holosign_creator/engineering(src)
+	new /obj/item/radio/headset/headset_eng(src)
+	new /obj/item/clothing/under/rank/engineer(src)
+	new /obj/item/clothing/under/rank/engineer/skirt(src)
+	new /obj/item/clothing/suit/storage/hazardvest(src)
 	new /obj/item/clothing/mask/gas(src)
 	new /obj/item/clothing/glasses/meson/engine(src)
-	new /obj/item/storage/box/emptysandbags(src)
+	new /obj/item/cartridge/engineering(src)
+	new /obj/item/clothing/head/beret/eng(src)
 
 
-/obj/structure/closet/secure_closet/atmospherics
-	name = "\proper atmospheric technician's locker"
+/obj/structure/closet/secure_closet/atmos_personal
+	name = "technician's locker"
 	req_access = list(ACCESS_ATMOSPHERICS)
 	icon_state = "atmos"
+	open_door_sprite = "eng_secure_door"
 
-/obj/structure/closet/secure_closet/atmospherics/PopulateContents()
-	..()
+/obj/structure/closet/secure_closet/atmos_personal/populate_contents()
 	new /obj/item/radio/headset/headset_eng(src)
-	new /obj/item/pipe_dispenser(src)
+	new /obj/item/cartridge/atmos(src)
 	new /obj/item/storage/toolbox/mechanical(src)
+	if(prob(50))
+		new /obj/item/storage/backpack/industrial(src)
+	else
+		new /obj/item/storage/backpack/satchel_eng(src)
+	new /obj/item/storage/backpack/duffel/atmos(src)
+	new /obj/item/extinguisher(src)
+	new /obj/item/grenade/gas/oxygen(src)
+	new /obj/item/grenade/gas/oxygen(src)
+	new /obj/item/clothing/suit/storage/hazardvest(src)
+	new /obj/item/clothing/mask/gas(src)
 	new /obj/item/tank/internals/emergency_oxygen/engi(src)
-	new /obj/item/analyzer(src)
 	new /obj/item/holosign_creator/atmos(src)
 	new /obj/item/watertank/atmos(src)
 	new /obj/item/clothing/suit/fire/atmos(src)
 	new /obj/item/clothing/head/hardhat/atmos(src)
 	new /obj/item/clothing/glasses/meson/engine/tray(src)
-	new /obj/item/extinguisher/advanced(src)
+	new /obj/item/rpd(src)
+	new /obj/item/destTagger(src)

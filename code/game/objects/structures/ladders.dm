@@ -7,10 +7,10 @@
 	anchored = TRUE
 	var/obj/structure/ladder/down   //the ladder below this one
 	var/obj/structure/ladder/up     //the ladder above this one
-	max_integrity = 100
+	var/use_verb = "climb"
 
 /obj/structure/ladder/Initialize(mapload, obj/structure/ladder/up, obj/structure/ladder/down)
-	..()
+	. = ..()
 	if (up)
 		src.up = up
 		up.down = src
@@ -22,7 +22,7 @@
 	return INITIALIZE_HINT_LATELOAD
 
 /obj/structure/ladder/Destroy(force)
-	if ((resistance_flags & INDESTRUCTIBLE) && !force)
+	if((resistance_flags & INDESTRUCTIBLE) && !force)
 		return QDEL_HINT_LETMELIVE
 	disconnect()
 	return ..()
@@ -30,20 +30,19 @@
 /obj/structure/ladder/LateInitialize()
 	// By default, discover ladders above and below us vertically
 	var/turf/T = get_turf(src)
-	var/obj/structure/ladder/L
 
-	if (!down)
-		L = locate() in SSmapping.get_turf_below(T)
-		if (L)
+	if(!down)
+		for(var/obj/structure/ladder/L in locate(T.x, T.y, T.z - 1))
 			down = L
 			L.up = src  // Don't waste effort looping the other way
 			L.update_icon()
-	if (!up)
-		L = locate() in SSmapping.get_turf_above(T)
-		if (L)
+			break
+	if(!up)
+		for (var/obj/structure/ladder/L in locate(T.x, T.y, T.z + 1))
 			up = L
 			L.down = src  // Don't waste effort looping the other way
 			L.update_icon()
+			break
 
 	update_icon()
 
@@ -70,7 +69,7 @@
 		icon_state = "ladder00"
 
 /obj/structure/ladder/singularity_pull()
-	if (!(resistance_flags & INDESTRUCTIBLE))
+	if(!(resistance_flags & INDESTRUCTIBLE))
 		visible_message("<span class='danger'>[src] is torn to pieces by the gravitational pull!</span>")
 		qdel(src)
 
@@ -88,17 +87,12 @@
 	if(AM)
 		user.start_pulling(AM)
 
-/obj/structure/ladder/proc/use(mob/user, is_ghost=FALSE)
-	if (!is_ghost && !in_range(src, user))
+/obj/structure/ladder/proc/use(mob/user, is_ghost = FALSE)
+	if(!is_ghost && !in_range(src, user))
 		return
 
-	var/list/tool_list = list(
-		"Up" = image(icon = 'icons/testing/turf_analysis.dmi', icon_state = "red_arrow", dir = NORTH),
-		"Down" = image(icon = 'icons/testing/turf_analysis.dmi', icon_state = "red_arrow", dir = SOUTH)
-		)
-
-	if (up && down)
-		var/result = show_radial_menu(user, src, tool_list, custom_check = CALLBACK(src, .proc/check_menu, user), require_near = TRUE, tooltips = TRUE)
+	if(up && down)
+		var/result = alert("Go up or down [src]?", "[name]", "Up", "Down", "Cancel")
 		if (!is_ghost && !in_range(src, user))
 			return  // nice try
 		switch(result)
@@ -118,59 +112,11 @@
 	if(!is_ghost)
 		add_fingerprint(user)
 
-/obj/structure/ladder/proc/check_menu(mob/user)
-	if(user.incapacitated() || !user.Adjacent(src))
-		return FALSE
-	return TRUE
-
 /obj/structure/ladder/attack_hand(mob/user)
-	. = ..()
-	if(.)
-		return
 	use(user)
 
-/obj/structure/ladder/attack_paw(mob/user)
+/obj/structure/ladder/attackby(obj/item/W, mob/user, params)
 	return use(user)
-
-/obj/structure/ladder/rcd_vals(mob/user, obj/item/construction/rcd/the_rcd)
-	switch(the_rcd.mode)
-		if(RCD_DECONSTRUCT)
-			return list("mode" = RCD_DECONSTRUCT, "delay" = 30, "cost" = 15)
-	return FALSE
-
-/obj/structure/ladder/rcd_act(mob/user, var/obj/item/construction/rcd/the_rcd, passed_mode)
-	switch(passed_mode)
-		if(RCD_DECONSTRUCT)
-			to_chat(user, "<span class='notice'>You deconstruct the ladder.</span>")
-			qdel(src)
-			return TRUE
-
-/obj/structure/ladder/unbreakable/rcd_act(mob/user, var/obj/item/construction/rcd/the_rcd, passed_mode)
-	switch(passed_mode)
-		if(RCD_DECONSTRUCT)
-			to_chat(user, "<span class='warning'>[src] seems to resist all attempts to deconstruct it!</span>")
-			return FALSE
-
-/obj/structure/ladder/attackby(obj/item/I, mob/user, params)
-	user.changeNext_move(CLICK_CD_MELEE)
-	add_fingerprint(user)
-	if(!(resistance_flags & INDESTRUCTIBLE))
-		if(I.tool_behaviour == TOOL_WELDER)
-			if(!I.tool_start_check(user, amount=0))
-				return FALSE
-		
-			to_chat(user, "<span class='notice'>You begin cutting [src]...</span>")
-			if(I.use_tool(src, user, 50, volume=100))
-				user.visible_message("<span class='notice'>[user] cuts [src].</span>", \
-									 "<span class='notice'>You cut [src].</span>")
-				I.play_tool_sound(src, 100)
-				var/obj/R = new /obj/item/stack/rods(drop_location(), 10)
-				transfer_fingerprints_to(R)
-				qdel(src)
-				return TRUE
-	else
-		to_chat(user, "<span class='warning'>[src] seems to resist all attempts to deconstruct it!</span>")
-		return FALSE
 
 /obj/structure/ladder/attack_robot(mob/living/silicon/robot/R)
 	if(R.Adjacent(src))
@@ -179,13 +125,12 @@
 //ATTACK GHOST IGNORING PARENT RETURN VALUE
 /obj/structure/ladder/attack_ghost(mob/dead/observer/user)
 	use(user, TRUE)
-	return ..()
 
 /obj/structure/ladder/proc/show_fluff_message(going_up, mob/user)
 	if(going_up)
-		user.visible_message("[user] climbs up [src].","<span class='notice'>You climb up [src].</span>")
+		user.visible_message("[user] climbs up [src].","<span class='notice'>You [use_verb] up [src].</span>")
 	else
-		user.visible_message("[user] climbs down [src].","<span class='notice'>You climb down [src].</span>")
+		user.visible_message("[user] climbs down [src].","<span class='notice'>You [use_verb] down [src].</span>")
 
 
 // Indestructible away mission ladders which link based on a mapped ID and height value rather than X/Y/Z.
@@ -196,32 +141,32 @@
 	var/id
 	var/height = 0  // higher numbers are considered physically higher
 
-/obj/structure/ladder/unbreakable/Initialize()
+/obj/structure/ladder/unbreakable/Initialize(mapload)
 	GLOB.ladders += src
 	return ..()
 
 /obj/structure/ladder/unbreakable/Destroy()
 	. = ..()
-	if (. != QDEL_HINT_LETMELIVE)
+	if(. != QDEL_HINT_LETMELIVE)
 		GLOB.ladders -= src
 
 /obj/structure/ladder/unbreakable/LateInitialize()
 	// Override the parent to find ladders based on being height-linked
-	if (!id || (up && down))
+	if(!id || (up && down))
 		update_icon()
 		return
 
-	for (var/O in GLOB.ladders)
+	for(var/O in GLOB.ladders)
 		var/obj/structure/ladder/unbreakable/L = O
-		if (L.id != id)
+		if(L.id != id)
 			continue  // not one of our pals
-		if (!down && L.height == height - 1)
+		if(!down && L.height == height - 1)
 			down = L
 			L.up = src
 			L.update_icon()
 			if (up)
 				break  // break if both our connections are filled
-		else if (!up && L.height == height + 1)
+		else if(!up && L.height == height + 1)
 			up = L
 			L.down = src
 			L.update_icon()
@@ -229,3 +174,29 @@
 				break  // break if both our connections are filled
 
 	update_icon()
+
+/obj/structure/ladder/unbreakable/dive_point/buoy
+	name = "diving point buoy"
+	desc = "A buoy marking the location of an underwater dive area."
+	icon = 'icons/misc/beach.dmi'
+	icon_state = "buoy"
+	id = "dive"
+	height = 2
+	use_verb = "swim"
+	layer = MOB_LAYER + 0.2		//0.1 higher than the water overlay, this also means people can "swim" behind/under it
+
+/obj/structure/ladder/unbreakable/dive_point/anchor
+	name = "diving point anchor"
+	desc = "An anchor tethered to the buoy at the surface, to keep the dive area marked."
+	icon = 'icons/misc/beach.dmi'
+	icon_state = "anchor"
+	id = "dive"
+	height = 1
+	light_range = 5
+
+/obj/structure/ladder/dive_point/Initialize(mapload)
+	. = ..()
+	set_light(light_range, light_power)		//magical glowing anchor
+
+/obj/structure/ladder/unbreakable/dive_point/update_icon()
+	return

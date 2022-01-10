@@ -27,10 +27,10 @@ Difficulty: Medium
 	maxHealth = 900
 	icon_state = "miner"
 	icon_living = "miner"
-	icon = 'icons/mob/broadMobs.dmi'
-	mob_biotypes = list(MOB_ORGANIC, MOB_HUMANOID)
+	icon = 'icons/mob/lavaland/blood_drunk.dmi'
+	mob_biotypes = MOB_ORGANIC | MOB_HUMANOID
 	light_color = "#E4C7C5"
-	movement_type = GROUND
+	flying = FALSE
 	speak_emote = list("roars")
 	speed = 3
 	move_to_delay = 3
@@ -38,34 +38,40 @@ Difficulty: Medium
 	projectilesound = 'sound/weapons/kenetic_accel.ogg'
 	ranged = TRUE
 	ranged_cooldown_time = 16
-	pixel_x = -16
-	crusher_loot = list(/obj/item/melee/transforming/cleaving_saw, /obj/item/gun/energy/kinetic_accelerator, /obj/item/crusher_trophy/miner_eye)
-	loot = list(/obj/item/melee/transforming/cleaving_saw, /obj/item/gun/energy/kinetic_accelerator)
+	pixel_x = -7
+	crusher_loot = list(/obj/item/melee/energy/cleaving_saw, /obj/item/gun/energy/kinetic_accelerator, /obj/item/crusher_trophy/miner_eye)
+	loot = list(/obj/item/melee/energy/cleaving_saw, /obj/item/gun/energy/kinetic_accelerator)
 	wander = FALSE
 	del_on_death = TRUE
 	blood_volume = BLOOD_VOLUME_NORMAL
-	gps_name = "Drunk Signal"
+	internal_type = /obj/item/gps/internal/miner
 	medal_type = BOSS_MEDAL_MINER
-	var/obj/item/melee/transforming/cleaving_saw/miner/miner_saw
+	var/obj/item/melee/energy/cleaving_saw/miner/miner_saw
 	var/time_until_next_transform = 0
 	var/dashing = FALSE
 	var/dash_cooldown = 15
 	var/guidance = FALSE
 	var/transform_stop_attack = FALSE // stops the blood drunk miner from attacking after transforming his weapon until the next attack chain
 	deathmessage = "falls to the ground, decaying into glowing particles."
-	deathsound = "bodyfall"
-	do_footstep = TRUE
+	death_sound = "bodyfall"
+	footstep_type = FOOTSTEP_MOB_HEAVY
 	attack_action_types = list(/datum/action/innate/megafauna_attack/dash,
 							   /datum/action/innate/megafauna_attack/kinetic_accelerator,
 							   /datum/action/innate/megafauna_attack/transform_weapon)
 
-/mob/living/simple_animal/hostile/megafauna/blood_drunk_miner/Initialize()
+/obj/item/gps/internal/miner
+	icon_state = null
+	gpstag = "Resonant Signal"
+	desc = "The sweet blood, oh, it sings to me."
+	invisibility = 100
+
+/mob/living/simple_animal/hostile/megafauna/blood_drunk_miner/Initialize(mapload)
 	. = ..()
 	miner_saw = new(src)
 
 /datum/action/innate/megafauna_attack/dash
 	name = "Dash To Target"
-	icon_icon = 'icons/mob/actions/actions_items.dmi'
+	icon_icon = 'icons/mob/actions/actions.dmi'
 	button_icon_state = "sniper_zoom"
 	chosen_message = "<span class='colossus'>You are now dashing to your target.</span>"
 	chosen_attack_num = 1
@@ -102,11 +108,11 @@ Difficulty: Medium
 		shoot_ka()
 	transform_weapon()
 
-/obj/item/melee/transforming/cleaving_saw/miner //nerfed saw because it is very murdery
+/obj/item/melee/energy/cleaving_saw/miner //nerfed saw because it is very murdery
 	force = 6
 	force_on = 10
 
-/obj/item/melee/transforming/cleaving_saw/miner/attack(mob/living/target, mob/living/carbon/human/user)
+/obj/item/melee/energy/cleaving_saw/miner/attack(mob/living/target, mob/living/carbon/human/user)
 	target.add_stun_absorption("miner", 10, INFINITY)
 	..()
 	target.stun_absorption -= "miner"
@@ -117,23 +123,24 @@ Difficulty: Medium
 	icon_state = "ka_tracer"
 	range = MINER_DASH_RANGE
 
-/mob/living/simple_animal/hostile/megafauna/blood_drunk_miner/adjustHealth(amount, updating_health = TRUE, forced = FALSE)
+/mob/living/simple_animal/hostile/megafauna/blood_drunk_miner/adjustHealth(amount, updating_health = TRUE)
 	var/adjustment_amount = amount * 0.1
 	if(world.time + adjustment_amount > next_move)
 		changeNext_move(adjustment_amount) //attacking it interrupts it attacking, but only briefly
 	. = ..()
 
 /mob/living/simple_animal/hostile/megafauna/blood_drunk_miner/death()
-	. = ..()
-	if(.)
-		new /obj/effect/temp_visual/dir_setting/miner_death(loc, dir)
+	if(health > 0)
+		return
+	new /obj/effect/temp_visual/dir_setting/miner_death(loc, dir)
+	return ..()
 
 /mob/living/simple_animal/hostile/megafauna/blood_drunk_miner/Move(atom/newloc)
 	if(dashing || (newloc && newloc.z == z && (islava(newloc) || ischasm(newloc)))) //we're not stupid!
 		return FALSE
 	return ..()
 
-/mob/living/simple_animal/hostile/megafauna/blood_drunk_miner/ex_act(severity, target)
+/mob/living/simple_animal/hostile/megafauna/blood_drunk_miner/ex_act(severity)
 	if(dash())
 		return
 	return ..()
@@ -198,7 +205,9 @@ Difficulty: Medium
 	var/turf/own_turf = get_turf(src)
 	if(!QDELETED(dash_target))
 		self_dist_to_target += get_dist(dash_target, own_turf)
-	for(var/turf/open/O in RANGE_TURFS(MINER_DASH_RANGE, own_turf))
+	for(var/turf/O in RANGE_TURFS(MINER_DASH_RANGE, own_turf))
+		if(O.density)
+			continue
 		var/turf_dist_to_target = 0
 		if(!QDELETED(dash_target))
 			turf_dist_to_target += get_dist(dash_target, O)

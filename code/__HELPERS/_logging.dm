@@ -1,322 +1,207 @@
-//wrapper macros for easier grepping
+// On Linux/Unix systems the line endings are LF, on windows it's CRLF, admins that don't use notepad++
+// will get logs that are one big line if the system is Linux and they are using notepad.  This solves it by adding CR to every line ending
+// in the logs.  ascii character 13 = CR
+
+GLOBAL_VAR_INIT(log_end, (world.system_type == UNIX ? ascii2text(13) : ""))
+GLOBAL_PROTECT(log_end)
+
 #define DIRECT_OUTPUT(A, B) A << B
-#define DIRECT_INPUT(A, B) A >> B
 #define SEND_IMAGE(target, image) DIRECT_OUTPUT(target, image)
 #define SEND_SOUND(target, sound) DIRECT_OUTPUT(target, sound)
 #define SEND_TEXT(target, text) DIRECT_OUTPUT(target, text)
 #define WRITE_FILE(file, text) DIRECT_OUTPUT(file, text)
-#define READ_FILE(file, text) DIRECT_INPUT(file, text)
-//This is an external call, "true" and "false" are how rust parses out booleans
-#define WRITE_LOG(log, text) rustg_log_write(log, text, "true")
-#define WRITE_LOG_NO_FORMAT(log, text) rustg_log_write(log, text, "false")
 
-/// print a warning message to world.log
-#define WARNING(MSG) warning("[MSG] in [__FILE__] at line [__LINE__] src: [UNLINT(src)] usr: [usr].")
+/proc/error(msg)
+	log_world("## ERROR: [msg]")
+
+//print a warning message to world.log
+#define WARNING(MSG) warning("[MSG] in [__FILE__] at line [__LINE__] src: [src] usr: [usr].")
 /proc/warning(msg)
-	msg = "## WARNING: [msg]"
-	log_world(msg)
+	log_world("## WARNING: [msg]")
 
-/// not an error or a warning, but worth to mention on the world log, just in case.
-#define NOTICE(MSG) notice(MSG)
-/proc/notice(msg)
-	msg = "## NOTICE: [msg]"
-	log_world(msg)
-
-/// print a testing-mode debug message to world.log and world
+//print a testing-mode debug message to world.log and world
 #ifdef TESTING
 #define testing(msg) log_world("## TESTING: [msg]"); to_chat(world, "## TESTING: [msg]")
 #else
 #define testing(msg)
 #endif
 
-#ifdef UNIT_TESTS
-/proc/log_test(text)
-	WRITE_LOG(GLOB.test_log, text)
-	SEND_TEXT(world.log, text)
-#endif
-
-
-/* Items with ADMINPRIVATE prefixed are stripped from public logs. */
 /proc/log_admin(text)
 	GLOB.admin_log.Add(text)
-	if (CONFIG_GET(flag/log_admin))
-		WRITE_LOG(GLOB.world_game_log, "ADMIN: [text]")
+	if(GLOB.configuration.logging.admin_logging)
+		rustg_log_write(GLOB.world_game_log, "ADMIN: [text][GLOB.log_end]")
 
-/proc/log_admin_private(text)
-	GLOB.admin_log.Add(text)
-	if (CONFIG_GET(flag/log_admin))
-		WRITE_LOG(GLOB.world_game_log, "ADMINPRIVATE: [text]")
+/proc/log_debug(text)
+	// This has presence checks as this may be called before GLOB has loaded
+	if(GLOB?.configuration?.logging.debug_logging)
+		rustg_log_write(GLOB.world_game_log, "DEBUG: [text][GLOB.log_end]")
 
-/proc/log_adminsay(text)
-	GLOB.admin_log.Add(text)
-	if (CONFIG_GET(flag/log_adminchat))
-		WRITE_LOG(GLOB.world_game_log, "ADMINPRIVATE: ASAY: [text]")
+	for(var/client/C in GLOB.admins)
+		if(check_rights(R_DEBUG, 0, C.mob) && (C.prefs.toggles & PREFTOGGLE_CHAT_DEBUGLOGS))
+			to_chat(C, "DEBUG: [text]")
 
-/proc/log_dsay(text)
-	if (CONFIG_GET(flag/log_adminchat))
-		WRITE_LOG(GLOB.world_game_log, "ADMIN: DSAY: [text]")
-
-
-/* All other items are public. */
 /proc/log_game(text)
-	if (CONFIG_GET(flag/log_game))
-		WRITE_LOG(GLOB.world_game_log, "GAME: [text]")
-
-/proc/log_objective(whom, objective, admin_involved)
-	if (CONFIG_GET(flag/log_objective))
-		WRITE_LOG(GLOB.world_objective_log, "OBJ: [key_name(whom)] was assigned the following objective [admin_involved ? "by [key_name(admin_involved)]" : "automatically"]: [objective]")
-
-/proc/log_mecha(text)
-	if (CONFIG_GET(flag/log_mecha))
-		WRITE_LOG(GLOB.world_mecha_log, "MECHA: [text]")
-
-/proc/log_virus(text)
-	if (CONFIG_GET(flag/log_virus))
-		WRITE_LOG(GLOB.world_virus_log, "VIRUS: [text]")
-
-/proc/log_cloning(text, mob/initiator)
-	if(CONFIG_GET(flag/log_cloning))
-		WRITE_LOG(GLOB.world_cloning_log, "CLONING: [text]")
-
-/proc/log_id(text)
-	if(CONFIG_GET(flag/log_id))
-		WRITE_LOG(GLOB.world_id_log, "ID: [text]")
-
-/proc/log_paper(text)
-	WRITE_LOG(GLOB.world_paper_log, "PAPER: [text]")
-
-/proc/log_asset(text)
-	WRITE_LOG(GLOB.world_asset_log, "ASSET: [text]")
-
-/proc/log_access(text)
-	if (CONFIG_GET(flag/log_access))
-		WRITE_LOG(GLOB.world_game_log, "ACCESS: [text]")
-
-/proc/log_law(text)
-	if (CONFIG_GET(flag/log_law))
-		WRITE_LOG(GLOB.world_game_log, "LAW: [text]")
-
-/proc/log_attack(text)
-	if (CONFIG_GET(flag/log_attack))
-		WRITE_LOG(GLOB.world_attack_log, "ATTACK: [text]")
-
-/proc/log_manifest(ckey, datum/mind/mind,mob/body, latejoin = FALSE)
-	if (CONFIG_GET(flag/log_manifest))
-		WRITE_LOG(GLOB.world_manifest_log, "[ckey] \\ [body.real_name] \\ [mind.assigned_role] \\ [mind.special_role ? mind.special_role : "NONE"] \\ [latejoin ? "LATEJOIN":"ROUNDSTART"]")
-
-/proc/log_bomber(atom/user, details, atom/bomb, additional_details, message_admins = TRUE)
-	var/bomb_message = "[details][bomb ? " [bomb.name] at [AREACOORD(bomb)]": ""][additional_details ? " [additional_details]" : ""]."
-
-	if(user)
-		user.log_message(bomb_message, LOG_GAME) //let it go to individual logs as well as the game log
-		bomb_message = "[key_name(user)] at [AREACOORD(user)] [bomb_message]"
-	else
-		log_game(bomb_message)
-
-	GLOB.bombers += bomb_message
-
-	if(message_admins)
-		message_admins("[user ? "[ADMIN_LOOKUPFLW(user)] at [ADMIN_VERBOSEJMP(user)] " : ""][details][bomb ? " [bomb.name] at [ADMIN_VERBOSEJMP(bomb)]": ""][additional_details ? " [additional_details]" : ""].")
-
-/proc/log_say(text)
-	if (CONFIG_GET(flag/log_say))
-		WRITE_LOG(GLOB.world_game_log, "SAY: [text]")
-
-/proc/log_ooc(text)
-	if (CONFIG_GET(flag/log_ooc))
-		WRITE_LOG(GLOB.world_game_log, "OOC: [text]")
-
-/proc/log_whisper(text)
-	if (CONFIG_GET(flag/log_whisper))
-		WRITE_LOG(GLOB.world_game_log, "WHISPER: [text]")
-
-/proc/log_emote(text)
-	if (CONFIG_GET(flag/log_emote))
-		WRITE_LOG(GLOB.world_game_log, "EMOTE: [text]")
-
-/proc/log_prayer(text)
-	if (CONFIG_GET(flag/log_prayer))
-		WRITE_LOG(GLOB.world_game_log, "PRAY: [text]")
-
-/proc/log_pda(text)
-	if (CONFIG_GET(flag/log_pda))
-		WRITE_LOG(GLOB.world_pda_log, "PDA: [text]")
-
-/proc/log_comment(text)
-	if (CONFIG_GET(flag/log_pda))
-		//reusing the PDA option because I really don't think news comments are worth a config option
-		WRITE_LOG(GLOB.world_pda_log, "COMMENT: [text]")
-
-/proc/log_telecomms(text)
-	if (CONFIG_GET(flag/log_telecomms))
-		WRITE_LOG(GLOB.world_telecomms_log, "TCOMMS: [text]")
-
-/proc/log_chat(text)
-	if (CONFIG_GET(flag/log_pda))
-		//same thing here
-		WRITE_LOG(GLOB.world_pda_log, "CHAT: [text]")
+	if(GLOB.configuration.logging.game_logging)
+		rustg_log_write(GLOB.world_game_log, "GAME: [text][GLOB.log_end]")
 
 /proc/log_vote(text)
-	if (CONFIG_GET(flag/log_vote))
-		WRITE_LOG(GLOB.world_game_log, "VOTE: [text]")
+	if(GLOB.configuration.logging.vote_logging)
+		rustg_log_write(GLOB.world_game_log, "VOTE: [text][GLOB.log_end]")
 
+/proc/log_access_in(client/new_client)
+	if(GLOB.configuration.logging.access_logging)
+		var/message = "[key_name(new_client)] - IP:[new_client.address] - CID:[new_client.computer_id] - BYOND v[new_client.byond_version].[new_client.byond_build]"
+		rustg_log_write(GLOB.world_game_log, "ACCESS IN: [message][GLOB.log_end]")
 
-/proc/log_topic(text)
-	WRITE_LOG(GLOB.world_game_log, "TOPIC: [text]")
+/proc/log_access_out(mob/last_mob)
+	if(GLOB.configuration.logging.access_logging)
+		var/message = "[key_name(last_mob)] - IP:[last_mob.lastKnownIP] - CID:[last_mob.computer_id] - BYOND Logged Out"
+		rustg_log_write(GLOB.world_game_log, "ACCESS OUT: [message][GLOB.log_end]")
 
-/proc/log_href(text)
-	WRITE_LOG(GLOB.world_href_log, "HREF: [text]")
+/proc/log_say(text, mob/speaker)
+	if(GLOB.configuration.logging.say_logging)
+		rustg_log_write(GLOB.world_game_log, "SAY: [speaker.simple_info_line()]: [html_decode(text)][GLOB.log_end]")
 
-/proc/log_sql(text)
-	WRITE_LOG(GLOB.sql_error_log, "SQL: [text]")
+/proc/log_whisper(text, mob/speaker)
+	if(GLOB.configuration.logging.whisper_logging)
+		rustg_log_write(GLOB.world_game_log, "WHISPER: [speaker.simple_info_line()]: [html_decode(text)][GLOB.log_end]")
+
+/proc/log_ooc(text, client/user)
+	if(GLOB.configuration.logging.ooc_logging)
+		rustg_log_write(GLOB.world_game_log, "OOC: [user.simple_info_line()]: [html_decode(text)][GLOB.log_end]")
+
+/proc/log_aooc(text, client/user)
+	if(GLOB.configuration.logging.ooc_logging)
+		rustg_log_write(GLOB.world_game_log, "AOOC: [user.simple_info_line()]: [html_decode(text)][GLOB.log_end]")
+
+/proc/log_looc(text, client/user)
+	if(GLOB.configuration.logging.ooc_logging)
+		rustg_log_write(GLOB.world_game_log, "LOOC: [user.simple_info_line()]: [html_decode(text)][GLOB.log_end]")
+
+/proc/log_emote(text, mob/speaker)
+	if(GLOB.configuration.logging.emote_logging)
+		rustg_log_write(GLOB.world_game_log, "EMOTE: [speaker.simple_info_line()]: [html_decode(text)][GLOB.log_end]")
+
+/proc/log_attack(attacker, defender, message)
+	if(GLOB.configuration.logging.attack_logging)
+		rustg_log_write(GLOB.world_game_log, "ATTACK: [attacker] against [defender]: [message][GLOB.log_end]") //Seperate attack logs? Why?
+
+/proc/log_adminsay(text, mob/speaker)
+	if(GLOB.configuration.logging.adminchat_logging)
+		rustg_log_write(GLOB.world_game_log, "ADMINSAY: [speaker.simple_info_line()]: [html_decode(text)][GLOB.log_end]")
 
 /proc/log_qdel(text)
-	WRITE_LOG(GLOB.world_qdel_log, "QDEL: [text]")
+	rustg_log_write(GLOB.world_qdel_log, "QDEL: [text][GLOB.log_end]")
 
-/proc/log_query_debug(text)
-	WRITE_LOG(GLOB.query_debug_log, "SQL: [text]")
+/proc/log_mentorsay(text, mob/speaker)
+	if(GLOB.configuration.logging.adminchat_logging)
+		rustg_log_write(GLOB.world_game_log, "MENTORSAY: [speaker.simple_info_line()]: [html_decode(text)][GLOB.log_end]")
 
-/proc/log_job_debug(text)
-	if (CONFIG_GET(flag/log_job_debug))
-		WRITE_LOG(GLOB.world_job_debug_log, "JOB: [text]")
+/proc/log_ghostsay(text, mob/speaker)
+	if(GLOB.configuration.logging.say_logging)
+		rustg_log_write(GLOB.world_game_log, "DEADCHAT: [speaker.simple_info_line()]: [html_decode(text)][GLOB.log_end]")
 
-/proc/log_href_exploit(atom/user)
-	WRITE_LOG(GLOB.href_exploit_attempt_log, "HREF: [key_name(user)] has potentially attempted an href exploit.")
-	message_admins("[key_name_admin(user)] has potentially attempted an href exploit.")
+/proc/log_ghostemote(text, mob/speaker)
+	if(GLOB.configuration.logging.emote_logging)
+		rustg_log_write(GLOB.world_game_log, "DEADEMOTE: [speaker.simple_info_line()]: [html_decode(text)][GLOB.log_end]")
 
-/* Log to both DD and the logfile. */
+/proc/log_adminwarn(text)
+	if(GLOB.configuration.logging.admin_warning_logging)
+		rustg_log_write(GLOB.world_game_log, "ADMINWARN: [html_decode(text)][GLOB.log_end]")
+
+/proc/log_pda(text, mob/speaker)
+	if(GLOB.configuration.logging.pda_logging)
+		rustg_log_write(GLOB.world_game_log, "PDA: [speaker.simple_info_line()]: [html_decode(text)][GLOB.log_end]")
+
+/proc/log_chat(text, mob/speaker)
+	if(GLOB.configuration.logging.pda_logging)
+		rustg_log_write(GLOB.world_game_log, "CHAT: [speaker.simple_info_line()] [html_decode(text)][GLOB.log_end]")
+
+/proc/log_misc(text)
+	rustg_log_write(GLOB.world_game_log, "MISC: [text][GLOB.log_end]")
+
 /proc/log_world(text)
-#ifdef USE_CUSTOM_ERROR_HANDLER
-	WRITE_LOG(GLOB.world_runtime_log, text)
-#endif
 	SEND_TEXT(world.log, text)
+	// This has to be presence checked as log_world() is used before world/New().
+	if(GLOB?.configuration?.logging.world_logging)
+		rustg_log_write(GLOB.world_game_log, "WORLD: [html_decode(text)][GLOB.log_end]")
 
-/* Log to the logfile only. */
-/proc/log_runtime(text)
-	WRITE_LOG(GLOB.world_runtime_log, text)
+/proc/log_runtime_txt(text) // different from /tg/'s log_runtime because our error handler has a log_runtime proc already that does other stuff
+	rustg_log_write(GLOB.world_runtime_log, "[text][GLOB.log_end]")
 
-/* Rarely gets called; just here in case the config breaks. */
 /proc/log_config(text)
-	WRITE_LOG(GLOB.config_error_log, text)
+	rustg_log_write(GLOB.config_error_log, "[text][GLOB.log_end]")
 	SEND_TEXT(world.log, text)
 
-/proc/log_mapping(text)
-	WRITE_LOG(GLOB.world_map_error_log, text)
+/proc/log_href(text)
+	rustg_log_write(GLOB.world_href_log, "HREF: [html_decode(text)][GLOB.log_end]")
 
-/* ui logging */
-/proc/log_tgui(user_or_client, text)
-	var/entry = ""
-	if(!user_or_client)
-		entry += "no user"
-	else if(istype(user_or_client, /mob))
-		var/mob/user = user_or_client
-		entry += "[user.ckey] (as [user])"
-	else if(istype(user_or_client, /client))
-		var/client/client = user_or_client
-		entry += "[client.ckey]"
-	entry += ":\n[text]"
-	WRITE_LOG(GLOB.tgui_log, entry)
+/proc/log_runtime_summary(text)
+	rustg_log_write(GLOB.runtime_summary_log, "[text][GLOB.log_end]")
+
+/proc/log_tgui(text)
+	rustg_log_write(GLOB.tgui_log, "[text][GLOB.log_end]")
+
+/proc/log_karma(text)
+	rustg_log_write(GLOB.karma_log, "[text][GLOB.log_end]")
+
+#ifdef REFERENCE_TRACKING
+/proc/log_gc(text)
+	rustg_log_write(GLOB.gc_log, "[text][GLOB.log_end]")
+	for(var/client/C in GLOB.admins)
+		if(check_rights(R_DEBUG, FALSE, C.mob) && (C.prefs.toggles & PREFTOGGLE_CHAT_DEBUGLOGS))
+			to_chat(C, "GC DEBUG: [text]")
+#endif
+
+/proc/log_sql(text)
+	rustg_log_write(GLOB.sql_log, "[text][GLOB.log_end]")
+	SEND_TEXT(world.log, text) // Redirect it to DD too
+
+/proc/log_chat_debug(text)
+	rustg_log_write(GLOB.chat_debug_log, "[text][GLOB.log_end]")
+
+// A logging proc that only outputs after setup is done, to
+// help devs test initialization stuff that happens a lot
+/proc/log_after_setup(message)
+	if(SSticker && SSticker.current_state > GAME_STATE_SETTING_UP)
+		to_chat(world, "<span class='danger'>[message]</span>")
+		log_world(message)
 
 /* For logging round startup. */
 /proc/start_log(log)
-	WRITE_LOG(log, "Starting up round ID [GLOB.round_id].\n-------------------------")
+	rustg_log_write(log, "Starting up. Round ID is [GLOB.round_id ? GLOB.round_id : "NULL"]\n-------------------------[GLOB.log_end]")
 
-/* Close open log handles. This should be called as late as possible, and no logging should hapen after. */
-/proc/shutdown_logging()
-	rustg_log_close_all()
+// Helper procs for building detailed log lines
 
-/* Helper procs for building detailed log lines */
-/proc/key_name(whom, include_link = null, include_name = TRUE)
-	var/mob/M
-	var/client/C
-	var/key
-	var/ckey
-	var/fallback_name
+/proc/datum_info_line(datum/d)
+	if(!istype(d))
+		return
+	if(!istype(d, /mob))
+		return "[d] ([d.type])"
+	var/mob/m = d
+	return "[m] ([m.ckey]) ([m.type])"
 
-	if(!whom)
-		return "*null*"
-	if(istype(whom, /client))
-		C = whom
-		M = C.mob
-		key = C.key
-		ckey = C.ckey
-	else if(ismob(whom))
-		M = whom
-		C = M.client
-		key = M.key
-		ckey = M.ckey
-	else if(istext(whom))
-		key = whom
-		ckey = ckey(whom)
-		C = GLOB.directory[ckey]
-		if(C)
-			M = C.mob
-	else if(istype(whom,/datum/mind))
-		var/datum/mind/mind = whom
-		key = mind.key
-		ckey = ckey(key)
-		if(mind.current)
-			M = mind.current
-			if(M.client)
-				C = M.client
-		else
-			fallback_name = mind.name
-	else // Catch-all cases if none of the types above match
-		var/swhom = null
+/proc/atom_loc_line(atom/a)
+	if(!istype(a))
+		return
+	var/turf/t = get_turf(a)
+	if(istype(t))
+		return "[a.loc] ([t.x],[t.y],[t.z]) ([a.loc.type])"
+	else if(a.loc)
+		return "[a.loc] (0,0,0) ([a.loc.type])"
 
-		if(istype(whom, /atom))
-			var/atom/A = whom
-			swhom = "[A.name]"
-		else if(istype(whom, /datum))
-			swhom = "[whom]"
+/mob/proc/simple_info_line()
+	return "[key_name(src)] ([x],[y],[z])"
 
-		if(!swhom)
-			swhom = "*invalid*"
-
-		return "\[[swhom]\]"
-
-	. = ""
-
-	if(!ckey)
-		include_link = FALSE
-
-	if(key)
-		if(C?.holder?.fakekey && !include_name)
-			if(include_link)
-				. += "<a href='?priv_msg=[C.findStealthKey()]'>"
-			. += "Administrator"
-		else
-			if(include_link)
-				. += "<a href='?priv_msg=[ckey]'>"
-			. += key
-		if(!C)
-			. += "\[DC\]"
-
-		if(include_link)
-			. += "</a>"
-	else
-		. += "*no key*"
-
-	if(include_name)
-		if(M)
-			if(M.real_name)
-				. += "/([M.real_name])"
-			else if(M.name)
-				. += "/([M.name])"
-		else if(fallback_name)
-			. += "/([fallback_name])"
-
-	return .
-
-/proc/key_name_admin(whom, include_name = TRUE)
-	return key_name(whom, TRUE, include_name)
+/client/proc/simple_info_line()
+	return "[key_name(src)] ([mob.x],[mob.y],[mob.z])"
 
 /proc/loc_name(atom/A)
 	if(!istype(A))
 		return "(INVALID LOCATION)"
 
 	var/turf/T = A
-	if (!istype(T))
+	if(!istype(T))
 		T = get_turf(A)
 
 	if(istype(T))

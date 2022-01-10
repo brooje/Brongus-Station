@@ -1,37 +1,51 @@
-/datum/round_event_control/abductor
-	name = "Abductors"
-	typepath = /datum/round_event/ghost_role/abductor
-	weight = 12
-	max_occurrences = 1
-	min_players = 20
-	earliest_start = 8 MINUTES //not particularly dangerous, gives abductors time to do their objective
-	dynamic_should_hijack = TRUE
-	gamemode_blacklist = list("nuclear","wizard","revolution")
+/datum/event/abductor
 
-/datum/round_event/ghost_role/abductor
-	minimum_required = 2
-	role_name = "abductor team"
-	fakeable = FALSE //Nothing to fake here
+/datum/event/abductor/start()
+	INVOKE_ASYNC(src, .proc/try_makeAbductorTeam)
 
-/datum/round_event/ghost_role/abductor/spawn_role()
-	var/list/mob/dead/observer/candidates = get_candidates(ROLE_ABDUCTOR, null, ROLE_ABDUCTOR)
+/datum/event/abductor/proc/try_makeAbductorTeam()
+	if(!makeAbductorTeam())
+		message_admins("Abductor event failed to find players. Retrying in 30s.")
+		addtimer(CALLBACK(src, .proc/makeAbductorTeam), 30 SECONDS)
 
-	if(candidates.len < 2)
-		return NOT_ENOUGH_PLAYERS
+/datum/event/abductor/proc/makeAbductorTeam()
+	var/list/mob/dead/observer/candidates = SSghost_spawns.poll_candidates("Do you wish to be considered for an Abductor Team?", ROLE_ABDUCTOR, TRUE)
 
-	var/mob/living/carbon/human/agent = makeBody(pick_n_take(candidates))
-	var/mob/living/carbon/human/scientist = makeBody(pick_n_take(candidates))
+	if(candidates.len >= 2)
+		//Oh god why we can't have static functions
+		var/number =  SSticker.mode.abductor_teams + 1
 
-	var/datum/team/abductor_team/T = new
-	if(T.team_number > ABDUCTOR_MAX_TEAMS)
-		return MAP_ERROR
+		var/datum/game_mode/abduction/temp
+		if(SSticker.mode.config_tag == "abduction")
+			temp = SSticker.mode
+		else
+			temp = new
 
-	log_game("[key_name(scientist)] has been selected as [T.name] abductor scientist.")
-	log_game("[key_name(agent)] has been selected as [T.name] abductor agent.")
+		var/agent_mind = pick(candidates)
+		candidates -= agent_mind
+		var/scientist_mind = pick(candidates)
 
-	scientist.mind.add_antag_datum(/datum/antagonist/abductor/scientist, T)
-	agent.mind.add_antag_datum(/datum/antagonist/abductor/agent, T)
+		var/mob/living/carbon/human/agent=makeBody(agent_mind)
+		var/mob/living/carbon/human/scientist=makeBody(scientist_mind)
 
-	spawned_mobs += list(agent, scientist)
+		agent_mind = agent.mind
+		scientist_mind = scientist.mind
 
-	return SUCCESSFUL_SPAWN
+		temp.scientists.len = number
+		temp.agents.len = number
+		temp.abductors.len = 2*number
+		temp.team_objectives.len = number
+		temp.team_names.len = number
+		temp.scientists[number] = scientist_mind
+		temp.agents[number] = agent_mind
+		temp.abductors |= list(agent_mind,scientist_mind)
+		temp.make_abductor_team(number,preset_scientist=scientist_mind,preset_agent=agent_mind)
+		temp.post_setup_team(number)
+
+		SSticker.mode.abductor_teams++
+
+		if(SSticker.mode.config_tag != "abduction")
+			SSticker.mode.abductors |= temp.abductors
+		return 1
+	else
+		return 0

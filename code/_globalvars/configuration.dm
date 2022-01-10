@@ -1,36 +1,30 @@
-GLOBAL_REAL(config, /datum/controller/configuration)
+/// Join MOTD for the server
+GLOBAL_VAR(join_motd)
+GLOBAL_PROTECT(join_motd) // Takes up a lot of space in VV
+/// Join TOS for the server
+GLOBAL_VAR(join_tos)
+GLOBAL_PROTECT(join_tos) // Takes up a lot of space. Also dont touch this shit
 
-GLOBAL_DATUM(revdata, /datum/getrev)
+/// The current game year
+GLOBAL_VAR_INIT(game_year, (text2num(time2text(world.realtime, "YYYY")) + 544))
 
-GLOBAL_VAR(host)
-GLOBAL_VAR(station_name)
-GLOBAL_VAR_INIT(game_version, "BeeStation 13")
-GLOBAL_VAR_INIT(changelog_hash, "")
-GLOBAL_VAR_INIT(hub_visibility, FALSE)
-
-GLOBAL_VAR_INIT(ooc_allowed, TRUE)	//! used with admin verbs to disable ooc - not a config option apparently
-GLOBAL_VAR_INIT(dooc_allowed, TRUE)
+/// Allow new players to enter the game?
 GLOBAL_VAR_INIT(enter_allowed, TRUE)
-GLOBAL_VAR_INIT(shuttle_frozen, FALSE)
-GLOBAL_VAR_INIT(shuttle_left, FALSE)
-GLOBAL_VAR_INIT(tinted_weldhelh, TRUE)
 
+/// Is OOC currently enabled?
+GLOBAL_VAR_INIT(ooc_enabled, TRUE)
 
-// Debug is used exactly once (in living.dm) but is commented out in a lot of places.  It is not set anywhere and only checked.
-// Debug2 is used in conjunction with a lot of admin verbs and therefore is actually legit.
-GLOBAL_VAR_INIT(Debug, FALSE)	// global debug switch
-GLOBAL_VAR_INIT(Debug2, FALSE)
+/// Is LOOC currently enabled?
+GLOBAL_VAR_INIT(looc_enabled, TRUE)
 
-//This was a define, but I changed it to a variable so it can be changed in-game.(kept the all-caps definition because... code...) -Errorage
-//Protecting these because the proper way to edit them is with the config/secrets
-GLOBAL_VAR_INIT(MAX_EX_DEVESTATION_RANGE, 3)
-GLOBAL_PROTECT(MAX_EX_DEVESTATION_RANGE)
-GLOBAL_VAR_INIT(MAX_EX_HEAVY_RANGE, 7)
-GLOBAL_PROTECT(MAX_EX_HEAVY_RANGE)
-GLOBAL_VAR_INIT(MAX_EX_LIGHT_RANGE, 14)
-GLOBAL_PROTECT(MAX_EX_LIGHT_RANGE)
-GLOBAL_VAR_INIT(MAX_EX_FLASH_RANGE, 14)
-GLOBAL_PROTECT(MAX_EX_FLASH_RANGE)
-GLOBAL_VAR_INIT(MAX_EX_FLAME_RANGE, 14)
-GLOBAL_PROTECT(MAX_EX_FLAME_RANGE)
-GLOBAL_VAR_INIT(DYN_EX_SCALE, 0.5)
+/// Is OOC currently enabled for dead people?
+GLOBAL_VAR_INIT(dooc_enabled, TRUE)
+
+/// Is deadchat currently enabled?
+GLOBAL_VAR_INIT(dsay_enabled, TRUE)
+
+/// Amount of time (in minutes) that must pass between a player dying as a mouse and repawning as a mouse
+GLOBAL_VAR_INIT(mouse_respawn_time, 5)
+
+/// Enable debugging of things such as job starts and other things
+GLOBAL_VAR_INIT(debug2, TRUE)

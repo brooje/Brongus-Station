@@ -1,185 +1,166 @@
-#define PRINTER_TIMEOUT 40
+GLOBAL_LIST_EMPTY(doppler_arrays)
 
 /obj/machinery/doppler_array
 	name = "tachyon-doppler array"
-	desc = "A highly precise directional sensor array which measures the release of quants from decaying tachyons. The doppler shifting of the mirror-image formed by these quants can reveal the size, location and temporal affects of energetic disturbances within a large radius ahead of the array.\n"
+	desc = "A highly precise directional sensor array which measures the release of quants from decaying tachyons. The doppler shifting of the mirror-image formed by these quants can reveal the size, location and temporal affects of energetic disturbances within a large radius ahead of the array."
 	icon = 'icons/obj/machines/research.dmi'
 	icon_state = "tdoppler"
-	density = TRUE
-	verb_say = "states coldly"
-	var/cooldown = 10
-	var/next_announce = 0
-	var/integrated = FALSE
-	var/max_dist = 150
-	/// Number which will be part of the name of the next record, increased by one for each already created record
-	var/record_number = 1
-	/// Cooldown for the print function
-	var/printer_ready = 0
-	/// List of all explosion records in the form of /datum/data/tachyon_record
-	var/list/records = list()
+	density = 1
+	anchored = 1
+	atom_say_verb = "states coldly"
+	var/list/logged_explosions = list()
+	var/explosion_target
+	var/datum/tech/toxins/toxins_tech
+	var/max_toxins_tech = 7
 
-/obj/machinery/doppler_array/Initialize()
-	. = ..()
-	RegisterSignal(SSdcs, COMSIG_GLOB_EXPLOSION, .proc/sense_explosion)
-	printer_ready = world.time + PRINTER_TIMEOUT
+/datum/explosion_log
+	var/logged_time
+	var/epicenter
+	var/actual_size_message
+	var/theoretical_size_message
 
-/obj/machinery/doppler_array/ComponentInitialize()
-	. = ..()
-	AddComponent(/datum/component/simple_rotation,ROTATION_ALTCLICK | ROTATION_CLOCKWISE,null,null,CALLBACK(src,.proc/rot_message))
+/datum/explosion_log/New(log_time, log_epicenter, log_actual_size_message, log_theoretical_size_message)
+	..()
+	logged_time = log_time
+	epicenter = log_epicenter
+	actual_size_message = log_actual_size_message
+	theoretical_size_message = log_theoretical_size_message
 
-/datum/data/tachyon_record
-	name = "Log Recording"
-	var/timestamp
-	var/coordinates = ""
-	var/displacement = 0
-	var/factual_radius = list()
-	var/theory_radius = list()
+/obj/machinery/doppler_array/New()
+	..()
+	GLOB.doppler_arrays += src
+	explosion_target = rand(8, 20)
+	toxins_tech = new /datum/tech/toxins(src)
 
-
-/obj/machinery/doppler_array/ui_state(mob/user)
-	return GLOB.default_state
-
-/obj/machinery/doppler_array/ui_interact(mob/user, datum/tgui/ui)
-	ui = SStgui.try_update_ui(user, src, ui)
-	if(!ui)
-		ui = new(user, src, "TachyonArray")
-		ui.open()
-
-/obj/machinery/doppler_array/ui_data(mob/user)
-	var/list/data = list()
-	data["records"] = list()
-	for(var/datum/data/tachyon_record/R in records)
-		var/list/record_data = list(
-			name = R.name,
-			timestamp = R.timestamp,
-			coordinates = R.coordinates,
-			displacement = R.displacement,
-			factual_epicenter_radius = R.factual_radius["epicenter_radius"],
-			factual_outer_radius = R.factual_radius["outer_radius"],
-			factual_shockwave_radius = R.factual_radius["shockwave_radius"],
-			theory_epicenter_radius = R.theory_radius["epicenter_radius"],
-			theory_outer_radius = R.theory_radius["outer_radius"],
-			theory_shockwave_radius = R.theory_radius["shockwave_radius"],
-			ref = REF(R)
-		)
-		data["records"] += list(record_data)
-	return data
-
-/obj/machinery/doppler_array/ui_act(action, list/params)
-	if(..())
-		return
-
-	switch(action)
-		if("delete_record")
-			var/datum/data/tachyon_record/record = locate(params["ref"]) in records
-			if(!records || !(record in records))
-				return
-			records -= record
-			return TRUE
-		if("print_record")
-			var/datum/data/tachyon_record/record  = locate(params["ref"]) in records
-			if(!records || !(record in records))
-				return
-			print(usr, record)
-			return TRUE
-
-/obj/machinery/doppler_array/proc/print(mob/user, datum/data/tachyon_record/record)
-	if(!record)
-		return
-	if(printer_ready < world.time)
-		printer_ready = world.time + PRINTER_TIMEOUT
-		new /obj/item/paper/record_printout(loc, record)
-	else if(user)
-		to_chat(user, "<span class='warning'>[src] is busy right now.</span>")
-
-/obj/item/paper/record_printout
-	name = "paper - Log Recording"
-
-/obj/item/paper/record_printout/Initialize(mapload, datum/data/tachyon_record/record)
-	. = ..()
-
-	if(record)
-		name = "paper - [record.name]"
-
-		info += {"<h2>[record.name]</h2>
-		<ul><li>Timestamp: [record.timestamp]</li>
-		<li>Coordinates: [record.coordinates]</li>
-		<li>Displacement: [record.displacement] seconds</li>
-		<li>Epicenter Radius: [record.factual_radius["epicenter_radius"]]</li>
-		<li>Outer Radius: [record.factual_radius["outer_radius"]]</li>
-		<li>Shockwave Radius: [record.factual_radius["shockwave_radius"]]</li></ul>"}
-
-		if(length(record.theory_radius))
-			info += {"<ul><li>Theoretical Epicenter Radius: [record.theory_radius["epicenter_radius"]]</li>
-			<li>Theoretical Outer Radius: [record.theory_radius["outer_radius"]]</li>
-			<li>Theoretical Shockwave Radius: [record.theory_radius["shockwave_radius"]]</li></ul>"}
-
-		update_icon()
+/obj/machinery/doppler_array/Destroy()
+	GLOB.doppler_arrays -= src
+	logged_explosions.Cut()
+	return ..()
 
 /obj/machinery/doppler_array/attackby(obj/item/I, mob/user, params)
-	if(I.tool_behaviour == TOOL_WRENCH)
-		if(!anchored && !isinspace())
-			anchored = TRUE
-			power_change()
-			to_chat(user, "<span class='notice'>You fasten [src].</span>")
-		else if(anchored)
-			anchored = FALSE
-			power_change()
-			to_chat(user, "<span class='notice'>You unfasten [src].</span>")
-		I.play_tool_sound(src)
+	if(istype(I, /obj/item/disk/tech_disk))
+		var/obj/item/disk/tech_disk/disk = I
+		disk.load_tech(toxins_tech)
+		to_chat(user, "<span class='notice'>You swipe the disk into [src].</span>")
 		return
 	return ..()
 
-/obj/machinery/doppler_array/proc/rot_message(mob/user)
-	to_chat(user, "<span class='notice'>You adjust [src]'s dish to face to the [dir2text(dir)].</span>")
-	playsound(src, 'sound/items/screwdriver2.ogg', 50, 1)
+/obj/machinery/doppler_array/wrench_act(mob/user, obj/item/I)
+	. = TRUE
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
+		return
+	if(!anchored && !isinspace())
+		anchored = TRUE
+		WRENCH_ANCHOR_MESSAGE
+	else if(anchored)
+		anchored = FALSE
+		WRENCH_UNANCHOR_MESSAGE
+	power_change()
 
-/obj/machinery/doppler_array/proc/sense_explosion(datum/source,turf/epicenter,devastation_range,heavy_impact_range,light_impact_range,
-												  took,orig_dev_range,orig_heavy_range,orig_light_range)
+/obj/machinery/doppler_array/attack_hand(mob/user)
+	if(..())
+		return
+	add_fingerprint(user)
+	ui_interact(user)
+
+/obj/machinery/doppler_array/attack_ghost(mob/user)
+	ui_interact(user)
+
+/obj/machinery/doppler_array/AltClick(mob/user)
+	rotate(user)
+
+/obj/machinery/doppler_array/verb/rotate(mob/user)
+	set name = "Rotate Tachyon-doppler Dish"
+	set category = "Object"
+	set src in oview(1)
+
+	if(user.incapacitated())
+		return
+	if(!Adjacent(user))
+		return
+	if(!user.IsAdvancedToolUser())
+		to_chat(user, "<span class='warning'>You don't have the dexterity to do that!</span>")
+		return
+	dir = turn(dir, 90)
+	to_chat(user, "<span class='notice'>You rotate [src].</span>")
+
+/obj/machinery/doppler_array/proc/print_explosive_logs(mob/user)
+	if(!logged_explosions.len)
+		atom_say("No logs currently stored in internal database.")
+		return
+	if(active_timers)
+		to_chat(user, "<span class='notice'>[src] is already printing something, please wait.</span>")
+		return
+	atom_say("Printing explosive log. Standby...")
+	addtimer(CALLBACK(src, .proc/print), 50)
+
+/obj/machinery/doppler_array/proc/print()
+	visible_message("<span class='notice'>[src] prints a piece of paper!</span>")
+	playsound(loc, 'sound/goonstation/machines/printer_dotmatrix.ogg', 50, 1)
+	var/obj/item/paper/explosive_log/P = new(get_turf(src))
+	for(var/D in logged_explosions)
+		var/datum/explosion_log/E = D
+		P.info += "<tr>\
+		<td>[E.logged_time]</td>\
+		<td>[E.epicenter]</td>\
+		<td>[E.actual_size_message]</td>\
+		<td>[E.theoretical_size_message]</td>\
+		</tr>"
+	P.info += "</table><hr/>\
+	<em>Printed at [station_time_timestamp()].</em>"
+
+/obj/machinery/doppler_array/proc/sense_explosion(var/x0,var/y0,var/z0,var/devastation_range,var/heavy_impact_range,var/light_impact_range,
+												  var/took,var/orig_dev_range,var/orig_heavy_range,var/orig_light_range)
 	if(stat & NOPOWER)
-		return FALSE
-	var/turf/zone = get_turf(src)
-	if(zone.z != epicenter.z)
-		return FALSE
+		return
+	if(z != z0)
+		return
 
-	if(next_announce > world.time)
-		return FALSE
-	next_announce = world.time + cooldown
+	var/dx = abs(x0-x)
+	var/dy = abs(y0-y)
+	var/distance
+	var/direct
+	var/capped = FALSE
 
-	var/distance = get_dist(epicenter, zone)
-	var/direct = get_dir(zone, epicenter)
+	if(dx > dy)
+		distance = dx
+		if(x0 > x)
+			direct = EAST
+		else
+			direct = WEST
+	else
+		distance = dy
+		if(y0 > y)
+			direct = NORTH
+		else
+			direct = SOUTH
 
-	if(distance > max_dist)
-		return FALSE
-	if(!(direct & dir) && !integrated)
-		return FALSE
+	if(distance > 100)
+		return
+	if(!(direct & dir))
+		return
 
-	var/datum/data/tachyon_record/R = new /datum/data/tachyon_record()
-	R.name = "Log Recording #[record_number]"
-	R.timestamp = station_time_timestamp()
-	R.coordinates = "[epicenter.x], [epicenter.y]"
-	R.displacement = took
-	R.factual_radius["epicenter_radius"] = devastation_range
-	R.factual_radius["outer_radius"] = heavy_impact_range
-	R.factual_radius["shockwave_radius"] = light_impact_range
-
-	var/list/messages = list("Explosive disturbance detected.",
-							 "Epicenter at: grid ([epicenter.x], [epicenter.y]). Temporal displacement of tachyons: [took] seconds.",
-							 "Factual: Epicenter radius: [devastation_range]. Outer radius: [heavy_impact_range]. Shockwave radius: [light_impact_range].")
+	var/list/messages = list("Explosive disturbance detected.", \
+							 "Epicenter at: grid ([x0],[y0]). Temporal displacement of tachyons: [took] seconds.", \
+							 "Actual: Epicenter radius: [devastation_range]. Outer radius: [heavy_impact_range]. Shockwave radius: [light_impact_range].")
 
 	// If the bomb was capped, say its theoretical size.
 	if(devastation_range < orig_dev_range || heavy_impact_range < orig_heavy_range || light_impact_range < orig_light_range)
+		capped = TRUE
 		messages += "Theoretical: Epicenter radius: [orig_dev_range]. Outer radius: [orig_heavy_range]. Shockwave radius: [orig_light_range]."
-		R.theory_radius["epicenter_radius"] = orig_dev_range
-		R.theory_radius["outer_radius"] = orig_heavy_range
-		R.theory_radius["shockwave_radius"] = orig_light_range
-
+	logged_explosions.Insert(1, new /datum/explosion_log(station_time_timestamp(), "[x0],[y0]", "[devastation_range], [heavy_impact_range], [light_impact_range]", capped ? "[orig_dev_range], [orig_heavy_range], [orig_light_range]" : "n/a")) //Newer logs appear first
+	messages += "Event successfully logged in internal database."
+	var/miss_by = abs(explosion_target - orig_light_range)
+	var/tmp_tech = max_toxins_tech - miss_by
+	if(!miss_by)
+		messages += "Explosion size matches target."
+	else
+		messages += "Target ([explosion_target]) missed by : [miss_by]."
+	if(tmp_tech > toxins_tech.level)
+		toxins_tech.level = tmp_tech
+		messages += "Toxins technology level upgraded to [toxins_tech.level]. Swipe a technology disk to save data."
 	for(var/message in messages)
-		say(message)
-
-	record_number++
-	records += R
-	return TRUE
+		atom_say(message)
 
 /obj/machinery/doppler_array/power_change()
 	if(stat & BROKEN)
@@ -192,60 +173,58 @@
 			icon_state = "[initial(icon_state)]-off"
 			stat |= NOPOWER
 
-//Portable version, built into EOD equipment. It simply provides an explosion's three damage levels.
-/obj/machinery/doppler_array/integrated
-	name = "integrated tachyon-doppler module"
-	integrated = TRUE
-	max_dist = 21 //Should detect most explosions in hearing range.
-	use_power = NO_POWER_USE
+/obj/machinery/doppler_array/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
+	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+	if(!ui)
+		ui = new(user, src, ui_key, "TachyonArray", name, 500, 600, master_ui, state)
+		ui.open()
 
-/obj/machinery/doppler_array/research
-	name = "tachyon-doppler research array"
-	desc = "A specialized tachyon-doppler bomb detection array that uses the results of the highest yield of explosions for research."
-	var/datum/techweb/linked_techweb
+/obj/machinery/doppler_array/ui_data(mob/user)
+	var/list/data = list()
+	var/list/records = list()
+	for(var/i in 1 to length(logged_explosions))
+		var/datum/explosion_log/E = logged_explosions[i]
+		records += list(list(
+			"logged_time" = E.logged_time,
+			"epicenter" = E.epicenter,
+			"actual_size_message" = E.actual_size_message,
+			"theoretical_size_message" = E.theoretical_size_message,
+			"index" = i))
+	data["explosion_target"] = explosion_target
+	data["toxins_tech"] = toxins_tech.level
+	data["records"] = records
+	data["printing"] = active_timers
+	return data
 
-/obj/machinery/doppler_array/research/sense_explosion(datum/source, turf/epicenter, devastation_range, heavy_impact_range, light_impact_range,
-		took, orig_dev_range, orig_heavy_range, orig_light_range) //probably needs a way to ignore admin explosives later on
-	. = ..()
-	if(!.)
+/obj/machinery/doppler_array/ui_act(action, params)
+	if(..())
 		return
-	if(!istype(linked_techweb))
-		say("Warning: No linked research system!")
-		return
+	switch(action)
+		if("delete_logs")
+			QDEL_LIST(logged_explosions)
+			to_chat(usr, "<span class='notice'>All logs deleted successfully.</span>")
+		if("delete_record")
+			var/index = text2num(params["index"])
+			if(index < 0 || index > length(logged_explosions))
+				return
 
-	var/point_gain = 0
-	/*****The Point Calculator*****/
-
-	if(orig_light_range < 10)
-		say("Explosion not large enough for research calculations.")
-		return
-	else if(orig_light_range < 4500)
-		point_gain = (83300 * orig_light_range) / (orig_light_range + 3000)
-	else
-		point_gain = TECHWEB_BOMB_POINTCAP
-
-	/*****The Point Capper*****/
-	if(point_gain > linked_techweb.largest_bomb_value)
-		if(point_gain <= TECHWEB_BOMB_POINTCAP || linked_techweb.largest_bomb_value < TECHWEB_BOMB_POINTCAP)
-			var/old_tech_largest_bomb_value = linked_techweb.largest_bomb_value //held so we can pull old before we do math
-			linked_techweb.largest_bomb_value = point_gain
-			point_gain -= old_tech_largest_bomb_value
-			point_gain = min(point_gain,TECHWEB_BOMB_POINTCAP)
+			var/datum/explosion_log/E = logged_explosions[index]
+			logged_explosions -= E
+			qdel(E)
+			to_chat(usr, "<span class='notice'>Log deletion successful.</span>")
+		if("print_logs")
+			print_explosive_logs(usr)
 		else
-			linked_techweb.largest_bomb_value = TECHWEB_BOMB_POINTCAP
-			point_gain = 1000
-		var/datum/bank_account/D = SSeconomy.get_dep_account(ACCOUNT_SCI)
-		if(D)
-			D.adjust_money(point_gain)
-			linked_techweb.add_point_type(TECHWEB_POINT_TYPE_DEFAULT, point_gain)
-			say("Explosion details and mixture analyzed and sold to the highest bidder for $[point_gain], with a reward of [point_gain] points.")
+			return
+	return TRUE
 
-	else //you've made smaller bombs
-		say("Data already captured. Aborting.")
-		return
-
-/obj/machinery/doppler_array/research/science/Initialize()
-	. = ..()
-	linked_techweb = SSresearch.science_tech
-
-#undef PRINTER_TIMEOUT
+/obj/item/paper/explosive_log
+	name = "explosive log"
+	info = "<h3>Explosive Log Report</h3>\
+	<table style='width:380px;text-align:left;'>\
+	<tr>\
+	<th>Time logged</th>\
+	<th>Epicenter</th>\
+	<th>Actual</th>\
+	<th>Theoretical</th>\
+	</tr>" //NB: the <table> tag is left open, it is closed later on, when the doppler array adds its data

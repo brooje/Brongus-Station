@@ -1,276 +1,184 @@
-#define FIREALARM_COOLDOWN 67 // Chosen fairly arbitrarily, it is the length of the audio in FireAlarm.ogg. The actual track length is 7 seconds 8ms but but the audio stops at 6s 700ms
+/*
+FIRE ALARM
+*/
 
-/obj/item/electronics/firealarm
-	name = "fire alarm electronics"
-	custom_price = 5
-	desc = "A fire alarm circuit. Can handle heat levels up to 40 degrees celsius."
-
-/obj/item/wallframe/firealarm
-	name = "fire alarm frame"
-	desc = "Used for building fire alarms."
-	icon = 'icons/obj/monitors.dmi'
-	icon_state = "fire_bitem"
-	result_path = /obj/machinery/firealarm
+#define FIRE_ALARM_FRAME	0
+#define FIRE_ALARM_UNWIRED	1
+#define FIRE_ALARM_READY	2
 
 /obj/machinery/firealarm
 	name = "fire alarm"
 	desc = "<i>\"Pull this in case of emergency\"</i>. Thus, keep pulling it forever."
 	icon = 'icons/obj/monitors.dmi'
 	icon_state = "fire0"
+	var/detecting = 1.0
+	var/working = 1.0
+	var/time = 10.0
+	var/timing = 0.0
+	var/lockdownbyai = 0
+	anchored = 1.0
 	max_integrity = 250
 	integrity_failure = 100
-	armor = list("melee" = 0, "bullet" = 0, "laser" = 0, "energy" = 0, "bomb" = 0, "bio" = 100, "rad" = 100, "fire" = 90, "acid" = 30, "stamina" = 0)
+	armor = list(melee = 0, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 100, rad = 100, fire = 90, acid = 30)
 	use_power = IDLE_POWER_USE
 	idle_power_usage = 2
 	active_power_usage = 6
-	power_channel = AREA_USAGE_ENVIRON
+	power_channel = ENVIRON
 	resistance_flags = FIRE_PROOF
 
 	light_power = 0
 	light_range = 7
 	light_color = "#ff3232"
 
-	var/detecting = 1
-	var/buildstage = 2 // 2 = complete, 1 = no wires, 0 = circuit gone
-	var/last_alarm = 0
-	var/area/myarea = null
+	var/wiresexposed = 0
+	var/buildstage = 2 // 2 = complete, 1 = no wires,  0 = circuit gone
 
-/obj/machinery/firealarm/Initialize(mapload, dir, building)
-	. = ..()
-	if(dir)
-		src.setDir(dir)
-	if(building)
-		buildstage = 0
-		panel_open = TRUE
-		pixel_x = (dir & 3)? 0 : (dir == 4 ? -24 : 24)
-		pixel_y = (dir & 3)? (dir ==1 ? -24 : 24) : 0
-	update_icon()
-	myarea = get_area(src)
-	LAZYADD(myarea.firealarms, src)
+	var/report_fire_alarms = TRUE // Should triggered fire alarms also trigger an actual alarm?
+	var/show_alert_level = TRUE // Should fire alarms display the current alert level?
 
-/obj/machinery/firealarm/Destroy()
-	LAZYREMOVE(myarea.firealarms, src)
-	return ..()
+/obj/machinery/firealarm/no_alarm
+	report_fire_alarms = FALSE
 
-/obj/machinery/firealarm/power_change()
-	..()
-	update_icon()
+/obj/machinery/firealarm/syndicate
+	report_fire_alarms = FALSE
+	show_alert_level = FALSE
 
 /obj/machinery/firealarm/update_icon()
-	cut_overlays()
-	SSvis_overlays.remove_vis_overlay(src, managed_vis_overlays)
 
-	if(panel_open)
-		icon_state = "fire_b[buildstage]"
+	if(wiresexposed)
+		switch(buildstage)
+			if(2)
+				icon_state="fire_b2"
+			if(1)
+				icon_state="fire_b1"
+			if(0)
+				icon_state="fire_b0"
+
 		return
 
 	if(stat & BROKEN)
 		icon_state = "firex"
-		return
-
-	icon_state = "fire0"
-
-	if(stat & NOPOWER)
-		return
-
-	add_overlay("fire_overlay")
-
-	if(is_station_level(z))
-		add_overlay("fire_[GLOB.security_level]")
-		SSvis_overlays.add_vis_overlay(src, icon, "fire_[GLOB.security_level]", ABOVE_LIGHTING_LAYER, ABOVE_LIGHTING_PLANE, dir)
+	else if(stat & NOPOWER)
+		icon_state = "firep"
+	else if(!detecting)
+		icon_state = "fire1"
 	else
-		add_overlay("fire_[SEC_LEVEL_GREEN]")
-		SSvis_overlays.add_vis_overlay(src, icon, "fire_[SEC_LEVEL_GREEN]", ABOVE_LIGHTING_LAYER, ABOVE_LIGHTING_PLANE, dir)
-
-	var/area/A = src.loc
-	A = A.loc
-
-	if(!detecting || !A.fire)
-		add_overlay("fire_off")
-		SSvis_overlays.add_vis_overlay(src, icon, "fire_off", ABOVE_LIGHTING_LAYER, ABOVE_LIGHTING_PLANE, dir)
-	else if(obj_flags & EMAGGED)
-		add_overlay("fire_emagged")
-		SSvis_overlays.add_vis_overlay(src, icon, "fire_emagged", ABOVE_LIGHTING_LAYER, ABOVE_LIGHTING_PLANE, dir)
-	else
-		add_overlay("fire_on")
-		SSvis_overlays.add_vis_overlay(src, icon, "fire_on", ABOVE_LIGHTING_LAYER, ABOVE_LIGHTING_PLANE, dir)
-
-/obj/machinery/firealarm/emp_act(severity)
-	. = ..()
-
-	if (. & EMP_PROTECT_SELF)
-		return
-
-	if(prob(50 / severity))
-		alarm()
+		icon_state = "fire0"
 
 /obj/machinery/firealarm/emag_act(mob/user)
-	if(obj_flags & EMAGGED)
-		return
-	obj_flags |= EMAGGED
-	update_icon()
-	user?.visible_message("<span class='warning'>Sparks fly out of [src]!</span>",
-							"<span class='notice'>You emag [src], disabling its thermal sensors.</span>")
-	playsound(src, "sparks", 50, 1)
+	if(!emagged)
+		emagged = TRUE
+		if(user)
+			user.visible_message("<span class='warning'>Sparks fly out of [src]!</span>",
+								"<span class='notice'>You emag [src], disabling its thermal sensors.</span>")
+		playsound(loc, 'sound/effects/sparks4.ogg', 50, 1)
 
 /obj/machinery/firealarm/temperature_expose(datum/gas_mixture/air, temperature, volume)
-	if((temperature > T0C + 200 || temperature < BODYTEMP_COLD_DAMAGE_LIMIT) && (last_alarm+FIREALARM_COOLDOWN < world.time) && !(obj_flags & EMAGGED) && detecting && !stat)
-		alarm()
 	..()
-
-/obj/machinery/firealarm/proc/alarm(mob/user)
-	if(!is_operational() || (last_alarm+FIREALARM_COOLDOWN > world.time))
-		return
-	last_alarm = world.time
-	var/area/A = get_area(src)
-	A.firealert(src)
-	playsound(loc, 'goon/sound/machinery/FireAlarm.ogg', 75)
-	if(user)
-		log_game("[user] triggered a fire alarm at [COORD(src)]")
-
-/obj/machinery/firealarm/proc/reset(mob/user)
-	if(!is_operational())
-		return
-	var/area/A = get_area(src)
-	A.firereset(src)
-	if(user)
-		log_game("[user] reset a fire alarm at [COORD(src)]")
-
-/obj/machinery/firealarm/attack_hand(mob/user)
-	if(buildstage != 2)
-		return ..()
-	add_fingerprint(user)
-	var/area/A = get_area(src)
-	if(A.fire)
-		reset(user)
-	else
-		alarm(user)
+	if(!emagged && detecting && temperature > T0C + 200)
+		alarm()			// added check of detector status here
 
 /obj/machinery/firealarm/attack_ai(mob/user)
+	add_hiddenprint(user)
 	return attack_hand(user)
 
-/obj/machinery/firealarm/attack_robot(mob/user)
-	return attack_hand(user)
+/obj/machinery/firealarm/attack_ghost(mob/user)
+	if(user.can_advanced_admin_interact())
+		toggle_alarm(user)
 
-/obj/machinery/firealarm/attackby(obj/item/W, mob/user, params)
+/obj/machinery/firealarm/emp_act(severity)
+	if(prob(50/severity))
+		alarm(rand(30/severity, 60/severity))
+	..()
+
+/obj/machinery/firealarm/attackby(obj/item/I, mob/user, params)
 	add_fingerprint(user)
-
-	if(W.tool_behaviour == TOOL_SCREWDRIVER && buildstage == 2)
-		W.play_tool_sound(src)
-		panel_open = !panel_open
-		to_chat(user, "<span class='notice'>The wires have been [panel_open ? "exposed" : "unexposed"].</span>")
-		update_icon()
+	if(wiresexposed)
+		if(buildstage == FIRE_ALARM_UNWIRED)
+			if(istype(I, /obj/item/stack/cable_coil))
+				var/obj/item/stack/cable_coil/coil = I
+				if(!coil.use(5))
+					to_chat(user, "<span class='warning'>You need a total of five cables to wire [src]!</span>")
+					return
+				buildstage = FIRE_ALARM_READY
+				playsound(get_turf(src), I.usesound, 50, 1)
+				to_chat(user, "<span class='notice'>You wire [src]!</span>")
+				update_icon()
+		if(buildstage == FIRE_ALARM_FRAME)
+			if(istype(I, /obj/item/firealarm_electronics))
+				to_chat(user, "<span class='notice'>You insert the circuit!</span>")
+				qdel(I)
+				buildstage = FIRE_ALARM_UNWIRED
+				update_icon()
 		return
-
-	if(panel_open)
-
-		if(W.tool_behaviour == TOOL_WELDER && user.a_intent == INTENT_HELP)
-			if(obj_integrity < max_integrity)
-				if(!W.tool_start_check(user, amount=0))
-					return
-
-				to_chat(user, "<span class='notice'>You begin repairing [src]...</span>")
-				if(W.use_tool(src, user, 40, volume=50))
-					obj_integrity = max_integrity
-					to_chat(user, "<span class='notice'>You repair [src].</span>")
-			else
-				to_chat(user, "<span class='warning'>[src] is already in good condition!</span>")
-			return
-
-		switch(buildstage)
-			if(2)
-				if(W.tool_behaviour == TOOL_MULTITOOL)
-					detecting = !detecting
-					if (src.detecting)
-						user.visible_message("[user] has reconnected [src]'s detecting unit!", "<span class='notice'>You reconnect [src]'s detecting unit.</span>")
-					else
-						user.visible_message("[user] has disconnected [src]'s detecting unit!", "<span class='notice'>You disconnect [src]'s detecting unit.</span>")
-					return
-
-				else if(W.tool_behaviour == TOOL_WIRECUTTER)
-					buildstage = 1
-					W.play_tool_sound(src)
-					new /obj/item/stack/cable_coil(user.loc, 5)
-					to_chat(user, "<span class='notice'>You cut the wires from \the [src].</span>")
-					update_icon()
-					return
-
-				else if(W.force) //hit and turn it on
-					..()
-					var/area/A = get_area(src)
-					if(!A.fire)
-						alarm()
-					return
-
-			if(1)
-				if(istype(W, /obj/item/stack/cable_coil))
-					var/obj/item/stack/cable_coil/coil = W
-					if(coil.get_amount() < 5)
-						to_chat(user, "<span class='warning'>You need more cable for this!</span>")
-					else
-						coil.use(5)
-						buildstage = 2
-						to_chat(user, "<span class='notice'>You wire \the [src].</span>")
-						update_icon()
-					return
-
-				else if(W.tool_behaviour == TOOL_CROWBAR)
-					user.visible_message("[user.name] removes the electronics from [src.name].", \
-										"<span class='notice'>You start prying out the circuit...</span>")
-					if(W.use_tool(src, user, 20, volume=50))
-						if(buildstage == 1)
-							if(stat & BROKEN)
-								to_chat(user, "<span class='notice'>You remove the destroyed circuit.</span>")
-								stat &= ~BROKEN
-							else
-								to_chat(user, "<span class='notice'>You pry out the circuit.</span>")
-								new /obj/item/electronics/firealarm(user.loc)
-							buildstage = 0
-							update_icon()
-					return
-			if(0)
-				if(istype(W, /obj/item/electronics/firealarm))
-					to_chat(user, "<span class='notice'>You insert the circuit.</span>")
-					qdel(W)
-					buildstage = 1
-					update_icon()
-					return
-
-				else if(istype(W, /obj/item/electroadaptive_pseudocircuit))
-					var/obj/item/electroadaptive_pseudocircuit/P = W
-					if(!P.adapt_circuit(user, 15))
-						return
-					user.visible_message("<span class='notice'>[user] fabricates a circuit and places it into [src].</span>", \
-					"<span class='notice'>You adapt a fire alarm circuit and slot it into the assembly.</span>")
-					buildstage = 1
-					update_icon()
-					return
-
-				else if(W.tool_behaviour == TOOL_WRENCH)
-					user.visible_message("[user] removes the fire alarm assembly from the wall.", \
-										 "<span class='notice'>You remove the fire alarm assembly from the wall.</span>")
-					var/obj/item/wallframe/firealarm/frame = new /obj/item/wallframe/firealarm()
-					frame.forceMove(user.drop_location())
-					W.play_tool_sound(src)
-					qdel(src)
-					return
-
 	return ..()
 
-/obj/machinery/firealarm/rcd_vals(mob/user, obj/item/construction/rcd/the_rcd)
-	if((buildstage == 0) && (the_rcd.upgrade & RCD_UPGRADE_SIMPLE_CIRCUITS))
-		return list("mode" = RCD_UPGRADE_SIMPLE_CIRCUITS, "delay" = 20, "cost" = 1)	
-	return FALSE
+/obj/machinery/firealarm/crowbar_act(mob/user, obj/item/I)
+	if(buildstage != FIRE_ALARM_UNWIRED)
+		return
+	. = TRUE
+	if(!I.tool_use_check(user, 0))
+		return
+	CROWBAR_ATTEMPT_PRY_CIRCUIT_MESSAGE
+	if(!I.use_tool(src, user, 20, volume = I.tool_volume) || buildstage != FIRE_ALARM_UNWIRED)
+		return
+	new /obj/item/firealarm_electronics(drop_location())
+	buildstage = FIRE_ALARM_FRAME
+	update_icon()
+	CROWBAR_PRY_CIRCUIT_SUCCESS_MESSAGE
 
-/obj/machinery/firealarm/rcd_act(mob/user, obj/item/construction/rcd/the_rcd, passed_mode)
-	switch(passed_mode)
-		if(RCD_UPGRADE_SIMPLE_CIRCUITS)
-			user.visible_message("<span class='notice'>[user] fabricates a circuit and places it into [src].</span>", \
-			"<span class='notice'>You adapt a fire alarm circuit and slot it into the assembly.</span>")
-			buildstage = 1
-			update_icon()
-			return TRUE
-	return FALSE
+/obj/machinery/firealarm/multitool_act(mob/user, obj/item/I)
+	if(buildstage != FIRE_ALARM_READY)
+		return
+	. = TRUE
+	if(!wiresexposed)
+		to_chat(user, "<span class='warning'>You need to expose the wires first!</span>")
+		return
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
+		return
+	detecting = !detecting
+	if(detecting)
+		user.visible_message("<span class='warning'>[user] has reconnected [src]'s detecting unit!</span>", "You have reconnected [src]'s detecting unit.")
+	else
+		user.visible_message("<span class='warning'>[user] has disconnected [src]'s detecting unit!</span>", "You have disconnected [src]'s detecting unit.")
+
+/obj/machinery/firealarm/screwdriver_act(mob/user, obj/item/I)
+	if(buildstage != FIRE_ALARM_READY)
+		return
+	. = TRUE
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
+		return
+	wiresexposed = !wiresexposed
+	if(wiresexposed)
+		SCREWDRIVER_OPEN_PANEL_MESSAGE
+	else
+		SCREWDRIVER_CLOSE_PANEL_MESSAGE
+	update_icon()
+
+/obj/machinery/firealarm/wirecutter_act(mob/user, obj/item/I)
+	if(buildstage != FIRE_ALARM_READY)
+		return
+	. = TRUE
+	if(!wiresexposed)
+		to_chat(user, "<span class='warning'>You need to expose the wires first!</span>")
+		return
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
+		return
+	WIRECUTTER_SNIP_MESSAGE
+	var/obj/item/stack/cable_coil/new_coil = new /obj/item/stack/cable_coil(drop_location())
+	new_coil.amount = 5
+	buildstage = FIRE_ALARM_UNWIRED
+
+
+/obj/machinery/firealarm/wrench_act(mob/user, obj/item/I)
+	if(buildstage != FIRE_ALARM_FRAME)
+		return
+	. = TRUE
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
+		return
+	WRENCH_UNANCHOR_WALL_MESSAGE
+	new /obj/item/mounted/frame/firealarm(get_turf(user))
+	qdel(src)
 
 /obj/machinery/firealarm/take_damage(damage_amount, damage_type = BRUTE, damage_flag = 0, sound_effect = 1, attack_dir)
 	. = ..()
@@ -285,16 +193,16 @@
 	..()
 
 /obj/machinery/firealarm/obj_break(damage_flag)
-	if(!(stat & BROKEN) && !(flags_1 & NODECONSTRUCT_1) && buildstage != 0) //can't break the electronics if there isn't any inside.
-		LAZYREMOVE(myarea.firealarms, src)
+	if(!(stat & BROKEN) && !(flags & NODECONSTRUCT) && buildstage != 0) //can't break the electronics if there isn't any inside.
 		stat |= BROKEN
+		LAZYREMOVE(myArea.firealarms, src)
 		update_icon()
 
 /obj/machinery/firealarm/deconstruct(disassembled = TRUE)
-	if(!(flags_1 & NODECONSTRUCT_1))
-		new /obj/item/stack/sheet/iron(loc, 1)
+	if(!(flags & NODECONSTRUCT))
+		new /obj/item/stack/sheet/metal(loc, 1)
 		if(!(stat & BROKEN))
-			var/obj/item/I = new /obj/item/electronics/firealarm(loc)
+			var/obj/item/I = new /obj/item/firealarm_electronics(loc)
 			if(!disassembled)
 				I.obj_integrity = I.max_integrity * 0.5
 		new /obj/item/stack/cable_coil(loc, 3)
@@ -308,34 +216,91 @@
 	else
 		set_light(l_power = 0)
 
+/obj/machinery/firealarm/power_change()
+	if(powered(ENVIRON))
+		stat &= ~NOPOWER
+	else
+		stat |= NOPOWER
+	update_icon()
+
+/obj/machinery/firealarm/attack_hand(mob/user)
+	if(stat & (NOPOWER|BROKEN) || buildstage != 2)
+		return 1
+
+	if(user.incapacitated())
+		return 1
+
+	toggle_alarm(user)
+
+
+/obj/machinery/firealarm/proc/toggle_alarm(mob/user)
+	var/area/A = get_area(src)
+	if(istype(A))
+		add_fingerprint(user)
+		if(A.fire)
+			reset()
+		else
+			alarm()
+
+/obj/machinery/firealarm/examine(mob/user)
+	. = ..()
+	. += "It shows the alert level as: <B><U>[capitalize(get_security_level())]</U></B>."
+
+/obj/machinery/firealarm/proc/reset()
+	if(!working || !report_fire_alarms)
+		return
+	var/area/A = get_area(src)
+	A.firereset(src)
+
+/obj/machinery/firealarm/proc/alarm()
+	if(!working || !report_fire_alarms)
+		return
+	var/area/A = get_area(src)
+	A.firealert(src) // Manually trigger alarms if the alarm isn't reported
+	update_icon()
+
+/obj/machinery/firealarm/New(location, direction, building)
+	. = ..()
+
+	if(building)
+		buildstage = 0
+		wiresexposed = TRUE
+		setDir(direction)
+		set_pixel_offsets_from_dir(26, -26, 26, -26)
+
+	if(is_station_contact(z) && show_alert_level)
+		if(GLOB.security_level)
+			overlays += image('icons/obj/monitors.dmi', "overlay_[get_security_level()]")
+		else
+			overlays += image('icons/obj/monitors.dmi', "overlay_green")
+
+	myArea = get_area(src)
+	LAZYADD(myArea.firealarms, src)
+	update_icon()
+
+/obj/machinery/firealarm/Initialize(mapload)
+	. = ..()
+	name = "fire alarm"
+
+/obj/machinery/firealarm/Destroy()
+	LAZYREMOVE(myArea.firealarms, src)
+	return ..()
+
 /*
- * Return of Party button
- */
+FIRE ALARM CIRCUIT
+Just a object used in constructing fire alarms
+*/
+/obj/item/firealarm_electronics
+	name = "fire alarm electronics"
+	icon = 'icons/obj/doors/door_assembly.dmi'
+	icon_state = "door_electronics"
+	desc = "A circuit. It has a label on it, it says \"Can handle heat levels up to 40 degrees celsius!\""
+	w_class = WEIGHT_CLASS_SMALL
+	materials = list(MAT_METAL=50, MAT_GLASS=50)
+	origin_tech = "engineering=2;programming=1"
+	toolspeed = 1
+	usesound = 'sound/items/deconstruct.ogg'
 
-/area
-	var/party = FALSE
-
-/obj/machinery/firealarm/partyalarm
-	name = "\improper PARTY BUTTON"
-	desc = "Cuban Pete is in the house!"
-	var/static/party_overlay
-
-/obj/machinery/firealarm/partyalarm/reset()
-	if (stat & (NOPOWER|BROKEN))
-		return
-	var/area/A = get_area(src)
-	if (!A || !A.party)
-		return
-	A.party = FALSE
-	A.cut_overlay(party_overlay)
-
-/obj/machinery/firealarm/partyalarm/alarm()
-	if (stat & (NOPOWER|BROKEN))
-		return
-	var/area/A = get_area(src)
-	if (!A || A.party || A.name == "Space")
-		return
-	A.party = TRUE
-	if (!party_overlay)
-		party_overlay = iconstate2appearance('icons/turf/areas.dmi', "party")
-	A.add_overlay(party_overlay)
+#undef FIRE_ALARM_FRAME
+#undef FIRE_ALARM_UNWIRED
+#undef FIRE_ALARM_READY

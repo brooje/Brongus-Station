@@ -1,41 +1,37 @@
-/mob/living/simple_animal/hostile/lizard
+/mob/living/simple_animal/lizard
 	name = "Lizard"
 	desc = "A cute tiny lizard."
+	icon = 'icons/mob/critter.dmi'
 	icon_state = "lizard"
 	icon_living = "lizard"
-	icon_dead = "lizard_dead"
+	icon_dead = "lizard-dead"
 	speak_emote = list("hisses")
 	health = 5
 	maxHealth = 5
-	faction = list("Lizard")
 	attacktext = "bites"
-	melee_damage = 1
+	obj_damage = 0
+	melee_damage_lower = 1
+	melee_damage_upper = 2
 	response_help  = "pets"
 	response_disarm = "shoos"
 	response_harm   = "stomps on"
-	ventcrawler = VENTCRAWLER_ALWAYS
-	density = FALSE
+	ventcrawler = 2
+	density = 0
 	pass_flags = PASSTABLE | PASSMOB
 	mob_size = MOB_SIZE_SMALL
-	mob_biotypes = list(MOB_ORGANIC, MOB_BEAST, MOB_REPTILE)
+	can_hide = 1
+	butcher_results = list(/obj/item/reagent_containers/food/snacks/meat = 1)
+	can_collar = 1
+	mob_biotypes = MOB_ORGANIC | MOB_BEAST | MOB_REPTILE
 	gold_core_spawnable = FRIENDLY_SPAWN
-	obj_damage = 0
-	environment_smash = ENVIRONMENT_SMASH_NONE
-	var/static/list/edibles = typecacheof(list(/mob/living/simple_animal/butterfly, /mob/living/simple_animal/cockroach)) //list of atoms, however turfs won't affect AI, but will affect consumption.
-	chat_color = "#64F88A"
 
-/mob/living/simple_animal/hostile/lizard/CanAttack(atom/the_target)//Can we actually attack a possible target?
-	if(see_invisible < the_target.invisibility)//Target's invisible to us, forget it
-		return FALSE
-	if(is_type_in_typecache(the_target,edibles))
+/mob/living/simple_animal/lizard/decompile_act(obj/item/matter_decompiler/C, mob/user)
+	if(!istype(user, /mob/living/silicon/robot/drone))
+		user.visible_message("<span class='notice'>[user] sucks [src] into its decompiler. There's a horrible crunching noise.</span>", \
+		"<span class='warning'>It's a bit of a struggle, but you manage to suck [src] into your decompiler. It makes a series of visceral crunching noises.</span>")
+		new/obj/effect/decal/cleanable/blood/splatter(get_turf(src))
+		C.stored_comms["wood"] += 2
+		C.stored_comms["glass"] += 2
+		qdel(src)
 		return TRUE
-	return FALSE
-
-/mob/living/simple_animal/hostile/lizard/AttackingTarget()
-	if(is_type_in_typecache(target,edibles)) //Makes sure player lizards only consume edibles.
-		visible_message("[name] consumes [target] in a single gulp.", "<span class='notice'>You consume [target] in a single gulp.</span>")
-		QDEL_NULL(target) //Nom
-		adjustBruteLoss(-2)
-		return TRUE
-	else
-		return ..()
+	return ..()

@@ -1,7 +1,10 @@
 SUBSYSTEM_DEF(nightshift)
 	name = "Night Shift"
+	init_order = INIT_ORDER_NIGHTSHIFT
+	priority = FIRE_PRIORITY_NIGHTSHIFT
 	wait = 600
 	flags = SS_NO_TICK_CHECK
+	offline_implications = "The game will no longer shift between day and night lighting. No immediate action is needed."
 
 	var/nightshift_active = FALSE
 	var/nightshift_start_time = 702000		//7:30 PM, station time
@@ -11,8 +14,10 @@ SUBSYSTEM_DEF(nightshift)
 	var/high_security_mode = FALSE
 
 /datum/controller/subsystem/nightshift/Initialize()
-	if(!CONFIG_GET(flag/enable_night_shifts))
+	if(!GLOB.configuration.general.enable_night_shifts)
 		can_fire = FALSE
+	if(GLOB.configuration.general.randomise_shift_time)
+		GLOB.gametime_offset = rand(0, 23) HOURS
 	return ..()
 
 /datum/controller/subsystem/nightshift/fire(resumed = FALSE)
@@ -21,9 +26,11 @@ SUBSYSTEM_DEF(nightshift)
 	check_nightshift()
 
 /datum/controller/subsystem/nightshift/proc/announce(message)
-	priority_announce(message, sound='sound/misc/notice2.ogg', sender_override="Automated Lighting System Announcement")
+	GLOB.priority_announcement.Announce(message, new_sound = 'sound/misc/notice2.ogg', new_title = "Automated Lighting System Announcement")
 
-/datum/controller/subsystem/nightshift/proc/check_nightshift()
+/datum/controller/subsystem/nightshift/proc/check_nightshift(check_canfire=FALSE)
+	if(check_canfire && !can_fire)
+		return
 	var/emergency = GLOB.security_level >= SEC_LEVEL_RED
 	var/announcing = TRUE
 	var/time = station_time()
@@ -35,7 +42,7 @@ SUBSYSTEM_DEF(nightshift)
 			if(!emergency)
 				announce("Restoring night lighting configuration to normal operation.")
 			else
-				announce("Disabling night lighting: Station is in a state of emergency.")  
+				announce("Disabling night lighting: Station is in a state of emergency.")
 	if(emergency)
 		night_time = FALSE
 	if(nightshift_active != night_time)
@@ -44,12 +51,12 @@ SUBSYSTEM_DEF(nightshift)
 /datum/controller/subsystem/nightshift/proc/update_nightshift(active, announce = TRUE)
 	nightshift_active = active
 	if(announce)
-		if (active)
+		if(active)
 			announce("Good evening, crew. To reduce power consumption and stimulate the circadian rhythms of some species, all of the lights aboard the station have been dimmed for the night.")
 		else
 			announce("Good morning, crew. As it is now day time, all of the lights aboard the station have been restored to their former brightness.")
-	for(var/A in GLOB.apcs_list)
+	for(var/A in GLOB.apcs)
 		var/obj/machinery/power/apc/APC = A
-		if (APC.area && (APC.area.type in GLOB.the_station_areas))
+		if(is_station_level(APC.z))
 			APC.set_nightshift(active)
 			CHECK_TICK

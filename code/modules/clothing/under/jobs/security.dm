@@ -2,223 +2,166 @@
  * Contains:
  *		Security
  *		Detective
- *		Navy uniforms
+ *		Head of Security
  */
+
 
 /*
  * Security
  */
-
-/obj/item/clothing/under/rank/security/officer
-	name = "security jumpsuit"
-	desc = "A tactical security jumpsuit for officers complete with Nanotrasen belt buckle."
-	icon_state = "rsecurity"
+/obj/item/clothing/under/rank/warden
+	name = "warden's jumpsuit"
+	desc = "It's made of a slightly sturdier material than standard jumpsuits, to allow for more robust protection. It has the word \"Warden\" written on the shoulders."
+	icon_state = "warden"
 	item_state = "r_suit"
-	item_color = "rsecurity"
-	armor = list("melee" = 10, "bullet" = 0, "laser" = 0,"energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 30, "acid" = 30, "stamina" = 30)
+	item_color = "warden"
+	armor = list(MELEE = 10, BULLET = 0, LASER = 0, ENERGY = 0, BOMB = 0, BIO = 0, RAD = 0, FIRE = 30, ACID = 30)
 	strip_delay = 50
-	alt_covers_chest = TRUE
+
+/obj/item/clothing/under/rank/warden/skirt
+	name = "warden's jumpskirt"
+	desc = "Standard feminine fashion for a Warden. It is made of sturdier material than standard jumpskirts. It has the word \"Warden\" written on the shoulders."
+	icon_state = "wardenf"
+	item_state = "r_suit"
+	item_color = "wardenf"
+
+/obj/item/clothing/under/rank/security
+	name = "security officer's jumpsuit"
+	desc = "It's made of a slightly sturdier material than standard jumpsuits, to allow for robust protection."
+	icon_state = "security"
+	item_state = "r_suit"
+	item_color = "secred"
+	armor = list(MELEE = 10, BULLET = 0, LASER = 0, ENERGY = 0, BOMB = 0, BIO = 0, RAD = 0, FIRE = 30, ACID = 30)
+	strip_delay = 50
+
+/obj/item/clothing/under/rank/security/sensor
 	sensor_mode = SENSOR_COORDS
 	random_sensor = FALSE
 
-/obj/item/clothing/under/rank/security/officer/white
-	name = "white security jumpsuit"
-	desc = "A tactical relic of years past before Nanotrasen decided it was cheaper to dye the suits red instead of washing out the blood."
-	icon_state = "security"
-	item_state = "gy_suit"
-	item_color = "security"
+/obj/item/clothing/under/rank/security/skirt
+	name = "security officer's jumpskirt"
+	desc = "Standard feminine fashion for Security Officers.  It's made of sturdier material than the standard jumpskirts."
+	icon_state = "secredf"
+	item_state = "r_suit"
+	item_color = "secredf"
 
-/obj/item/clothing/under/rank/security/officer/corporate
+/obj/item/clothing/under/rank/dispatch
+	name = "dispatcher's uniform"
+	desc = "A dress shirt and khakis with a security patch sewn on."
+	icon_state = "dispatch"
+	item_state = "dispatch"
+	item_color = "dispatch"
+	armor = list(MELEE = 10, BULLET = 0, LASER = 0, ENERGY = 0, BOMB = 0, BIO = 0, RAD = 0, FIRE = 30, ACID = 30)
+
+/obj/item/clothing/under/rank/security2
+	name = "security officer's uniform"
+	desc = "It's made of a slightly sturdier material, to allow for robust protection."
+	icon_state = "redshirt2"
+	item_state = "r_suit"
+	item_color = "redshirt2"
+	armor = list(MELEE = 10, BULLET = 0, LASER = 0, ENERGY = 0, BOMB = 0, BIO = 0, RAD = 0, FIRE = 30, ACID = 30)
+
+/obj/item/clothing/under/rank/security/corp
 	name = "corporate security jumpsuit"
-	desc = "A tactical security jumpsuit in black."
-	icon_state = "sec_corporate_s"
-	item_state = "bl_suit"
-	item_color = "sec_corporate_s"
-	can_adjust = FALSE
+	icon_state = "sec_corporate"
+	item_state = "sec_corporate"
+	item_color = "sec_corporate"
 
-/obj/item/clothing/under/rank/security/officer/skirt
-	name = "security jumpskirt"
-	desc = "A \"tactical\" security jumpsuit with the legs replaced by a skirt."
-	icon_state = "secskirt"
-	item_state = "r_suit"
-	item_color = "secskirt"
-	body_parts_covered = CHEST|GROIN|ARMS
-	can_adjust = FALSE //you know now that i think of it if you adjust the skirt and the sprite disappears isn't that just like flashing everyone
-
-/obj/item/clothing/under/rank/security/officer/blueshirt
-	name = "blue shirt and tie"
-	desc = "I'm a little busy right now, Calhoun."
-	icon_state = "blueshift"
-	item_state = "blueshift"
-	item_color = "blueshift"
-	can_adjust = FALSE
-
-/obj/item/clothing/under/rank/security/officer/formal
-	name = "security officer's formal uniform"
-	desc = "The latest in fashionable security outfits."
-	icon_state = "officerblueclothes"
-	item_state = "officerblueclothes"
-	item_color = "officerblueclothes"
-	alt_covers_chest = TRUE
-
-/obj/item/clothing/under/rank/security/warden
-	name = "security suit"
-	desc = "A formal security suit for officers complete with Nanotrasen belt buckle."
-	icon_state = "rwarden"
-	item_state = "r_suit"
-	item_color = "rwarden"
-	armor = list("melee" = 10, "bullet" = 0, "laser" = 0,"energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 30, "acid" = 30, "stamina" = 30)
-	strip_delay = 50
-	alt_covers_chest = TRUE
-	sensor_mode = 3
-	random_sensor = FALSE
-
-/obj/item/clothing/under/rank/security/warden/white
-	name = "white security suit"
-	desc = "A formal relic of years past before Nanotrasen decided it was cheaper to dye the suits red instead of washing out the blood."
-	icon_state = "warden"
-	item_state = "gy_suit"
-	item_color = "warden"
+/obj/item/clothing/under/rank/warden/corp
+	icon_state = "warden_corporate"
+	item_state = "warden_corporate"
+	item_color = "warden_corporate"
 
 /*
  * Detective
  */
-/obj/item/clothing/under/rank/security/detective
+/obj/item/clothing/under/det
 	name = "hard-worn suit"
 	desc = "Someone who wears this means business."
 	icon_state = "detective"
 	item_state = "det"
 	item_color = "detective"
-	armor = list("melee" = 10, "bullet" = 0, "laser" = 0,"energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 30, "acid" = 30, "stamina" = 20)
+	armor = list(MELEE = 10, BULLET = 0, LASER = 0, ENERGY = 0, BOMB = 0, BIO = 0, RAD = 0, FIRE = 30, ACID = 30)
 	strip_delay = 50
-	alt_covers_chest = TRUE
-	sensor_mode = 3
-	random_sensor = FALSE
 
-/obj/item/clothing/under/rank/security/detective/grey
-	name = "noir suit"
-	desc = "A hard-boiled private investigator's grey suit, complete with tie clip."
-	icon_state = "greydet"
-	item_state = "greydet"
-	item_color = "greydet"
-	alt_covers_chest = TRUE
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/uniform.dmi'
+		)
 
 /*
  * Head of Security
  */
-/obj/item/clothing/under/rank/security/head_of_security
+/obj/item/clothing/under/rank/head_of_security
 	name = "head of security's jumpsuit"
-	desc = "A security jumpsuit decorated for those few with the dedication to achieve the position of Head of Security."
-	icon_state = "rhos"
-	item_state = "r_suit"
-	item_color = "rhos"
-	armor = list("melee" = 10, "bullet" = 0, "laser" = 0,"energy" = 0, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 50, "acid" = 50, "stamina" = 30)
-	strip_delay = 60
-	alt_covers_chest = TRUE
-	sensor_mode = 3
-	random_sensor = FALSE
-
-/obj/item/clothing/under/rank/security/head_of_security/white
-	name = "head of security's white jumpsuit"
-	desc = "There are old men, and there are bold men, but there are very few old, bold men."
+	desc = "It's a jumpsuit worn by those few with the dedication to achieve the position of \"Head of Security\". It has additional armor to protect the wearer."
 	icon_state = "hos"
-	item_state = "gy_suit"
-	item_color = "hos"
-
-/obj/item/clothing/under/rank/security/head_of_security/alt
-	name = "head of security's turtleneck"
-	desc = "A stylish alternative to the normal head of security jumpsuit, complete with tactical pants."
-	icon_state = "hosalt"
-	item_state = "bl_suit"
-	item_color = "hosalt"
-
-/*
- * Brig Physician
-*/
-
-/obj/item/clothing/under/rank/brig_phys
-	name = "brig physician's uniform"
-	desc = "A lightly armored uniform worn by Nanotrasen's Asset Protection Medical Corps."
-	icon_state = "brig_phys"
-	item_state = "labcoat_sec"
-	item_color = "brig_phys"
-
-/*
- * Navy uniforms
- */
-
-/obj/item/clothing/under/rank/security/head_of_security/parade/female
-	name = "head of security's parade uniform"
-	desc = "A female head of security's luxury-wear, for special occasions."
-	icon_state = "hos_parade_fem"
 	item_state = "r_suit"
-	item_color = "hos_parade_fem"
-	fitted = FEMALE_UNIFORM_TOP
-	can_adjust = FALSE
+	item_color = "hosred"
+	armor = list(MELEE = 10, BULLET = 0, LASER = 0, ENERGY = 0, BOMB = 0, BIO = 0, RAD = 0, FIRE = 50, ACID = 50)
+	strip_delay = 60
 
-/obj/item/clothing/under/rank/security/warden/formal
-	desc = "The insignia on this uniform tells you that this uniform belongs to the Warden."
-	name = "warden's formal uniform"
-	icon_state = "wardenblueclothes"
-	item_state = "wardenblueclothes"
-	item_color = "wardenblueclothes"
-	alt_covers_chest = TRUE
+/obj/item/clothing/under/rank/head_of_security/skirt
+	name = "head of security's jumpskirt"
+	desc = "It's a fashionable jumpskirt worn by those few with the dedication to achieve the position of \"Head of Security\". It has additional armor to protect the wearer."
+	icon_state = "hosredf"
+	item_state = "r_suit"
+	item_color = "hosredf"
 
-/obj/item/clothing/under/rank/security/head_of_security/formal
-	desc = "The insignia on this uniform tells you that this uniform belongs to the Head of Security."
-	name = "head of security's formal uniform"
-	icon_state = "hosblueclothes"
-	item_state = "hosblueclothes"
-	item_color = "hosblueclothes"
-	alt_covers_chest = TRUE
+/obj/item/clothing/under/rank/head_of_security/corp
+	icon_state = "hos_corporate"
+	item_state = "hos_corporate"
+	item_color = "hos_corporate"
 
-/*
- *Blueshirt
- */
+//Jensen cosplay gear
+/obj/item/clothing/under/rank/head_of_security/jensen
+	name = "head of security's jumpsuit"
+	desc = "You never asked for anything that stylish."
+	icon_state = "jensen"
+	item_state = "jensen"
+	item_color = "jensen"
 
-/obj/item/clothing/under/rank/security/blueshirt
-	name = "blue shirt and tie"
-	desc = "I'm a little busy right now, Calhoun."
-	icon_state = "blueshift"
-	item_state = "blueshift"
-	item_color = "blueshift"
-	can_adjust = FALSE
+//Paradise Station
 
-/*
- *Spacepol
- */
+/obj/item/clothing/suit/armor/hos/hosnavyjacket
+	name = "head of security's navy jacket"
+	icon_state = "hosdnavyjacket"
+	item_state = "hosdnavyjacket"
 
-/obj/item/clothing/under/rank/security/officer/spacepol
-	name = "police uniform"
-	desc = "Space not controlled by megacorporations, planets, or pirates is under the jurisdiction of Spacepol."
-	icon_state = "spacepol"
-	item_state = "spacepol"
-	item_color = "spacepol"
-	can_adjust = FALSE
+/obj/item/clothing/suit/armor/hos/hosbluejacket
+	name = "head of security's blue jacket"
+	icon_state = "hosbluejacket"
+	item_state = "hosbluejacket"
 
-/obj/item/clothing/under/rank/prisoner
-	name = "prison jumpsuit"
-	desc = "It's standardised Nanotrasen prisoner-wear. Its suit sensors are stuck in the \"Fully On\" position."
-	icon_state = "prisoner"
-	item_state = "o_suit"
-	item_color = "prisoner"
-	has_sensor = LOCKED_SENSORS
-	sensor_mode = SENSOR_COORDS
-	random_sensor = FALSE
+/obj/item/clothing/suit/armor/hos/officernavyjacket
+	name = "officer's navy jacket"
+	icon_state = "officernavyjacket"
+	item_state = "officernavyjacket"
 
-/*
- * Triiodine's security uniforms
- */
+/obj/item/clothing/suit/armor/hos/officerbluejacket
+	name = "officer's blue jacket"
+	icon_state = "officerbluejacket"
+	item_state = "officerbluejacket"
 
+//TG Station
 
-/obj/item/clothing/under/rank/security/officer/mallcop
-	name = "NT mall cop uniform"
-	desc = "The radio and badge are sewn on, what a crappy knock off. Secway not included."
-	icon_state = "mallcop"
+/obj/item/clothing/under/rank/security/formal
+	name = "security suit"
+	desc = "A formal security suit for officers complete with nanotrasen belt buckle."
+	icon_state = "security_formal"
 	item_state = "gy_suit"
-	item_color = "mallcop"
-	can_adjust = FALSE
+	item_color = "security_formal"
 
-/obj/item/clothing/under/rank/security/officer/mallcop/deputy
-	name = "deputy uniform"
-	desc = "A lightly armored formal uniform fit for wannabe security members."
+/obj/item/clothing/under/rank/warden/formal
+	name = "warden's suit"
+	desc = "A formal security suit for the warden with blue desginations and '/Warden/' stiched into the shoulders."
+	icon_state = "warden_formal"
+	item_state = "gy_suit"
+	item_color = "warden_formal"
+
+/obj/item/clothing/under/rank/head_of_security/formal
+	name = "head of security's suit"
+	desc = "A security suit decorated for those few with the dedication to achieve the position of Head of Security."
+	icon_state = "hos_formal"
+	item_state = "gy_suit"
+	item_color = "hos_formal"
+

@@ -1,46 +1,69 @@
-/obj/item/reagent_containers/pill/patch
+/obj/item/reagent_containers/food/pill/patch
 	name = "chemical patch"
 	desc = "A chemical patch for touch based applications."
 	icon = 'icons/obj/chemical.dmi'
 	icon_state = "bandaid"
 	item_state = "bandaid"
-	possible_transfer_amounts = list()
-	volume = 40
-	apply_type = PATCH
+	possible_transfer_amounts = null
+	volume = 30
+	apply_type = REAGENT_TOUCH
 	apply_method = "apply"
-	self_delay = 30		// three seconds
-	dissolvable = FALSE
+	transfer_efficiency = 0.5 //patches aren't as effective at getting chemicals into the bloodstream.
+	temperature_min = 270
+	temperature_max = 350
+	var/needs_to_apply_reagents = TRUE
 
-/obj/item/reagent_containers/pill/patch/attack(mob/living/L, mob/user)
-	if(ishuman(L))
-		var/obj/item/bodypart/affecting = L.get_bodypart(check_zone(user.zone_selected))
-		if(!affecting)
-			to_chat(user, "<span class='warning'>The limb is missing!</span>")
-			return
-		if(affecting.status != BODYPART_ORGANIC)
-			to_chat(user, "<span class='notice'>Medicine won't work on a robotic limb!</span>")
-			return
-	..()
+/obj/item/reagent_containers/food/pill/patch/attack(mob/living/carbon/M, mob/user, def_zone)
+	if(!istype(M))
+		return FALSE
+	bitesize = 0
+	if(M.eat(src, user))
+		if(user.get_active_hand() == src)
+			user.drop_item() // Only drop if they're holding the patch directly
+		forceMove(M)
+		LAZYADD(M.processing_patches, src)
+		return TRUE
+	return FALSE
 
-/obj/item/reagent_containers/pill/patch/canconsume(mob/eater, mob/user)
-	if(!iscarbon(eater))
-		return 0
-	return 1 // Masks were stopping people from "eating" patches. Thanks, inheritance.
+/obj/item/reagent_containers/food/pill/patch/afterattack(obj/target, mob/user , proximity)
+	return // thanks inheritance again
 
-/obj/item/reagent_containers/pill/patch/styptic
-	name = "brute patch"
+/obj/item/reagent_containers/food/pill/patch/styptic
+	name = "healing patch"
 	desc = "Helps with brute injuries."
-	list_reagents = list(/datum/reagent/medicine/styptic_powder = 30)
 	icon_state = "bandaid_brute"
+	instant_application = 1
+	list_reagents = list("styptic_powder" = 30)
 
-/obj/item/reagent_containers/pill/patch/silver_sulf
+/obj/item/reagent_containers/food/pill/patch/styptic/small
+	name = "healing mini-patch"
+	list_reagents = list("styptic_powder" = 15)
+
+/obj/item/reagent_containers/food/pill/patch/silver_sulf
 	name = "burn patch"
 	desc = "Helps with burn injuries."
-	list_reagents = list(/datum/reagent/medicine/silver_sulfadiazine = 30)
 	icon_state = "bandaid_burn"
+	instant_application = 1
+	list_reagents = list("silver_sulfadiazine" = 30)
 
-/obj/item/reagent_containers/pill/patch/synthflesh
+/obj/item/reagent_containers/food/pill/patch/silver_sulf/small
+	name = "burn mini-patch"
+	list_reagents = list("silver_sulfadiazine" = 15)
+
+/obj/item/reagent_containers/food/pill/patch/synthflesh
 	name = "synthflesh patch"
 	desc = "Helps with brute and burn injuries."
-	list_reagents = list(/datum/reagent/medicine/synthflesh = 30)
-	icon_state = "bandaid_both"
+	icon_state = "bandaid_med"
+	instant_application = 1
+	list_reagents = list("synthflesh" = 10)
+
+/obj/item/reagent_containers/food/pill/patch/nicotine
+	name = "nicotine patch"
+	desc = "Helps temporarily curb the cravings of nicotine dependency."
+	list_reagents = list("nicotine" = 10)
+
+/obj/item/reagent_containers/food/pill/patch/jestosterone
+	name = "jestosterone patch"
+	desc = "Helps with brute injuries if the affected person is a clown, otherwise inflicts various annoying effects."
+	icon_state = "bandaid_clown"
+	list_reagents = list("jestosterone" = 20)

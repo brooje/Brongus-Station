@@ -1,76 +1,105 @@
-
-
-/obj/machinery/computer/upload
-	var/mob/living/silicon/current = null //The target of future law uploads
-	icon_screen = "command"
-
-/obj/machinery/computer/upload/Initialize()
-	. = ..()
-	AddComponent(/datum/component/gps, "Encrypted Upload")
-
-/obj/machinery/computer/upload/attackby(obj/item/O, mob/user, params)
-	if(istype(O, /obj/item/aiModule))
-		var/obj/item/aiModule/M = O
-		if(stat & (NOPOWER|BROKEN|MAINT))
-			return
-		if(!current)
-			to_chat(user, "<span class='caution'>You haven't selected anything to transmit laws to!</span>")
-			return
-		if(!can_upload_to(current))
-			to_chat(user, "<span class='caution'>Upload failed!</span> Check to make sure [current.name] is functioning properly.")
-			current = null
-			return
-		var/turf/currentloc = get_turf(current)
-		if(currentloc && user.z != currentloc.z)
-			to_chat(user, "<span class='caution'>Upload failed!</span> Unable to establish a connection to [current.name]. You're too far away!")
-			current = null
-			return
-		M.install(current.laws, user)
-	else
-		return ..()
-
-/obj/machinery/computer/upload/proc/can_upload_to(mob/living/silicon/S)
-	if(S.stat == DEAD)
-		return FALSE
-	return TRUE
-
-/obj/machinery/computer/upload/ai
+/obj/machinery/computer/aiupload
 	name = "\improper AI upload console"
 	desc = "Used to upload laws to the AI."
-	circuit = /obj/item/circuitboard/computer/aiupload
+	icon_screen = "command"
+	icon_keyboard = "med_key"
+	circuit = /obj/item/circuitboard/aiupload
+	var/mob/living/silicon/ai/current = null
+	var/opened = 0
 
-/obj/machinery/computer/upload/ai/interact(mob/user)
-	current = select_active_ai(user)
+	light_color = LIGHT_COLOR_WHITE
+	light_range_on = 2
 
-	if (!current)
-		to_chat(user, "<span class='caution'>No active AIs detected!</span>")
+
+// What the fuck even is this
+/obj/machinery/computer/aiupload/verb/AccessInternals()
+	set category = "Object"
+	set name = "Access Computer's Internals"
+	set src in oview(1)
+	if(get_dist(src, usr) > 1 || usr.restrained() || usr.lying || usr.stat || istype(usr, /mob/living/silicon))
+		return
+
+	opened = !opened
+	if(opened)
+		to_chat(usr, "<span class='notice'>The access panel is now open.</span>")
 	else
-		to_chat(user, "[current.name] selected for law changes.")
+		to_chat(usr, "<span class='notice'>The access panel is now closed.</span>")
+	return
 
-/obj/machinery/computer/upload/ai/can_upload_to(mob/living/silicon/ai/A)
-	if(!A || !isAI(A))
-		return FALSE
-	if(A.control_disabled)
-		return FALSE
+
+/obj/machinery/computer/aiupload/attackby(obj/item/O as obj, mob/user as mob, params)
+	if(istype(O, /obj/item/aiModule))
+		if(!current)//no AI selected
+			to_chat(user, "<span class='danger'>No AI selected. Please chose a target before proceeding with upload.")
+			return
+		var/turf/T = get_turf(current)
+		if(!atoms_share_level(T, src))
+			to_chat(user, "<span class='danger'>Unable to establish a connection</span>: You're too far away from the target silicon!")
+			return
+		var/obj/item/aiModule/M = O
+		M.install(src)
+		return
 	return ..()
 
 
-/obj/machinery/computer/upload/borg
+/obj/machinery/computer/aiupload/attack_hand(mob/user as mob)
+	if(src.stat & NOPOWER)
+		to_chat(usr, "The upload computer has no power!")
+		return
+	if(src.stat & BROKEN)
+		to_chat(usr, "The upload computer is broken!")
+		return
+
+	src.current = select_active_ai(user)
+
+	if(!src.current)
+		to_chat(usr, "No active AIs detected.")
+	else
+		to_chat(usr, "[src.current.name] selected for law changes.")
+	return
+
+/obj/machinery/computer/aiupload/attack_ghost(user as mob)
+	return 1
+
+// Why is this not a subtype
+/obj/machinery/computer/borgupload
 	name = "cyborg upload console"
 	desc = "Used to upload laws to Cyborgs."
-	circuit = /obj/item/circuitboard/computer/borgupload
+	icon_screen = "command"
+	icon_keyboard = "med_key"
+	circuit = /obj/item/circuitboard/borgupload
+	var/mob/living/silicon/robot/current = null
 
-/obj/machinery/computer/upload/borg/interact(mob/user)
-	current = select_active_free_borg(user)
 
-	if(!current)
-		to_chat(user, "<span class='caution'>No active unslaved cyborgs detected!</span>")
-	else
-		to_chat(user, "[current.name] selected for law changes.")
-
-/obj/machinery/computer/upload/borg/can_upload_to(mob/living/silicon/robot/B)
-	if(!B || !iscyborg(B))
-		return FALSE
-	if(B.scrambledcodes || B.emagged)
-		return FALSE
+/obj/machinery/computer/borgupload/attackby(obj/item/aiModule/module as obj, mob/user as mob, params)
+	if(istype(module, /obj/item/aiModule))
+		if(!current)//no borg selected
+			to_chat(user, "<span class='danger'>No borg selected. Please chose a target before proceeding with upload.")
+			return
+		var/turf/T = get_turf(current)
+		if(!atoms_share_level(T, src))
+			to_chat(user, "<span class='danger'>Unable to establish a connection</span>: You're too far away from the target silicon!")
+			return
+		module.install(src)
+		return
 	return ..()
+
+
+/obj/machinery/computer/borgupload/attack_hand(mob/user as mob)
+	if(src.stat & NOPOWER)
+		to_chat(usr, "The upload computer has no power!")
+		return
+	if(src.stat & BROKEN)
+		to_chat(usr, "The upload computer is broken!")
+		return
+
+	src.current = freeborg()
+
+	if(!src.current)
+		to_chat(usr, "No free cyborgs detected.")
+	else
+		to_chat(usr, "[src.current.name] selected for law changes.")
+	return
+
+/obj/machinery/computer/borgupload/attack_ghost(user as mob)
+		return 1

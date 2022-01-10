@@ -8,78 +8,73 @@ const VendingRow = (props, context) => {
   const {
     product,
     productStock,
-    custom,
+    productImage,
   } = props;
+  const {
+    chargesMoney,
+    user,
+    userMoney,
+    vend_ready,
+    coin_name,
+    inserted_item_name,
+  } = data;
   const free = (
-    !data.onstation
+    !chargesMoney
     || product.price === 0
-    || (
-      !product.premium
-      && data.department
-      && data.user
-      && data.department === data.user.department
-    )
+  );
+  let buttonText = "ERROR!";
+  let rowIcon = "";
+  if (product.req_coin) {
+    buttonText = "COIN";
+    rowIcon = "circle";
+  } else if (free) {
+    buttonText = "FREE";
+    rowIcon = "arrow-circle-down";
+  } else {
+    buttonText = product.price;
+    rowIcon = "shopping-cart";
+  }
+  let buttonDisabled = (
+    !vend_ready
+    || (!coin_name && product.req_coin)
+    || productStock === 0
+    || (!free && product.price > userMoney)
   );
   return (
     <Table.Row>
       <Table.Cell collapsing>
-        {product.img ? (
-          <img
-            src={`data:image/jpeg;base64,${product.img}`}
-            style={{
-              'vertical-align': 'middle',
-              'horizontal-align': 'middle',
-            }} />
-        ) : (
-          <span
-            className={classes([
-              'vending32x32',
-              product.path,
-            ])}
-            style={{
-              'vertical-align': 'middle',
-              'horizontal-align': 'middle',
-            }} />
-        )}
+        <img
+          src={`data:image/jpeg;base64,${productImage}`}
+          style={{
+            'vertical-align': 'middle',
+            width: '32px',
+            margin: '0px',
+            'margin-left': '0px',
+          }} />
       </Table.Cell>
       <Table.Cell bold>
         {product.name}
       </Table.Cell>
       <Table.Cell collapsing textAlign="center">
         <Box
-          color={custom
-            ? 'good'
-            : productStock <= 0
-              ? 'bad'
-              : productStock <= (product.max_amount / 2)
-                ? 'average'
-                : 'good'}>
+          color={(
+            productStock <= 0 && 'bad'
+            || productStock <= (product.max_amount / 2) && 'average'
+            || 'good'
+          )}>
           {productStock} in stock
         </Box>
       </Table.Cell>
       <Table.Cell collapsing textAlign="center">
-        {custom && (
-          <Button
-            fluid
-            content={data.access ? 'FREE' : product.price + ' cr'}
-            onClick={() => act('dispense', {
-              'item': product.name,
-            })} />
-        ) || (
-          <Button
-            fluid
-            disabled={(
-              productStock === 0
-              || !free && (
-                !data.user
-                || product.price > data.user.cash
-              )
-            )}
-            content={free ? 'FREE' : product.price + ' cr'}
-            onClick={() => act('vend', {
-              'ref': product.ref,
-            })} />
-        )}
+        <Button
+          fluid
+          disabled={buttonDisabled}
+          icon={rowIcon}
+          content={buttonText}
+          textAlign="left"
+          onClick={() => act('vend', {
+            'inum': product.inum,
+          })} />
       </Table.Cell>
     </Table.Row>
   );
@@ -87,55 +82,106 @@ const VendingRow = (props, context) => {
 
 export const Vending = (props, context) => {
   const { act, data } = useBackend(context);
+  const {
+    user,
+    guestNotice,
+    userMoney,
+    chargesMoney,
+    product_records = [],
+    coin_records = [],
+    hidden_records = [],
+    stock,
+    vend_ready,
+    coin_name,
+    inserted_item_name,
+    panel_open,
+    speaker,
+    imagelist,
+  } = data;
   let inventory;
-  let custom = false;
-  if (data.vending_machine_input) {
-    inventory = data.vending_machine_input;
-    custom = true;
-  } else if (data.extended_inventory) {
+
+  inventory = [
+    ...product_records,
+    ...coin_records,
+  ];
+  if (data.extended_inventory) {
     inventory = [
-      ...data.product_records,
-      ...data.coin_records,
-      ...data.hidden_records,
-    ];
-  } else {
-    inventory = [
-      ...data.product_records,
-      ...data.coin_records,
+      ...inventory,
+      ...hidden_records,
     ];
   }
+  // Just in case we still have undefined values in the list
+  inventory = inventory.filter(item => !!item);
   return (
     <Window
-      resizable
-      width={400}
-      height={550}>
+      title="Vending Machine"
+      resizable>
       <Window.Content scrollable>
-        {!!data.onstation && (
+        {!!chargesMoney && (
           <Section title="User">
-            {data.user && (
+            {user && (
               <Box>
-                Welcome, <b>{data.user.name}</b>,
+                Welcome, <b>{user.name}</b>,
                 {' '}
-                <b>{data.user.job || 'Unemployed'}</b>!
+                <b>{user.job || 'Unemployed'}</b>!
                 <br />
-                Your balance is <b>{data.user.cash} credits</b>.
+                Your balance is <b>{userMoney} credits</b>.
               </Box>
             ) || (
-              <Box color="light-gray">
-                No registered ID card!<br />
-                Please contact your local HoP!
+              <Box color="light-grey">
+                {guestNotice}
               </Box>
             )}
           </Section>
         )}
-        <Section title="Products" >
+        {!!coin_name && (
+          <Section
+            title="Coin"
+            buttons={(
+              <Button
+                fluid
+                icon="eject"
+                content="Remove Coin"
+                onClick={() => act('remove_coin', {})} />
+            )}>
+            <Box>
+              {coin_name}
+            </Box>
+          </Section>
+        )}
+        {!!inserted_item_name && (
+          <Section
+            title="Item"
+            buttons={(
+              <Button
+                fluid
+                icon="eject"
+                content="Eject Item"
+                onClick={() => act('eject_item', {})} />
+            )}>
+            <Box>
+              {inserted_item_name}
+            </Box>
+          </Section>
+        )}
+        {!!panel_open && (
+          <Section title="Maintenance">
+            <Button
+              icon={speaker ? "check" : "volume-mute"}
+              selected={speaker}
+              content="Speaker"
+              textAlign="left"
+              onClick={() => act('toggle_voice', {})} />
+          </Section>
+        )}
+        <Section title="Products">
           <Table>
             {inventory.map(product => (
               <VendingRow
                 key={product.name}
-                custom={custom}
                 product={product}
-                productStock={data.stock[product.name]} />
+                productStock={stock[product.name]}
+                productImage={imagelist[product.path]} />
             ))}
           </Table>
         </Section>

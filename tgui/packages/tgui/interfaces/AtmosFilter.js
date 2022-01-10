@@ -1,53 +1,64 @@
-import { useBackend } from '../backend';
-import { Button, LabeledList, NumberInput, Section } from '../components';
-import { getGasLabel } from '../constants';
-import { Window } from '../layouts';
+import { useBackend } from "../backend";
+import { Button, Section, NumberInput, LabeledList } from "../components";
+import { Window } from "../layouts";
 
 export const AtmosFilter = (props, context) => {
   const { act, data } = useBackend(context);
-  const filterTypes = data.filter_types || [];
+  const {
+    on,
+    pressure,
+    max_pressure,
+    filter_type,
+    filter_type_list,
+  } = data;
+
   return (
-    <Window
-      width={390}
-      height={187}>
+    <Window>
       <Window.Content>
         <Section>
           <LabeledList>
             <LabeledList.Item label="Power">
               <Button
-                icon={data.on ? 'power-off' : 'times'}
-                content={data.on ? 'On' : 'Off'}
-                selected={data.on}
+                icon={on ? "power-off" : "power-off"}
+                content={on ? "On" : "Off"}
+                color={on ? null : "red"}
+                selected={on}
                 onClick={() => act('power')} />
             </LabeledList.Item>
-            <LabeledList.Item label="Transfer Rate">
+            <LabeledList.Item label="Rate">
+              <Button
+                icon="fast-backward"
+                textAlign="center"
+                disabled={pressure === 0}
+                width={2.2}
+                onClick={() => act('min_pressure')} />
               <NumberInput
                 animated
-                value={parseFloat(data.rate)}
-                width="63px"
-                unit="L/s"
+                unit="kPa"
+                width={6.1}
+                lineHeight={1.5}
+                step={10}
                 minValue={0}
-                maxValue={200}
-                onDrag={(e, value) => act('rate', {
-                  rate: value,
+                maxValue={max_pressure}
+                value={pressure}
+                onDrag={(e, value) => act('custom_pressure', {
+                  pressure: value,
                 })} />
               <Button
-                ml={1}
-                icon="plus"
-                content="Max"
-                disabled={data.rate === data.max_rate}
-                onClick={() => act('rate', {
-                  rate: 'max',
-                })} />
+                icon="fast-forward"
+                textAlign="center"
+                disabled={pressure === max_pressure}
+                width={2.2}
+                onClick={() => act('max_pressure')} />
             </LabeledList.Item>
             <LabeledList.Item label="Filter">
-              {filterTypes.map(filter => (
+              {filter_type_list.map(filter => (
                 <Button
-                  key={filter.id}
-                  selected={filter.selected}
-                  content={getGasLabel(filter.id, filter.name)}
-                  onClick={() => act('filter', {
-                    mode: filter.id,
+                  key={filter.label}
+                  selected={filter.gas_type === filter_type}
+                  content={filter.label}
+                  onClick={() => act('set_filter', {
+                    filter: filter.gas_type,
                   })} />
               ))}
             </LabeledList.Item>

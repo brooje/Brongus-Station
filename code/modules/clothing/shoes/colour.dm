@@ -1,125 +1,115 @@
-/obj/item/clothing/shoes/sneakers
-
-/obj/item/clothing/shoes/sneakers/black
+/obj/item/clothing/shoes/black
 	name = "black shoes"
 	icon_state = "black"
 	item_color = "black"
 	desc = "A pair of black shoes."
-	custom_price = 20
 
 	cold_protection = FEET
 	min_cold_protection_temperature = SHOES_MIN_TEMP_PROTECT
 	heat_protection = FEET
 	max_heat_protection_temperature = SHOES_MAX_TEMP_PROTECT
 
-/obj/item/clothing/shoes/sneakers/black/redcoat
+/obj/item/clothing/shoes/black/redcoat
 	item_color = "redcoat"	//Exists for washing machines. Is not different from black shoes in any way.
 
-/obj/item/clothing/shoes/sneakers/brown
+/obj/item/clothing/shoes/black/greytide
+	flags = NODROP
+
+/obj/item/clothing/shoes/brown
 	name = "brown shoes"
 	desc = "A pair of brown shoes."
 	icon_state = "brown"
-	item_color = "brown"
 
-/obj/item/clothing/shoes/sneakers/brown/captain
+/obj/item/clothing/shoes/brown/captain
 	item_color = "captain"	//Exists for washing machines. Is not different from brown shoes in any way.
 
-/obj/item/clothing/shoes/sneakers/brown/hop
+/obj/item/clothing/shoes/brown/hop
 	item_color = "hop"		//Exists for washing machines. Is not different from brown shoes in any way.
 
-/obj/item/clothing/shoes/sneakers/brown/ce
+/obj/item/clothing/shoes/brown/ce
 	item_color = "chief"		//Exists for washing machines. Is not different from brown shoes in any way.
 
-/obj/item/clothing/shoes/sneakers/brown/rd
+/obj/item/clothing/shoes/brown/rd
 	item_color = "director"	//Exists for washing machines. Is not different from brown shoes in any way.
 
-/obj/item/clothing/shoes/sneakers/brown/cmo
+/obj/item/clothing/shoes/brown/cmo
 	item_color = "medical"	//Exists for washing machines. Is not different from brown shoes in any way.
 
-/obj/item/clothing/shoes/sneakers/brown/qm
+/obj/item/clothing/shoes/brown/qm
 	item_color = "cargo"		//Exists for washing machines. Is not different from brown shoes in any way.
 
-/obj/item/clothing/shoes/sneakers/blue
+/obj/item/clothing/shoes/blue
 	name = "blue shoes"
 	icon_state = "blue"
 	item_color = "blue"
 
-/obj/item/clothing/shoes/sneakers/green
+/obj/item/clothing/shoes/green
 	name = "green shoes"
 	icon_state = "green"
 	item_color = "green"
 
-/obj/item/clothing/shoes/sneakers/yellow
+/obj/item/clothing/shoes/yellow
 	name = "yellow shoes"
 	icon_state = "yellow"
 	item_color = "yellow"
 
-/obj/item/clothing/shoes/sneakers/purple
+/obj/item/clothing/shoes/purple
 	name = "purple shoes"
 	icon_state = "purple"
 	item_color = "purple"
 
-/obj/item/clothing/shoes/sneakers/brown
+/obj/item/clothing/shoes/brown
 	name = "brown shoes"
 	icon_state = "brown"
 	item_color = "brown"
 
-/obj/item/clothing/shoes/sneakers/red
+/obj/item/clothing/shoes/red
 	name = "red shoes"
 	desc = "Stylish red shoes."
 	icon_state = "red"
 	item_color = "red"
 
-/obj/item/clothing/shoes/sneakers/white
+/obj/item/clothing/shoes/white
 	name = "white shoes"
 	icon_state = "white"
 	permeability_coefficient = 0.01
 	item_color = "white"
 
-/obj/item/clothing/shoes/sneakers/rainbow
+/obj/item/clothing/shoes/leather
+	name = "leather shoes"
+	desc = "A sturdy pair of leather shoes."
+	icon_state = "leather"
+	item_color = "leather"
+
+/obj/item/clothing/shoes/rainbow
 	name = "rainbow shoes"
 	desc = "Very gay shoes."
 	icon_state = "rain_bow"
 	item_color = "rainbow"
 
-/obj/item/clothing/shoes/sneakers/orange
+/obj/item/clothing/shoes/orange
 	name = "orange shoes"
 	icon_state = "orange"
 	item_color = "orange"
+	var/obj/item/restraints/handcuffs/shackles
 
-/obj/item/clothing/shoes/sneakers/orange/attack_self(mob/user)
-	if (src.chained)
-		src.chained = null
-		src.slowdown = SHOES_SLOWDOWN
-		new /obj/item/restraints/handcuffs( user.loc )
-		src.icon_state = "orange"
-	return
-
-/obj/item/clothing/shoes/sneakers/orange/attackby(obj/H, loc, params)
-	..()
-	// Note: not using istype here because we want to ignore all subtypes
-	if (!chained && H.type == /obj/item/restraints/handcuffs)
-		qdel(H)
-		src.chained = 1
-		src.slowdown = 15
-		src.icon_state = "orange1"
-	return
-	
-/obj/item/clothing/shoes/sneakers/orange/allow_attack_hand_drop(mob/user)
-	if(ishuman(user))
-		var/mob/living/carbon/human/hummie = user
-		if(hummie.shoes == src && chained)
-			to_chat(hummie, "<span class='warning'>You start taking off your [src]!</span>")
-			if(!do_after(hummie,15 SECONDS, src))
-				return FALSE
+/obj/item/clothing/shoes/orange/Destroy()
+	QDEL_NULL(shackles)
 	return ..()
 
-/obj/item/clothing/shoes/sneakers/orange/MouseDrop(atom/over)
-	var/mob/m = usr
-	if(ishuman(m))
-		var/mob/living/carbon/human/hummie = m
-		if(hummie.shoes == src && chained)
-			to_chat(hummie, "<span class='warning'>You start taking off your [src]!</span>")			
-			if(!do_after(hummie,15 SECONDS, src))
-				return FALSE
+/obj/item/clothing/shoes/orange/attack_self(mob/user)
+	if(shackles)
+		user.put_in_hands(shackles)
+		shackles = null
+		slowdown = SHOES_SLOWDOWN
+		icon_state = "orange"
+
+/obj/item/clothing/shoes/orange/attackby(obj/item/I, mob/user, params)
+	if(istype(I, /obj/item/restraints/handcuffs) && !shackles)
+		if(user.drop_item())
+			I.forceMove(src)
+			shackles = I
+			slowdown = 15
+			icon_state = "orange1"
+			return
 	return ..()

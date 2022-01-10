@@ -1,76 +1,29 @@
+// Dont touch this subsystem unless you ABSOLUTELY know what you are doing
+
 SUBSYSTEM_DEF(blackbox)
 	name = "Blackbox"
-	wait = 6000
-	flags = SS_NO_TICK_CHECK
-	runlevels = RUNLEVEL_GAME | RUNLEVEL_POSTGAME
+	flags = SS_NO_FIRE | SS_NO_INIT
+	// Even though we dont initialize, we need this init_order
+	// On Master.Shutdown(), it shuts down subsystems in the REVERSE order
+	// The database SS has INIT_ORDER_DBCORE=20, and this SS has INIT_ORDER_BLACKBOX=19
+	// So putting this ensures it shuts down in the right order
 	init_order = INIT_ORDER_BLACKBOX
 
-	var/list/feedback = list()	//list of datum/feedback_variable
-	var/list/first_death = list() //the first death of this round, assoc. vars keep track of different things
-	var/triggertime = 0
-	var/sealed = FALSE	//time to stop tracking stats?
-	var/list/versions = list("antagonists" = 3,
-							"admin_secrets_fun_used" = 2,
-							"explosion" = 2,
-							"time_dilation_current" = 3,
-							"science_techweb_unlock" = 2,
-							"round_end_stats" = 2,
-							"testmerged_prs" = 2) //associative list of any feedback variables that have had their format changed since creation and their current version, remember to update this
-
-/datum/controller/subsystem/blackbox/Initialize()
-	triggertime = world.time
-	if(CONFIG_GET(flag/limited_feedback))
-		return ..()
-	record_feedback("amount", "random_seed", Master.random_seed)
-	record_feedback("amount", "dm_version", DM_VERSION)
-	record_feedback("amount", "dm_build", DM_BUILD)
-	record_feedback("amount", "byond_version", world.byond_version)
-	record_feedback("amount", "byond_build", world.byond_build)
-	. = ..()
-
-//poll population
-/datum/controller/subsystem/blackbox/fire()
-	set waitfor = FALSE	//for population query
-
-	CheckPlayerCount()
-
-	if(CONFIG_GET(flag/use_exp_tracking))
-		if((triggertime < 0) || (world.time > (triggertime +3000)))	//subsystem fires once at roundstart then once every 10 minutes. a 5 min check skips the first fire. The <0 is midnight rollover check
-			update_exp(10,FALSE)
-
-/datum/controller/subsystem/blackbox/proc/CheckPlayerCount()
-	set waitfor = FALSE
-
-	if(!SSdbcore.Connect())
-		return
-	var/playercount = 0
-	for(var/mob/M in GLOB.player_list)
-		if(M.client)
-			playercount += 1
-	var/admincount = GLOB.admins.len
-
-
-	var/datum/DBQuery/query_record_playercount = SSdbcore.NewQuery({"
-		INSERT INTO [format_table_name("legacy_population")] (playercount, admincount, time, server_name, server_ip, server_port, round_id)
-		VALUES (:playercount, :admincount, :time, :server_name, INET_ATON(:server_ip), :server_port, :round_id)
-	"}, list(
-		"playercount" = playercount,
-		"admincount" = admincount,
-		"time" = SQLtime(),
-		"server_name" = CONFIG_GET(string/serversqlname),
-		"server_ip" = world.internet_address || "0",
-		"server_port" = "[world.port]",
-		"round_id" = GLOB.round_id,
-	))
-	query_record_playercount.Execute()
-	qdel(query_record_playercount)
+	/// List of all recorded feedback
+	var/list/datum/feedback_variable/feedback = list()
+	/// Is it time to stop tracking stats?
+	var/sealed = FALSE
+	/// List of highest tech levels attained that isn't lost lost by destruction of RD computers
+	var/list/research_levels = list()
+	/// Associative list of any feedback variables that have had their format changed since creation and their current version, remember to update this
+	var/list/versions = list()
 
 /datum/controller/subsystem/blackbox/Recover()
 	feedback = SSblackbox.feedback
 	sealed = SSblackbox.sealed
 
 //no touchie
-/datum/controller/subsystem/blackbox/vv_get_var(var_name)
+/datum/controller/subsystem/blackbox/can_vv_get(var_name)
 	if(var_name == "feedback")
 		return debug_variable(var_name, deepCopyList(feedback), 0, src)
 	return ..()
@@ -85,87 +38,122 @@ SUBSYSTEM_DEF(blackbox)
 			return FALSE
 	return ..()
 
-//Recorded on subsystem shutdown
-/datum/controller/subsystem/blackbox/proc/FinalFeedback()
-	record_feedback("tally", "ahelp_stats", GLOB.ahelp_tickets.active_tickets.len, "unresolved")
-	for (var/obj/machinery/telecomms/message_server/MS in GLOB.telecomms_list)
-		if (MS.pda_msgs.len)
-			record_feedback("tally", "radio_usage", MS.pda_msgs.len, "PDA")
-		if (MS.rc_msgs.len)
-			record_feedback("tally", "radio_usage", MS.rc_msgs.len, "request console")
-
-	for(var/player_key in GLOB.player_details)
-		var/datum/player_details/PD = GLOB.player_details[player_key]
-		record_feedback("tally", "client_byond_version", 1, PD.byond_version)
-
+/**
+  * Shutdown Helper
+  *
+  * Dumps all feedback stats to the DB. Doesnt get much simpler than that.
+  */
 /datum/controller/subsystem/blackbox/Shutdown()
 	sealed = FALSE
+	for(var/obj/machinery/message_server/MS in GLOB.message_servers)
+		if(MS.pda_msgs.len)
+			record_feedback("tally", "radio_usage", MS.pda_msgs.len, "PDA")
+		if(MS.rc_msgs.len)
+			record_feedback("tally", "radio_usage", MS.rc_msgs.len, "request console")
 
-	if (CONFIG_GET(flag/limited_feedback) || !SSdbcore.Connect())
+	if(length(research_levels))
+		record_feedback("associative", "high_research_level", 1, research_levels)
+
+	if(!SSdbcore.IsConnected())
 		return
 
-	FinalFeedback()
+	var/list/datum/db_query/queries = list()
 
+	for(var/datum/feedback_variable/FV in feedback)
+		var/sqlversion = 1
+		if(FV.key in versions)
+			sqlversion = versions[FV.key]
 
-	var/list/special_columns = list(
-		"datetime" = "NOW()"
-	)
-	var/list/sqlrowlist = list()
-	for (var/datum/feedback_variable/FV in feedback)
-		sqlrowlist += list(list(
-			"round_id" = GLOB.round_id,
-			"key_name" = FV.key,
-			"key_type" = FV.key_type,
-			"version" = versions[FV.key] || 1,
+		var/datum/db_query/query_feedback_save = SSdbcore.NewQuery({"
+		INSERT IGNORE INTO feedback (datetime, round_id, key_name, key_type, version, json)
+		VALUES (NOW(), :rid, :keyname, :keytype, :version, :json)"}, list(
+			"rid" = text2num(GLOB.round_id),
+			"keyname" = FV.key,
+			"keytype" = FV.key_type,
+			"version" = text2num(sqlversion),
 			"json" = json_encode(FV.json)
 		))
+		queries += query_feedback_save
 
-	if (!length(sqlrowlist))
-		return
-	SSdbcore.MassInsert(format_table_name("feedback"), sqlrowlist, ignore_errors = TRUE, delayed = TRUE, special_columns = special_columns)
+	SSdbcore.MassExecute(queries, TRUE, TRUE)
 
+/**
+  * Blackbox Sealer
+  *
+  * Seals the blackbox, preventing new data from being stored. This is to avoid data being bloated during end round grief
+  */
 /datum/controller/subsystem/blackbox/proc/Seal()
 	if(sealed)
 		return FALSE
-	if(IsAdminAdvancedProcCall())
-		message_admins("[key_name_admin(usr)] sealed the blackbox!")
-	log_game("Blackbox sealed[IsAdminAdvancedProcCall() ? " by [key_name(usr)]" : ""].")
+	log_game("Blackbox sealed")
 	sealed = TRUE
 	return TRUE
 
+/**
+  * Research level broadcast logging helper
+  *
+  * This is called on R&D updates for a safe way of logging tech levels if an R&D console is destroyed
+  *
+  * Arguments:
+  * * tech - Research technology name
+  * * level - Research technology level
+  */
+/datum/controller/subsystem/blackbox/proc/log_research(tech, level)
+	if(!(tech in research_levels) || research_levels[tech] < level)
+		research_levels[tech] = level
+
+
+/**
+  * Radio broadcast logging helper
+  *
+  * Called during [/proc/broadcast_message()] to log a message to the blackbox.
+  * Translates the specific frequency to a name
+  *
+  * Arguments:
+  * * freq - Frequency of the transmission
+  */
 /datum/controller/subsystem/blackbox/proc/LogBroadcast(freq)
-	if(sealed || CONFIG_GET(flag/limited_feedback))
+	if(sealed)
 		return
 	switch(freq)
-		if(FREQ_COMMON)
+		if(PUB_FREQ)
 			record_feedback("tally", "radio_usage", 1, "common")
-		if(FREQ_SCIENCE)
+		if(SCI_FREQ)
 			record_feedback("tally", "radio_usage", 1, "science")
-		if(FREQ_COMMAND)
+		if(COMM_FREQ)
 			record_feedback("tally", "radio_usage", 1, "command")
-		if(FREQ_MEDICAL)
+		if(MED_FREQ)
 			record_feedback("tally", "radio_usage", 1, "medical")
-		if(FREQ_ENGINEERING)
+		if(ENG_FREQ)
 			record_feedback("tally", "radio_usage", 1, "engineering")
-		if(FREQ_SECURITY)
+		if(SEC_FREQ)
 			record_feedback("tally", "radio_usage", 1, "security")
-		if(FREQ_SYNDICATE)
+		if(DTH_FREQ)
+			record_feedback("tally", "radio_usage", 1, "deathsquad")
+		if(SYND_FREQ)
 			record_feedback("tally", "radio_usage", 1, "syndicate")
-		if(FREQ_SERVICE)
-			record_feedback("tally", "radio_usage", 1, "service")
-		if(FREQ_SUPPLY)
+		if(SYNDTEAM_FREQ)
+			record_feedback("tally", "radio_usage", 1, "syndicate team")
+		if(SUP_FREQ)
 			record_feedback("tally", "radio_usage", 1, "supply")
-		if(FREQ_CENTCOM)
-			record_feedback("tally", "radio_usage", 1, "centcom")
-		if(FREQ_AI_PRIVATE)
-			record_feedback("tally", "radio_usage", 1, "ai private")
-		if(FREQ_CTF_RED)
-			record_feedback("tally", "radio_usage", 1, "CTF red team")
-		if(FREQ_CTF_BLUE)
-			record_feedback("tally", "radio_usage", 1, "CTF blue team")
+		if(SRV_FREQ)
+			record_feedback("tally", "radio_usage", 1, "service")
+		if(PROC_FREQ)
+			record_feedback("tally", "radio_usage", 1, "procedure")
 		else
 			record_feedback("tally", "radio_usage", 1, "other")
 
+
+/**
+  * Helper to find and return a feeedback datum
+  *
+  * Pass in a feedback datum key and key_type to do a lookup.
+  * It will create the feedback datum if it doesnt exist
+  *
+  * Arguments:
+  * * key - Key of the variable to lookup
+  * * key_type - Type of feedback to be recorded if the feedback datum cant be found
+  */
 /datum/controller/subsystem/blackbox/proc/find_feedback_datum(key, key_type)
 	for(var/datum/feedback_variable/FV in feedback)
 		if(FV.key == key)
@@ -174,64 +162,23 @@ SUBSYSTEM_DEF(blackbox)
 	var/datum/feedback_variable/FV = new(key, key_type)
 	feedback += FV
 	return FV
-/*
-feedback data can be recorded in 5 formats:
-"text"
-	used for simple single-string records i.e. the current map
-	further calls to the same key will append saved data unless the overwrite argument is true or it already exists
-	when encoded calls made with overwrite will lack square brackets
-	calls: 	SSblackbox.record_feedback("text", "example", 1, "sample text")
-			SSblackbox.record_feedback("text", "example", 1, "other text")
-	json: {"data":["sample text","other text"]}
-"amount"
-	used to record simple counts of data i.e. the number of ahelps received
-	further calls to the same key will add or subtract (if increment argument is a negative) from the saved amount
-	calls:	SSblackbox.record_feedback("amount", "example", 8)
-			SSblackbox.record_feedback("amount", "example", 2)
-	json: {"data":10}
-"tally"
-	used to track the number of occurrences of multiple related values i.e. how many times each type of gun is fired
-	further calls to the same key will:
-	 	add or subtract from the saved value of the data key if it already exists
-		append the key and it's value if it doesn't exist
-	calls:	SSblackbox.record_feedback("tally", "example", 1, "sample data")
-			SSblackbox.record_feedback("tally", "example", 4, "sample data")
-			SSblackbox.record_feedback("tally", "example", 2, "other data")
-	json: {"data":{"sample data":5,"other data":2}}
-"nested tally"
-	used to track the number of occurrences of structured semi-relational values i.e. the results of arcade machines
-	similar to running total, but related values are nested in a multi-dimensional array built
-	the final element in the data list is used as the tracking key, all prior elements are used for nesting
-	all data list elements must be strings
-	further calls to the same key will:
-	 	add or subtract from the saved value of the data key if it already exists in the same multi-dimensional position
-		append the key and it's value if it doesn't exist
-	calls: 	SSblackbox.record_feedback("nested tally", "example", 1, list("fruit", "orange", "apricot"))
-			SSblackbox.record_feedback("nested tally", "example", 2, list("fruit", "orange", "orange"))
-			SSblackbox.record_feedback("nested tally", "example", 3, list("fruit", "orange", "apricot"))
-			SSblackbox.record_feedback("nested tally", "example", 10, list("fruit", "red", "apple"))
-			SSblackbox.record_feedback("nested tally", "example", 1, list("vegetable", "orange", "carrot"))
-	json: {"data":{"fruit":{"orange":{"apricot":4,"orange":2},"red":{"apple":10}},"vegetable":{"orange":{"carrot":1}}}}
-	tracking values associated with a number can't merge with a nesting value, trying to do so will append the list
-	call:	SSblackbox.record_feedback("nested tally", "example", 3, list("fruit", "orange"))
-	json: {"data":{"fruit":{"orange":{"apricot":4,"orange":2},"red":{"apple":10},"orange":3},"vegetable":{"orange":{"carrot":1}}}}
-"associative"
-	used to record text that's associated with a value i.e. coordinates
-	further calls to the same key will append a new list to existing data
-	calls:	SSblackbox.record_feedback("associative", "example", 1, list("text" = "example", "path" = /obj/item, "number" = 4))
-			SSblackbox.record_feedback("associative", "example", 1, list("number" = 7, "text" = "example", "other text" = "sample"))
-	json: {"data":{"1":{"text":"example","path":"/obj/item","number":"4"},"2":{"number":"7","text":"example","other text":"sample"}}}
 
-Versioning
-	If the format of a feedback variable is ever changed, i.e. how many levels of nesting are used or a new type of data is added to it, add it to the versions list
-	When feedback is being saved if a key is in the versions list the value specified there will be used, otherwise all keys are assumed to be version = 1
-	versions is an associative list, remember to use the same string in it as defined on a feedback variable, example:
-	list/versions = list("round_end_stats" = 4,
-						"admin_toggle" = 2,
-						"gun_fired" = 2)
-*/
+/**
+  * Main feedback recording proc
+  *
+  * This is the bulk of this subsystem and is in charge of creating and using the variables.
+  * See .github/USING_FEEDBACK_DATA.md for instructions
+  * Note that feedback is not recorded to the DB during this function. That happens at round end.
+  *
+  * Arguments:
+  * * key_type - Type of key. Either "text", "amount", "tally", "nested tally", "associative"
+  * * key - Key of the data to be used (EG: "admin_verb")
+  * * increment - If using "amount", how much to increment why
+  * * data - The actual data to logged
+  * * overwrite - Do we want to overwrite the existing key
+  */
 /datum/controller/subsystem/blackbox/proc/record_feedback(key_type, key, increment, data, overwrite)
-	if(sealed || !key_type || !istext(key) || !isnum_safe(increment || !data) || CONFIG_GET(flag/limited_feedback))
+	if(sealed || !key_type || !istext(key) || !isnum(increment || !data))
 		return
 	var/datum/feedback_variable/FV = find_feedback_datum(key, key_type)
 	switch(key_type)
@@ -262,99 +209,102 @@ Versioning
 			if(!islist(FV.json["data"]))
 				FV.json["data"] = list()
 			var/pos = length(FV.json["data"]) + 1
-			FV.json["data"]["[pos]"] = list() //in 512 "pos" can be replaced with "[FV.json["data"].len+1]"
+			FV.json["data"]["[pos]"] = list()
 			for(var/i in data)
-				if(islist(data[i]))
-					FV.json["data"]["[pos]"]["[i]"] = data[i] //and here with "[FV.json["data"].len]"
-				else
-					FV.json["data"]["[pos]"]["[i]"] = "[data[i]]"
-		else
-			CRASH("Invalid feedback key_type: [key_type]")
+				FV.json["data"]["[pos]"]["[i]"] = "[data[i]]"
 
+/**
+  * Recursive list recorder
+  *
+  * Used by the above proc for nested tallies
+  *
+  * Arguments:
+  * * L - List to use
+  * * key_list - List of keys to add
+  * * increment - How much to increase by
+  * * depth - Depth to use
+  */
 /datum/controller/subsystem/blackbox/proc/record_feedback_recurse_list(list/L, list/key_list, increment, depth = 1)
 	if(depth == key_list.len)
 		if(L.Find(key_list[depth]))
 			L["[key_list[depth]]"] += increment
 		else
-			var/list/LFI = list(key_list[depth] = increment)
-			L += LFI
+			var/list/list_found_index = list(key_list[depth] = increment)
+			L += list_found_index
 	else
 		if(!L.Find(key_list[depth]))
-			var/list/LGD = list(key_list[depth] = list())
-			L += LGD
+			var/list/list_go_down = list(key_list[depth] = list())
+			L += list_go_down
 		L["[key_list[depth-1]]"] = .(L["[key_list[depth]]"], key_list, increment, ++depth)
 	return L
 
+/**
+  * # feedback_variable
+  *
+  * Datum to hold feedback data, which gets logged at round end
+  *
+  * Holds all the information being logged
+  */
 /datum/feedback_variable
 	var/key
 	var/key_type
 	var/list/json = list()
 
+// Basically just takes some args and sets them
 /datum/feedback_variable/New(new_key, new_key_type)
 	key = new_key
 	key_type = new_key_type
 
-/* Ticket logging
-/datum/controller/subsystem/blackbox/proc/LogAhelp(ticket, action, message, recipient, sender)
-	if(!SSdbcore.Connect())
-		return
-
-	var/datum/DBQuery/query_log_ahelp = SSdbcore.NewQuery({"
-		INSERT INTO [format_table_name("ticket")] (ticket, action, message, recipient, sender, server_ip, server_port, round_id, timestamp)
-		VALUES (:ticket, :action, :message, :recipient, :sender, INET_ATON(:server_ip), :server_port, :round_id, :time)
-	"}, list("ticket" = ticket, "action" = action, "message" = message, "recipient" = recipient, "sender" = sender, "server_ip" = world.internet_address || "0", "server_port" = world.port, "round_id" = GLOB.round_id, "time" = SQLtime()))
-	query_log_ahelp.Execute()
-	qdel(query_log_ahelp)
-*/
-
+/**
+  * Death reporting proc
+  *
+  * Called when humans and cyborgs die, and logs death info to the `death` table
+  *
+  * Arguments:
+  * * L - The human or cyborg to be logged
+  */
 /datum/controller/subsystem/blackbox/proc/ReportDeath(mob/living/L)
-	set waitfor = FALSE
 	if(sealed)
 		return
-	if(!L || !L.key || !L.mind)
+	if(!SSdbcore.IsConnected())
 		return
-	if(!L.suiciding && !first_death.len)
-		first_death["name"] = "[(L.real_name == L.name) ? L.real_name : "[L.real_name] as [L.name]"]"
-		first_death["role"] = null
-		if(L.mind.assigned_role)
-			first_death["role"] = L.mind.assigned_role
-		first_death["area"] = "[AREACOORD(L)]"
-		first_death["damage"] = "<font color='#FF5555'>[L.getBruteLoss()]</font>/<font color='orange'>[L.getFireLoss()]</font>/<font color='lightgreen'>[L.getToxLoss()]</font>/<font color='lightblue'>[L.getOxyLoss()]</font>/<font color='pink'>[L.getCloneLoss()]</font>"
-		first_death["last_words"] = L.last_words
-
-	if(!SSdbcore.Connect())
+	if(!L)
+		return
+	if(!L.key || !L.mind)
 		return
 
-	var/datum/DBQuery/query_report_death = SSdbcore.NewQuery({"
-		INSERT INTO [format_table_name("death")] (pod, x_coord, y_coord, z_coord, mapname, server_name, server_ip, server_port, round_id, tod, job, special, name, byondkey, laname, lakey, bruteloss, fireloss, brainloss, oxyloss, toxloss, cloneloss, staminaloss, last_words, suicide)
-		VALUES (:pod, :x_coord, :y_coord, :z_coord, :map, :server_name, INET_ATON(:internet_address), :port, :round_id, :time, :job, :special, :name, :key, :laname, :lakey, :brute, :fire, :brain, :oxy, :tox, :clone, :stamina, :last_words, :suicide)
-	"}, list(
-		"name" = L.real_name,
-		"key" = L.ckey,
-		"job" = L.mind.assigned_role,
-		"special" = L.mind.special_role,
-		"pod" = get_area_name(L, TRUE),
-		"laname" = L.lastattacker,
-		"lakey" = L.lastattackerckey,
-		"brute" = L.getBruteLoss(),
-		"fire" = L.getFireLoss(),
-		"brain" = L.getOrganLoss(ORGAN_SLOT_BRAIN) || BRAIN_DAMAGE_DEATH, //getOrganLoss returns null without a brain but a value is required for this column
-		"oxy" = L.getOxyLoss(),
-		"tox" = L.getToxLoss(),
-		"clone" = L.getCloneLoss(),
-		"stamina" = L.getStaminaLoss(),
-		"x_coord" = L.x,
-		"y_coord" = L.y,
-		"z_coord" = L.z,
-		"last_words" = L.last_words,
-		"suicide" = L.suiciding,
-		"map" = SSmapping.config.map_name,
-		"internet_address" = world.internet_address || "0",
-		"port" = "[world.port]",
-		"server_name" = CONFIG_GET(string/serversqlname),
-		"round_id" = GLOB.round_id,
-		"time" = SQLtime(),
-	))
-	if(query_report_death)
-		query_report_death.Execute(async = TRUE)
-		qdel(query_report_death)
+	var/area/placeofdeath = get_area(L.loc)
+	var/podname = "Unknown"
+	if(placeofdeath)
+		podname = placeofdeath.name
+
+	// Empty string is important here!
+	var/laname = ""
+	var/lakey = ""
+	if(L.lastattacker)
+		laname = L.lastattacker
+	if(L.lastattackerckey)
+		lakey = L.lastattackerckey
+
+	var/datum/db_query/deathquery = SSdbcore.NewQuery({"
+		INSERT INTO death (name, byondkey, job, special, pod, tod, laname, lakey, gender, bruteloss, fireloss, brainloss, oxyloss, coord, server_id)
+		VALUES (:name, :key, :job, :special, :pod, NOW(), :laname, :lakey, :gender, :bruteloss, :fireloss, :brainloss, :oxyloss, :coord, :server_id)"},
+		list(
+			"name" = L.real_name,
+			"key" = L.key,
+			"job" = L.mind.assigned_role,
+			"special" = L.mind.special_role || "",
+			"pod" = podname,
+			"laname" = laname,
+			"lakey" = lakey,
+			"gender" = L.gender,
+			"bruteloss" = L.getBruteLoss(),
+			"fireloss" = L.getFireLoss(),
+			"brainloss" = L.getBrainLoss(),
+			"oxyloss" = L.getOxyLoss(),
+			"coord" = "[L.x], [L.y], [L.z]",
+			"server_id" = GLOB.configuration.system.instance_id
+		)
+	)
+	deathquery.warn_execute()
+	qdel(deathquery)

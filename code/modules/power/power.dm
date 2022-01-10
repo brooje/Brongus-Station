@@ -10,7 +10,7 @@
 	name = null
 	icon = 'icons/obj/power.dmi'
 	anchored = TRUE
-	obj_flags = CAN_BE_HIT | ON_BLUEPRINTS
+	on_blueprints = TRUE
 	var/datum/powernet/powernet = null
 	use_power = NO_POWER_USE
 	idle_power_usage = 0
@@ -42,13 +42,13 @@
 
 /obj/machinery/power/proc/surplus()
 	if(powernet)
-		return CLAMP(powernet.avail-powernet.load, 0, powernet.avail)
+		return clamp(powernet.avail-powernet.load, 0, powernet.avail)
 	else
 		return 0
 
-/obj/machinery/power/proc/avail(amount)
+/obj/machinery/power/proc/avail()
 	if(powernet)
-		return amount ? powernet.avail >= amount : powernet.avail
+		return powernet.avail
 	else
 		return 0
 
@@ -58,7 +58,7 @@
 
 /obj/machinery/power/proc/delayed_surplus()
 	if(powernet)
-		return CLAMP(powernet.newavail - powernet.delayedload, 0, powernet.newavail)
+		return clamp(powernet.newavail - powernet.delayedload, 0, powernet.newavail)
 	else
 		return 0
 
@@ -73,7 +73,7 @@
 
 // returns true if the area has power on given channel (or doesn't require power).
 // defaults to power_channel
-/obj/machinery/proc/powered(var/chan = -1) // defaults to power_channel
+/obj/machinery/proc/powered(chan = -1) // defaults to power_channel
 	if(!loc)
 		return FALSE
 	if(!use_power)
@@ -136,9 +136,9 @@
 
 // attach a wire to a power machine - leads from the turf you are standing on
 //almost never called, overwritten by all power machines but terminal and generator
-/obj/machinery/power/attackby(obj/item/W, mob/user, params)
-	if(istype(W, /obj/item/stack/cable_coil))
-		var/obj/item/stack/cable_coil/coil = W
+/obj/machinery/power/attackby(obj/item/I, mob/user, params)
+	if(istype(I, /obj/item/stack/cable_coil))
+		var/obj/item/stack/cable_coil/coil = I
 		var/turf/T = user.loc
 		if(T.intact || !isfloorturf(T))
 			return
@@ -162,7 +162,7 @@
 	var/cdir
 	var/turf/T
 
-	for(var/card in GLOB.cardinals)
+	for(var/card in GLOB.cardinal)
 		T = get_step(loc,card)
 		cdir = get_dir(T,loc)
 
@@ -182,7 +182,7 @@
 	var/cdir
 	var/turf/T
 
-	for(var/card in GLOB.cardinals)
+	for(var/card in GLOB.cardinal)
 		T = get_step(loc,card)
 		cdir = get_dir(T,loc)
 
@@ -233,9 +233,6 @@
 					. += C
 	return .
 
-
-
-
 //remove the old powernet and replace it with a new one throughout the network.
 /proc/propagate_network(obj/O, datum/powernet/PN)
 	var/list/worklist = list()
@@ -249,7 +246,7 @@
 		P = worklist[index] //get the next power object found
 		index++
 
-		if( istype(P, /obj/structure/cable))
+		if(istype(P, /obj/structure/cable))
 			var/obj/structure/cable/C = P
 			if(C.powernet != PN) //add it to the powernet, if it isn't already there
 				PN.add_cable(C)
@@ -294,23 +291,21 @@
 
 //Determines how strong could be shock, deals damage to mob, uses power.
 //M is a mob who touched wire/whatever
-//power_source is a source of electricity, can be power cell, area, apc, cable, powernet or null
+//power_source is a source of electricity, can be powercell, area, apc, cable, powernet or null
 //source is an object caused electrocuting (airlock, grille, etc)
-//siemens_coeff - layman's terms, conductivity
-//dist_check - set to only shock mobs within 1 of source (vendors, airlocks, etc.)
 //No animations will be performed by this proc.
-/proc/electrocute_mob(mob/living/carbon/M, power_source, obj/source, siemens_coeff = 1, dist_check = FALSE)
+/proc/electrocute_mob(mob/living/M, power_source, obj/source, siemens_coeff = 1, dist_check = FALSE)
 	if(!M || ismecha(M.loc))
-		return 0	//feckin mechs are dumb
+		return FALSE	//feckin mechs are dumb
 	if(dist_check)
-		if(!in_range(source,M))
-			return 0
+		if(!in_range(source, M))
+			return FALSE
 	if(ishuman(M))
 		var/mob/living/carbon/human/H = M
 		if(H.gloves)
 			var/obj/item/clothing/gloves/G = H.gloves
 			if(G.siemens_coefficient == 0)
-				return 0		//to avoid spamming with insulated glvoes on
+				return FALSE		//to avoid spamming with insulated glvoes on
 
 	var/area/source_area
 	if(istype(power_source, /area))
@@ -330,36 +325,34 @@
 	else if(istype(power_source, /obj/machinery/power/apc))
 		var/obj/machinery/power/apc/apc = power_source
 		cell = apc.cell
-		if (apc.terminal)
+		if(apc.terminal)
 			PN = apc.terminal.powernet
-	else if (!power_source)
+	else if(!power_source)
 		return 0
 	else
 		log_admin("ERROR: /proc/electrocute_mob([M], [power_source], [source]): wrong power_source")
 		return 0
-	if (!cell && !PN)
+	if(!cell && !PN)
 		return 0
 	var/PN_damage = 0
 	var/cell_damage = 0
-	if (PN)
+	if(PN)
 		PN_damage = PN.get_electrocute_damage()
-	if (cell)
+	if(cell)
 		cell_damage = cell.get_electrocute_damage()
 	var/shock_damage = 0
-	if (PN_damage>=cell_damage)
+	if(PN_damage >= cell_damage)
 		power_source = PN
 		shock_damage = PN_damage
 	else
 		power_source = cell
 		shock_damage = cell_damage
 	var/drained_hp = M.electrocute_act(shock_damage, source, siemens_coeff) //zzzzzzap!
-	log_combat(source, M, "electrocuted")
-
 	var/drained_energy = drained_hp*20
 
-	if (source_area)
+	if(source_area)
 		source_area.use_power(drained_energy/GLOB.CELLRATE)
-	else if (istype(power_source, /datum/powernet))
+	else if(istype(power_source, /datum/powernet))
 		var/drained_power = drained_energy/GLOB.CELLRATE //convert from "joules" to "watts"
 		PN.delayedload += (min(drained_power, max(PN.newavail - PN.delayedload, 0)))
 	else if (istype(power_source, /obj/item/stock_parts/cell))
@@ -382,6 +375,7 @@
 	return null
 
 /area/proc/get_apc()
-	for(var/obj/machinery/power/apc/APC in GLOB.apcs_list)
+	for(var/thing in GLOB.apcs)
+		var/obj/machinery/power/apc/APC = thing
 		if(APC.area == src)
 			return APC

@@ -1,10 +1,12 @@
 /client
-	/// A list of any keys held currently
-	var/list/keys_held = list() 
-	// These next two vars are to apply movement for keypresses and releases made while move delayed.
-	// Because discarding that input makes the game less responsive.
-	var/next_move_dir_add // On next move, add this dir to the move that would otherwise be done
-	var/next_move_dir_sub // On next move, subtract this dir from the move that would otherwise be done
+	/// An assoc list of any keys held currently
+	var/list/keys_held = list()
+	/// These next two vars are to apply movement for keypresses and releases made while move delayed.
+	/// Because discarding that input makes the game less responsive.
+	/// On next move, add this dir to the move that would otherwise be done
+	var/next_move_dir_add
+	/// On next move, subtract this dir from the move that would otherwise be done
+	var/next_move_dir_sub
 
 // Set a client's focus to an object and override these procs on that object to let it handle keypresses
 
@@ -32,6 +34,9 @@
 /client/proc/set_macros()
 	set waitfor = FALSE
 
+	//Reset the assoc list
+	keys_held.Cut()
+
 	erase_all_macros()
 
 	var/list/macro_sets = SSinput.macro_sets
@@ -43,9 +48,5 @@
 		for(var/k in 1 to macro_set.len)
 			var/key = macro_set[k]
 			var/command = macro_set[key]
-			winset(src, "[setname]-[REF(key)]", "parent=[setname];name=[key];command=[command]")
-
-	if(prefs.hotkeys)
-		winset(src, null, "input.focus=true input.background-color=[COLOR_INPUT_ENABLED] mainwindow.macro=default")
-	else
-		winset(src, null, "input.focus=true input.background-color=[COLOR_INPUT_ENABLED] mainwindow.macro=old_default")
+			winset(src, "[setname]-\ref[key]", "parent=[setname];name=[key];command=[command]")
+	winset(src, null, "input.focus=true input.background-color=[COLOR_INPUT_ENABLED] mainwindow.macro=old_default")

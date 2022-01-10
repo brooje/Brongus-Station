@@ -1,245 +1,218 @@
-import { map } from 'common/collections';
-import { Fragment } from 'inferno';
-import { useBackend, useLocalState } from '../backend';
-import { Button, Flex, LabeledList, Section, Table, Tabs } from '../components';
-import { Window } from '../layouts';
+import { useBackend, useLocalState } from "../backend";
+import { Button, LabeledList, Box, Section, Tabs } from "../components";
+import { Window } from "../layouts";
 
 export const ShuttleManipulator = (props, context) => {
-  const [tab, setTab] = useLocalState(context, 'tab', 1);
+  const [tabIndex, setTabIndex] = useLocalState(context, 'tabIndex', 0);
+  const decideTab = index => {
+    switch (index) {
+      case 0:
+        return <StatusView />;
+      case 1:
+        return <TemplatesView />;
+      case 2:
+        return <ModificationView />;
+      default:
+        return "WE SHOULDN'T BE HERE!";
+    }
+  };
+
   return (
-    <Window
-      resizable
-      width={800}
-      height={600}>
+    <Window>
       <Window.Content scrollable>
-        <Tabs>
-          <Tabs.Tab
-            selected={tab === 1}
-            onClick={() => setTab(1)}>
-            Status
-          </Tabs.Tab>
-          <Tabs.Tab
-            selected={tab === 2}
-            onClick={() => setTab(2)}>
-            Templates
-          </Tabs.Tab>
-          <Tabs.Tab
-            selected={tab === 3}
-            onClick={() => setTab(3)}>
-            Modification
-          </Tabs.Tab>
-        </Tabs>
-        {tab === 1 && (
-          <ShuttleManipulatorStatus />
-        )}
-        {tab === 2 && (
-          <ShuttleManipulatorTemplates />
-        )}
-        {tab === 3 && (
-          <ShuttleManipulatorModification />
-        )}
+        <Box fillPositionedParent>
+          <Tabs>
+            <Tabs.Tab
+              key="Status"
+              selected={0 === tabIndex}
+              onClick={() => setTabIndex(0)}
+              icon="info-circle"
+              content="Status" />
+            <Tabs.Tab
+              key="Templates"
+              selected={1 === tabIndex}
+              onClick={() => setTabIndex(1)}
+              icon="file-import"
+              content="Templates" />
+            <Tabs.Tab
+              key="Modification"
+              selected={2 === tabIndex}
+              onClick={() => setTabIndex(2)}
+              icon="tools"
+              content="Modification" />
+          </Tabs>
+          {decideTab(tabIndex)}
+        </Box>
       </Window.Content>
     </Window>
   );
 };
 
-export const ShuttleManipulatorStatus = (props, context) => {
+const StatusView = (props, context) => {
   const { act, data } = useBackend(context);
-  const shuttles = data.shuttles || [];
+
+  const {
+    shuttles,
+  } = data;
+
   return (
-    <Section>
-      <Table>
-        {shuttles.map(shuttle => (
-          <Table.Row key={shuttle.id}>
-            <Table.Cell>
+    <Box>
+      {shuttles.map(s => (
+        <Section key={s.name} title={s.name}>
+          <LabeledList>
+            <LabeledList.Item label="ID">
+              {s.id}
+            </LabeledList.Item>
+            <LabeledList.Item label="Shuttle Timer">
+              {s.timeleft}
+            </LabeledList.Item>
+            <LabeledList.Item label="Shuttle Mode">
+              {s.mode}
+            </LabeledList.Item>
+            <LabeledList.Item label="Shuttle Status">
+              {s.status}
+            </LabeledList.Item>
+            <LabeledList.Item label="Actions">
               <Button
-                content="JMP"
-                key={shuttle.id}
-                onClick={() => act('jump_to', {
-                  type: 'mobile',
-                  id: shuttle.id,
-                })} />
-            </Table.Cell>
-            <Table.Cell>
+                content="Jump To"
+                icon="location-arrow"
+                onClick={
+                  () => act('jump_to', { type: "mobile", id: s.id })
+                } />
               <Button
-                content="Fly"
-                key={shuttle.id}
-                disabled={!shuttle.can_fly}
-                onClick={() => act('fly', {
-                  id: shuttle.id,
-                })} />
-            </Table.Cell>
-            <Table.Cell>
-              {shuttle.name}
-            </Table.Cell>
-            <Table.Cell>
-              {shuttle.id}
-            </Table.Cell>
-            <Table.Cell>
-              {shuttle.status}
-            </Table.Cell>
-            <Table.Cell>
-              {shuttle.mode}
-              {!!shuttle.timer && (
-                <Fragment>
-                  ({shuttle.timeleft})
-                  <Button
-                    content="Fast Travel"
-                    key={shuttle.id}
-                    disabled={!shuttle.can_fast_travel}
-                    onClick={() => act('fast_travel', {
-                      id: shuttle.id,
-                    })} />
-                </Fragment>
-              )}
-            </Table.Cell>
-          </Table.Row>
+                content="Fast Travel"
+                icon="fast-forward"
+                onClick={
+                  () => act('fast_travel', { id: s.id })
+                } />
+            </LabeledList.Item>
+          </LabeledList>
+        </Section>
+      ))}
+    </Box>
+  );
+};
+
+const TemplatesView = (props, context) => {
+  const { act, data } = useBackend(context);
+
+  const {
+    templates_tabs,
+    existing_shuttle,
+    templates,
+  } = data;
+
+  return (
+    <Box>
+      <Tabs>
+        {templates_tabs.map(t => (
+          <Tabs.Tab
+            key={t}
+            selected={t === existing_shuttle.id}
+            icon="file"
+            content={t}
+            onClick={
+              () => act('select_template_category', { cat: t })
+            } />
         ))}
-      </Table>
-    </Section>
-  );
-};
-
-export const ShuttleManipulatorTemplates = (props, context) => {
-  const { act, data } = useBackend(context);
-  const templateObject = data.templates || {};
-  const selected = data.selected || {};
-  const [
-    selectedTemplateId,
-    setSelectedTemplateId,
-  ] = useLocalState(context, 'templateId', Object.keys(templateObject)[0]);
-  const actualTemplates = templateObject[selectedTemplateId]?.templates;
-  return (
-    <Section>
-      <Flex>
-        <Flex.Item>
-          <Tabs vertical>
-            {map((template, templateId) => (
-              <Tabs.Tab
-                key={templateId}
-                selected={selectedTemplateId === templateId}
-                onClick={() => setSelectedTemplateId(templateId)}>
-                {template.port_id}
-              </Tabs.Tab>
-            ))(templateObject)}
-          </Tabs>
-        </Flex.Item>
-        <Flex.Item grow={1} basis={0}>
-          {actualTemplates.map(actualTemplate => {
-            const isSelected = (
-              actualTemplate.shuttle_id === selected.shuttle_id
-            );
-            // Whoever made the structure being sent is an asshole
-            return (
-              <Section
-                title={actualTemplate.name}
-                level={2}
-                key={actualTemplate.shuttle_id}
-                buttons={(
-                  <Button
-                    content={isSelected ? 'Selected' : 'Select'}
-                    selected={isSelected}
-                    onClick={() => act('select_template', {
-                      shuttle_id: actualTemplate.shuttle_id,
-                    })} />
-                )}>
-                {(!!actualTemplate.description
-                  || !!actualTemplate.admin_notes
-                ) && (
-                  <LabeledList>
-                    {!!actualTemplate.description && (
-                      <LabeledList.Item label="Description">
-                        {actualTemplate.description}
-                      </LabeledList.Item>
-                    )}
-                    {!!actualTemplate.admin_notes && (
-                      <LabeledList.Item label="Admin Notes">
-                        {actualTemplate.admin_notes}
-                      </LabeledList.Item>
-                    )}
-                  </LabeledList>
-                )}
-              </Section>
-            );
-          })}
-        </Flex.Item>
-      </Flex>
-    </Section>
-  );
-};
-
-export const ShuttleManipulatorModification = (props, context) => {
-  const { act, data } = useBackend(context);
-  const selected = data.selected || {};
-  const existingShuttle = data.existing_shuttle || {};
-  return (
-    <Section>
-      {selected ? (
-        <Fragment>
-          <Section
-            level={2}
-            title={selected.name}>
-            {(!!selected.description || !!selected.admin_notes) && (
-              <LabeledList>
-                {!!selected.description && (
-                  <LabeledList.Item label="Description">
-                    {selected.description}
-                  </LabeledList.Item>
-                )}
-                {!!selected.admin_notes && (
-                  <LabeledList.Item label="Admin Notes">
-                    {selected.admin_notes}
-                  </LabeledList.Item>
-                )}
-              </LabeledList>
-            )}
-          </Section>
-          {existingShuttle ? (
-            <Section
-              level={2}
-              title={'Existing Shuttle: ' + existingShuttle.name}>
-              <LabeledList>
-                <LabeledList.Item
-                  label="Status"
-                  buttons={(
-                    <Button
-                      content="Jump To"
-                      onClick={() => act('jump_to', {
-                        type: 'mobile',
-                        id: existingShuttle.id,
-                      })} />
-                  )}>
-                  {existingShuttle.status}
-                  {!!existingShuttle.timer && (
-                    <Fragment>
-                      ({existingShuttle.timeleft})
-                    </Fragment>
-                  )}
+      </Tabs>
+      {!!existing_shuttle && (
+        templates[existing_shuttle.id].templates.map(t => (
+          <Section key={t.name} title={t.name}>
+            <LabeledList>
+              {t.description && (
+                <LabeledList.Item label="Description">
+                  {t.description}
                 </LabeledList.Item>
-              </LabeledList>
-            </Section>
-          ) : (
-            <Section
-              level={2}
-              title="Existing Shuttle: None" />
-          )}
-          <Section
-            level={2}
-            title="Status">
-            <Button
-              content="Preview"
-              onClick={() => act('preview', {
-                shuttle_id: selected.shuttle_id,
-              })} />
-            <Button
-              content="Load"
-              color="bad"
-              onClick={() => act('load', {
-                shuttle_id: selected.shuttle_id,
-              })} />
+              )}
+              {t.admin_notes && (
+                <LabeledList.Item label="Admin Notes">
+                  {t.admin_notes}
+                </LabeledList.Item>
+              )}
+              <LabeledList.Item label="Actions">
+                <Button
+                  content="Load Template"
+                  icon="download"
+                  onClick={
+                    () => act('select_template', { shuttle_id: t.shuttle_id })
+                  } />
+              </LabeledList.Item>
+            </LabeledList>
           </Section>
-        </Fragment>
-      ) : 'No shuttle selected'}
-    </Section>
+        ))
+      )}
+    </Box>
+  );
+};
+
+const ModificationView = (props, context) => {
+  const { act, data } = useBackend(context);
+
+  const {
+    existing_shuttle,
+    selected,
+  } = data;
+
+  return (
+    <Box>
+      {existing_shuttle ? (
+        <Section title={"Selected Shuttle: " + existing_shuttle.name}>
+          <LabeledList>
+            <LabeledList.Item label="Status">
+              {existing_shuttle.status}
+            </LabeledList.Item>
+            {existing_shuttle.timer && (
+              <LabeledList.Item label="Timer">
+                {existing_shuttle.timeleft}
+              </LabeledList.Item>
+            )}
+            <LabeledList.Item label="Actions">
+              <Button
+                content="Jump To"
+                icon="location-arrow"
+                onClick={
+                  () => act('jump_to', { type: "mobile", id: existing_shuttle.id })
+                } />
+            </LabeledList.Item>
+          </LabeledList>
+        </Section>
+      ) : (
+        <Section title="Selected Shuttle: None" />
+      )}
+
+      {selected ? (
+        <Section title={"Selected Template: " + selected.name}>
+          <LabeledList>
+            {selected.description && (
+              <LabeledList.Item label="Description">
+                {selected.description}
+              </LabeledList.Item>
+            )}
+            {selected.admin_notes && (
+              <LabeledList.Item label="Admin Notes">
+                {selected.admin_notes}
+              </LabeledList.Item>
+            )}
+            <LabeledList.Item label="Actions">
+              <Button
+                content="Preview"
+                icon="eye"
+                onClick={
+                  () => act('preview', { shuttle_id: selected.shuttle_id })
+                } />
+              <Button
+                content="Load"
+                icon="download"
+                onClick={
+                  () => act('load', { shuttle_id: selected.shuttle_id })
+                } />
+            </LabeledList.Item>
+          </LabeledList>
+        </Section>
+      ) : (
+        <Section title="Selected Template: None" />
+      )}
+    </Box>
   );
 };

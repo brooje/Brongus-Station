@@ -1,120 +1,153 @@
-/*
-It's like a regular ol' straight pipe, but you can turn it on and off.
-*/
-
-/obj/machinery/atmospherics/components/binary/valve
-	icon_state = "mvalve_map-2"
+/obj/machinery/atmospherics/binary/valve
+	icon = 'icons/atmos/valve.dmi'
+	icon_state = "map_valve0"
 
 	name = "manual valve"
-	desc = "A pipe with a valve that can be used to disable flow of gas through it."
+	desc = "A pipe valve"
 
-	can_unwrench = TRUE
-	shift_underlay_only = FALSE
+	can_unwrench = 1
 
-	interaction_flags_machine = INTERACT_MACHINE_OFFLINE | INTERACT_MACHINE_OPEN //Intentionally no allow_silicon flag
-	pipe_flags = PIPING_CARDINAL_AUTONORMALIZE
+	var/open = 0
 
-	var/frequency = 0
-	var/id = null
+	req_one_access_txt = "24;10"
 
-	var/valve_type = "m" //lets us have a nice, clean, OOP update_icon_nopipes()
+/obj/machinery/atmospherics/binary/valve/detailed_examine()
+	return "Click this to turn the valve. If red, the pipes on each end are separated. Otherwise, they are connected."
 
-	construction_type = /obj/item/pipe/binary
-	pipe_state = "mvalve"
+/obj/machinery/atmospherics/binary/valve/open
+	open = 1
+	icon_state = "map_valve1"
 
-	var/switching = FALSE
+/obj/machinery/atmospherics/binary/valve/update_icon(animation)
+	..()
 
-/obj/machinery/atmospherics/components/binary/valve/Destroy()
-	//Should only happen on extreme circumstances
-	if(on)
-		//Let's give presumably now-severed pipenets a chance to scramble for what's happening at next SSair fire()
-		if(parents[1])
-			parents[1].update = PIPENET_UPDATE_STATUS_RECONCILE_NEEDED
-		if(parents[2])
-			parents[2].update = PIPENET_UPDATE_STATUS_RECONCILE_NEEDED
-	. = ..()
-
-/obj/machinery/atmospherics/components/binary/valve/update_icon_nopipes(animation = FALSE)
-	normalize_cardinal_directions()
 	if(animation)
-		flick("[valve_type]valve_[on][!on]", src)
-	icon_state = "[valve_type]valve_[on ? "on" : "off"]"
-
-/obj/machinery/atmospherics/components/binary/valve/proc/toggle()
-	if(on)
-		on = FALSE
-		investigate_log("was closed by [usr ? key_name(usr) : "a remote signal"]", INVESTIGATE_ATMOS)
+		flick("valve[src.open][!src.open]",src)
 	else
-		on = TRUE
-		investigate_log("was opened by [usr ? key_name(usr) : "a remote signal"]", INVESTIGATE_ATMOS)
-	update_icon_nopipes()
-	update_parents()
+		icon_state = "valve[open]"
 
-/obj/machinery/atmospherics/components/binary/valve/interact(mob/user)
+/obj/machinery/atmospherics/binary/valve/update_underlays()
+	if(..())
+		underlays.Cut()
+		var/turf/T = get_turf(src)
+		if(!istype(T))
+			return
+		add_underlay(T, node1, get_dir(src, node1))
+		add_underlay(T, node2, get_dir(src, node2))
+
+/obj/machinery/atmospherics/binary/valve/proc/open()
+	open = 1
+	update_icon()
+	parent1.update = 0
+	parent2.update = 0
+	parent1.reconcile_air()
+	investigate_log("was opened by [usr ? key_name(usr) : "a remote signal"]", "atmos")
+	return
+
+/obj/machinery/atmospherics/binary/valve/proc/close()
+	open = 0
+	update_icon()
+	investigate_log("was closed by [usr ? key_name(usr) : "a remote signal"]", "atmos")
+	return
+
+/obj/machinery/atmospherics/binary/valve/attack_ai(mob/user)
+	return
+
+/obj/machinery/atmospherics/binary/valve/attack_ghost(mob/user)
+	if(user.can_advanced_admin_interact())
+		return attack_hand(user)
+
+/obj/machinery/atmospherics/binary/valve/attack_hand(mob/user)
 	add_fingerprint(usr)
-	if(switching)
-		return
-	update_icon_nopipes(TRUE)
-	switching = TRUE
-	addtimer(CALLBACK(src, .proc/finish_interact), 10)
+	update_icon(1)
+	sleep(10)
+	if(open)
+		close()
+	else
+		open()
 
-/obj/machinery/atmospherics/components/binary/valve/proc/finish_interact()
-	toggle()
-	switching = FALSE
-
-
-/obj/machinery/atmospherics/components/binary/valve/digital // can be controlled by AI
-	icon_state = "dvalve_map-2"
-
+/obj/machinery/atmospherics/binary/valve/digital		// can be controlled by AI
 	name = "digital valve"
 	desc = "A digitally controlled valve."
-	valve_type = "d"
-	pipe_state = "dvalve"
+	icon = 'icons/atmos/digital_valve.dmi'
 
-	interaction_flags_machine = INTERACT_MACHINE_ALLOW_SILICON | INTERACT_MACHINE_OFFLINE | INTERACT_MACHINE_OPEN | INTERACT_MACHINE_OPEN_SILICON
+	frequency = ATMOS_VENTSCRUB
+	var/id_tag = null
+	settagwhitelist = list("id_tag")
 
-/obj/machinery/atmospherics/components/binary/valve/digital/update_icon_nopipes(animation)
-	if(!is_operational())
-		normalize_cardinal_directions()
-		icon_state = "dvalve_nopower"
+/obj/machinery/atmospherics/binary/valve/digital/Destroy()
+	if(SSradio)
+		SSradio.remove_object(src, frequency)
+	radio_connection = null
+	return ..()
+
+/obj/machinery/atmospherics/binary/valve/digital/attack_ai(mob/user)
+	return attack_hand(user)
+
+/obj/machinery/atmospherics/binary/valve/digital/attack_hand(mob/user)
+	if(!powered())
+		return
+	if(!allowed(user) && !user.can_advanced_admin_interact())
+		to_chat(user, "<span class='alert'>Access denied.</span>")
 		return
 	..()
 
+/obj/machinery/atmospherics/binary/valve/digital/open
+	open = 1
+	icon_state = "map_valve1"
 
-/obj/machinery/atmospherics/components/binary/valve/layer1
-	piping_layer = 1
-	icon_state = "mvalve_map-1"
+/obj/machinery/atmospherics/binary/valve/digital/power_change()
+	var/old_stat = stat
+	..()
+	if(old_stat != stat)
+		update_icon()
 
-/obj/machinery/atmospherics/components/binary/valve/layer3
-	piping_layer = 3
-	icon_state = "mvalve_map-3"
+/obj/machinery/atmospherics/binary/valve/digital/update_icon()
+	..()
+	if(!powered())
+		icon_state = "valve[open]nopower"
 
-/obj/machinery/atmospherics/components/binary/valve/on
-	on = TRUE
+/obj/machinery/atmospherics/binary/valve/digital/atmos_init()
+	..()
+	if(frequency)
+		set_frequency(frequency)
 
-/obj/machinery/atmospherics/components/binary/valve/on/layer1
-	piping_layer = 1
-	icon_state = "mvalve_map-1"
+/obj/machinery/atmospherics/binary/valve/digital/receive_signal(datum/signal/signal)
+	if(!signal.data["tag"] || (signal.data["tag"] != id_tag))
+		return 0
 
-/obj/machinery/atmospherics/components/binary/valve/on/layer3
-	piping_layer = 3
-	icon_state = "mvalve_map-3"
+	switch(signal.data["command"])
+		if("valve_open")
+			if(!open)
+				open()
 
-/obj/machinery/atmospherics/components/binary/valve/digital/layer1
-	piping_layer = 1
-	icon_state = "dvalve_map-1"
+		if("valve_close")
+			if(open)
+				close()
 
-/obj/machinery/atmospherics/components/binary/valve/digital/layer3
-	piping_layer = 3
-	icon_state = "dvalve_map-3"
+		if("valve_toggle")
+			if(open)
+				close()
+			else
+				open()
+		if("valve_set")
+			if(signal.data["valve_set"] == 1)
+				if(!open)
+					open()
+			else
+				if(open)
+					close()
 
-/obj/machinery/atmospherics/components/binary/valve/digital/on
-	on = TRUE
+/obj/machinery/atmospherics/binary/valve/digital/attackby(obj/item/W as obj, mob/user)
+	if(istype(W, /obj/item/multitool))
+		update_multitool_menu(user)
+		return 1
+	return ..()
 
-/obj/machinery/atmospherics/components/binary/valve/digital/on/layer1
-	piping_layer = 1
-	icon_state = "dvalve_map-1"
-
-/obj/machinery/atmospherics/components/binary/valve/digital/on/layer3
-	piping_layer = 3
-	icon_state = "dvalve_map-3"
+/obj/machinery/atmospherics/binary/valve/digital/multitool_menu(mob/user, obj/item/multitool/P)
+	return {"
+		<ul>
+			<li><b>Frequency:</b> <a href="?src=[UID()];set_freq=-1">[format_frequency(frequency)] GHz</a> (<a href="?src=[UID()];set_freq=[ATMOS_VENTSCRUB]">Reset</a>)</li>
+			<li>[format_tag("ID Tag","id_tag","set_id")]</a></li>
+		</ul>
+		"}

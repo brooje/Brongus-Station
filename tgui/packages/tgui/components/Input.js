@@ -1,19 +1,13 @@
-/**
- * @file
- * @copyright 2020 Aleksej Komarov
- * @license MIT
- */
-
-import { classes } from 'common/react';
+import { classes, isFalsy } from 'common/react';
 import { Component, createRef } from 'inferno';
 import { Box } from './Box';
-import { KEY_ESCAPE, KEY_ENTER } from 'common/keycodes';
 
-export const toInputValue = value => (
-  typeof value !== 'number' && typeof value !== 'string'
-    ? ''
-    : String(value)
-);
+const toInputValue = value => {
+  if (isFalsy(value)) {
+    return '';
+  }
+  return value;
+};
 
 export class Input extends Component {
   constructor() {
@@ -50,7 +44,7 @@ export class Input extends Component {
     };
     this.handleKeyDown = e => {
       const { onInput, onChange, onEnter } = this.props;
-      if (e.keyCode === KEY_ENTER) {
+      if (e.keyCode === 13) {
         this.setEditing(false);
         if (onChange) {
           onChange(e, e.target.value);
@@ -68,7 +62,7 @@ export class Input extends Component {
         }
         return;
       }
-      if (e.keyCode === KEY_ESCAPE) {
+      if (e.keyCode === 27) {
         this.setEditing(false);
         e.target.value = toInputValue(this.props.value);
         e.target.blur();
@@ -82,9 +76,11 @@ export class Input extends Component {
     const input = this.inputRef.current;
     if (input) {
       input.value = toInputValue(nextValue);
-    }
-    if (this.props.autoFocus) {
-      setTimeout(() => input.focus(), 1);
+      if (this.props.autofocus) {
+        input.focus();
+        input.selectionStart = 0;
+        input.selectionEnd = input.value.length;
+      }
     }
   }
 
@@ -113,13 +109,18 @@ export class Input extends Component {
       value,
       maxLength,
       placeholder,
+      autofocus,
+      disabled,
+      // Multiline props
+      multiline,
+      cols = 32,
+      rows = 4,
       ...boxProps
     } = props;
     // Box props
     const {
       className,
       fluid,
-      monospace,
       ...rest
     } = boxProps;
     return (
@@ -127,22 +128,37 @@ export class Input extends Component {
         className={classes([
           'Input',
           fluid && 'Input--fluid',
-          monospace && 'Input--monospace',
+          disabled && 'Input--disabled',
           className,
         ])}
         {...rest}>
         <div className="Input__baseline">
           .
         </div>
-        <input
-          ref={this.inputRef}
-          className="Input__input"
-          placeholder={placeholder}
-          onInput={this.handleInput}
-          onFocus={this.handleFocus}
-          onBlur={this.handleBlur}
-          onKeyDown={this.handleKeyDown}
-          maxLength={maxLength} />
+        {multiline ? (
+          <textarea
+            ref={this.inputRef}
+            className="Input__textarea"
+            placeholder={placeholder}
+            onInput={this.handleInput}
+            onFocus={this.handleFocus}
+            onBlur={this.handleBlur}
+            maxLength={maxLength}
+            cols={cols}
+            rows={rows}
+            disabled={disabled} />
+        ) : (
+          <input
+            ref={this.inputRef}
+            className="Input__input"
+            placeholder={placeholder}
+            onInput={this.handleInput}
+            onFocus={this.handleFocus}
+            onBlur={this.handleBlur}
+            onKeyDown={this.handleKeyDown}
+            maxLength={maxLength}
+            disabled={disabled} />
+        )}
       </Box>
     );
   }

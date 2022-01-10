@@ -1,48 +1,48 @@
 import { useBackend } from '../backend';
-import { Button, LabeledList, ProgressBar, Section, Box } from '../components';
-import { Fragment } from 'inferno';
-import { LabeledListItem } from '../components/LabeledList';
+import { Button, LabeledList, Section, ProgressBar } from '../components';
 import { Window } from '../layouts';
 
 export const SatelliteControl = (props, context) => {
   const { act, data } = useBackend(context);
-  const satellites = data.satellites || [];
+  const {
+    satellites,
+    notice,
+    meteor_shield,
+    meteor_shield_coverage,
+    meteor_shield_coverage_max,
+    meteor_shield_coverage_percentage,
+  } = data;
   return (
-    <Window
-      width={400}
-      height={305}>
-      <Window.Content>
-        {data.meteor_shield && (
-          <Section>
-            <LabeledList>
-              <LabeledListItem label="Coverage">
-                <ProgressBar
-                  value={data.meteor_shield_coverage
-                  / data.meteor_shield_coverage_max}
-                  content={100 * data.meteor_shield_coverage
-                  / data.meteor_shield_coverage_max + '%'}
-                  ranges={{
-                    good: [1, Infinity],
-                    average: [0.30, 1],
-                    bad: [-Infinity, 0.30],
-                  }} />
-              </LabeledListItem>
-            </LabeledList>
+    <Window resizable>
+      <Window.Content scrollable>
+        {meteor_shield && (
+          <Section title="Station Shield Coverage">
+            <ProgressBar
+              color={meteor_shield_coverage_percentage >= 100 ? 'good': 'average'}
+              value={meteor_shield_coverage}
+              maxValue={meteor_shield_coverage_max}>
+              {meteor_shield_coverage_percentage} %
+            </ProgressBar>
           </Section>
         )}
-        <Section title="Satellite Controls">
-          <Box mr={-1}>
-            {satellites.map(satellite => (
-              <Button.Checkbox
-                key={satellite.id}
-                checked={satellite.active}
-                content={"#" + satellite.id + " " + satellite.mode}
-                onClick={() => act('toggle', {
-                  id: satellite.id,
-                })}
-              />
+        <Section title="Satellite Network Control">
+          <LabeledList>
+            {notice && (
+              <LabeledList.Item label="Alert" color="red">
+                {data.notice}
+              </LabeledList.Item>
+            )}
+            {satellites.map(sat => (
+              <LabeledList.Item key={sat.id} label={"#" + sat.id}>
+                {sat.mode}
+                {" "}
+                <Button
+                  content={sat.active ? "Deactivate": "Activate"}
+                  icon={"arrow-circle-right"}
+                  onClick={() => act("toggle", { id: sat.id })} />
+              </LabeledList.Item>
             ))}
-          </Box>
+          </LabeledList>
         </Section>
       </Window.Content>
     </Window>

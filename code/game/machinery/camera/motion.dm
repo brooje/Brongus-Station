@@ -1,6 +1,5 @@
 /obj/machinery/camera
-
-	var/list/datum/weakref/localMotionTargets = list()
+	var/list/localMotionTargets = list()
 	var/detectTime = 0
 	var/area/ai_monitored/area_motion = null
 	var/alarm_delay = 30 // Don't forget, there's another 3 seconds in queueAlarm()
@@ -10,18 +9,18 @@
 	if(!isMotion())
 		. = PROCESS_KILL
 		return
-	if(stat & EMPED)
+	if(stat & (EMPED|NOPOWER))
 		return
-	if (detectTime > 0)
+	if(detectTime > 0)
 		var/elapsed = world.time - detectTime
-		if (elapsed > alarm_delay)
+		if(elapsed > alarm_delay)
 			triggerAlarm()
-	else if (detectTime == -1)
-		for (var/datum/weakref/targetref in getTargetList())
-			var/mob/target = targetref.resolve()
+	else if(detectTime == -1)
+		for(var/thing in getTargetList())
+			var/mob/target = locateUID(thing)
 			if(QDELETED(target) || target.stat == DEAD || (!area_motion && !in_range(src, target)))
 				//If not part of a monitored area and the camera is not in range or the target is dead
-				lostTargetRef(targetref)
+				lostTargetRef(thing)
 
 /obj/machinery/camera/proc/getTargetList()
 	if(area_motion)
@@ -31,82 +30,37 @@
 /obj/machinery/camera/proc/newTarget(mob/target)
 	if(isAI(target))
 		return FALSE
-	if (detectTime == 0)
+	if(detectTime == 0)
 		detectTime = world.time // start the clock
 	var/list/targets = getTargetList()
-	targets |= WEAKREF(target)
+	targets |= target.UID()
 	return TRUE
 
-/obj/machinery/camera/Destroy()
-	var/area/ai_monitored/A = get_area(src)
-	localMotionTargets = null
-	if(istype(A))
-		A.motioncameras -= src
-	cancelAlarm()
-	return ..()
-
-/obj/machinery/camera/proc/lostTargetRef(datum/weakref/R)
+/obj/machinery/camera/proc/lostTargetRef(uid)
 	var/list/targets = getTargetList()
-	targets -= R
-	if (targets.len == 0)
+	targets -= uid
+	if(length(targets))
 		cancelAlarm()
 
 /obj/machinery/camera/proc/cancelAlarm()
-	if (detectTime == -1)
-		for (var/i in GLOB.silicon_mobs)
-			var/mob/living/silicon/aiPlayer = i
-			if (status)
-				aiPlayer.cancelAlarm("Motion", get_area(src), src)
+	if(detectTime == -1)
+		if(status)
+			SSalarm.cancelAlarm("Motion", get_area(src), src)
 	detectTime = 0
 	return TRUE
 
 /obj/machinery/camera/proc/triggerAlarm()
-	if (!detectTime)
+	if(!detectTime)
 		return FALSE
-	for (var/mob/living/silicon/aiPlayer in GLOB.player_list)
-		if (status)
-			aiPlayer.triggerAlarm("Motion", get_area(src), list(src), src)
-			visible_message("<span class='warning'>A red light flashes on the [src]!</span>")
+	if(status)
+		SSalarm.triggerAlarm("Motion", get_area(src), list(UID()), src)
+		visible_message("<span class='warning'>A red light flashes on [src]!</span>")
 	detectTime = -1
 	return TRUE
 
-/obj/machinery/camera/HasProximity(atom/movable/AM as mob|obj)
+/obj/machinery/camera/HasProximity(atom/movable/AM)
 	// Motion cameras outside of an "ai monitored" area will use this to detect stuff.
-	if (!area_motion)
+	if(!area_motion)
 		if(isliving(AM))
 			newTarget(AM)
 
-/obj/machinery/camera/motion/thunderdome
-	name = "entertainment camera"
-	network = list("thunder")
-	c_tag = "Arena"
-	resistance_flags = INDESTRUCTIBLE | LAVA_PROOF | FIRE_PROOF | ACID_PROOF | FREEZE_PROOF
-
-/obj/machinery/camera/motion/thunderdome/Initialize()
-	. = ..()
-	proximity_monitor.SetRange(7)
-
-/obj/machinery/camera/motion/thunderdome/HasProximity(atom/movable/AM as mob|obj)
-	if (!isliving(AM) || get_area(AM) != get_area(src))
-		return
-	localMotionTargets |= WEAKREF(AM)
-	if (!detectTime)
-		for(var/obj/machinery/computer/security/telescreen/entertainment/TV in GLOB.machines)
-			TV.notify(TRUE)
-	detectTime = world.time + 30 SECONDS
-
-/obj/machinery/camera/motion/thunderdome/process()
-	if (!detectTime)
-		return
-
-	for (var/datum/weakref/targetref in localMotionTargets)
-		var/mob/target = targetref.resolve()
-		if(QDELETED(target) || target.stat == DEAD || get_dist(src, target) > 7 || get_area(src) != get_area(target))
-			localMotionTargets -= targetref
-
-	if (localMotionTargets.len)
-		detectTime = world.time + 30 SECONDS
-	else if (world.time > detectTime)
-		detectTime = 0
-		for(var/obj/machinery/computer/security/telescreen/entertainment/TV in GLOB.machines)
-			TV.notify(FALSE)

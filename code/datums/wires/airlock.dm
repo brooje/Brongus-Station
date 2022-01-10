@@ -1,140 +1,172 @@
-/datum/wires/airlock
-	holder_type = /obj/machinery/door/airlock
-	proper_name = "Airlock"
+// Wires for airlocks
 
 /datum/wires/airlock/secure
 	randomize = TRUE
 
-/datum/wires/airlock/New(atom/holder)
+/datum/wires/airlock
+	holder_type = /obj/machinery/door/airlock
+	wire_count = 12 // 10 actual, 2 duds.
+	proper_name = "Airlock"
+	window_x = 400
+	window_y = 101
+
+/datum/wires/airlock/New(atom/_holder)
 	wires = list(
-		WIRE_POWER1, WIRE_POWER2,
-		WIRE_BACKUP1, WIRE_BACKUP2,
-		WIRE_OPEN, WIRE_BOLTS, WIRE_IDSCAN, WIRE_AI,
-		WIRE_SHOCK, WIRE_SAFETY, WIRE_TIMING, WIRE_LIGHT,
-		WIRE_ZAP1, WIRE_ZAP2
+		WIRE_IDSCAN, WIRE_MAIN_POWER1, WIRE_DOOR_BOLTS, WIRE_BACKUP_POWER1, WIRE_OPEN_DOOR,
+		WIRE_AI_CONTROL, WIRE_ELECTRIFY, WIRE_SAFETY, WIRE_SPEED, WIRE_BOLT_LIGHT
 	)
-	add_duds(2)
-	..()
+	return ..()
 
 /datum/wires/airlock/interactable(mob/user)
 	var/obj/machinery/door/airlock/A = holder
-	if(!issilicon(user) && A.isElectrified() && A.shock(user, 100))
+	if(iscarbon(user) && A.Adjacent(user) && A.isElectrified() && A.shock(user, 100))
 		return FALSE
 	if(A.panel_open)
 		return TRUE
+	return FALSE
 
 /datum/wires/airlock/get_status()
+	. = ..()
 	var/obj/machinery/door/airlock/A = holder
-	var/list/status = list()
-	status += "The door bolts [A.locked ? "have fallen!" : "look up."]"
-	status += "The test light is [A.hasPower() ? "on" : "off"]."
-	status += "The AI connection light is [A.aiControlDisabled || (A.obj_flags & EMAGGED) ? "off" : "on"]."
-	status += "The check wiring light is [A.safe ? "off" : "on"]."
-	status += "The timer is powered [A.autoclose ? "on" : "off"]."
-	status += "The speed light is [A.normalspeed ? "on" : "off"]."
-	status += "The emergency light is [A.emergency ? "on" : "off"]."
-	return status
+	var/haspower = A.arePowerSystemsOn()
 
-/datum/wires/airlock/on_pulse(wire)
-	set waitfor = FALSE
-	var/obj/machinery/door/airlock/A = holder
-	switch(wire)
-		if(WIRE_POWER1, WIRE_POWER2) // Pulse to loose power.
-			A.loseMainPower()
-		if(WIRE_BACKUP1, WIRE_BACKUP2) // Pulse to loose backup power.
-			A.loseBackupPower()
-		if(WIRE_OPEN) // Pulse to open door (only works not emagged and ID wire is cut or no access is required).
-			if(A.obj_flags & EMAGGED)
-				return
-			if(!A.requiresID() || A.check_access(null))
-				if(A.density)
-					INVOKE_ASYNC(A, /obj/machinery/door/airlock.proc/open)
-				else
-					INVOKE_ASYNC(A, /obj/machinery/door/airlock.proc/close)
-		if(WIRE_BOLTS) // Pulse to toggle bolts (but only raise if power is on).
-			if(!A.locked)
-				A.bolt()
-			else
-				if(A.hasPower())
-					A.unbolt()
-			A.update_icon()
-		if(WIRE_IDSCAN) // Pulse to disable emergency access and flash red lights.
-			if(A.hasPower() && A.density)
-				A.do_animate("deny")
-				if(A.emergency)
-					A.emergency = FALSE
-					A.update_icon()
-		if(WIRE_AI) // Pulse to disable WIRE_AI control for 10 ticks (follows same rules as cutting).
-			if(A.aiControlDisabled == 0)
-				A.aiControlDisabled = 1
-			else if(A.aiControlDisabled == -1)
-				A.aiControlDisabled = 2
-			sleep(10)
-			if(A)
-				if(A.aiControlDisabled == 1)
-					A.aiControlDisabled = 0
-				else if(A.aiControlDisabled == 2)
-					A.aiControlDisabled = -1
-		if(WIRE_SHOCK) // Pulse to shock the door for 10 ticks.
-			if(!A.secondsElectrified)
-				A.set_electrified(MACHINE_DEFAULT_ELECTRIFY_TIME, usr)
-		if(WIRE_SAFETY)
-			A.safe = !A.safe
-			if(!A.density)
-				A.close()
-		if(WIRE_TIMING)
-			A.normalspeed = !A.normalspeed
-		if(WIRE_LIGHT)
-			A.lights = !A.lights
-			A.update_icon()
+	. += "The door bolts [A.locked ? "have fallen!" : "look up."]"
+	. += "The door bolt lights are [(A.lights && haspower) ? "on." : "off!"]"
+	. += "The test light is [haspower ? "on." : "off!"]"
+	. += "The 'AI control allowed' light is [(A.aiControlDisabled == AICONTROLDISABLED_OFF && !A.emagged && haspower) ? "on" : "off"]."
+	. += "The 'Check Wiring' light is [(A.safe == 0 && haspower) ? "on" : "off"]."
+	. += "The 'Check Timing Mechanism' light is [(A.normalspeed == 0 && haspower) ? "on" : "off"]."
+	. += "The emergency lights are [(A.emergency && haspower) ? "on" : "off"]."
 
 /datum/wires/airlock/on_cut(wire, mend)
 	var/obj/machinery/door/airlock/A = holder
 	switch(wire)
-		if(WIRE_POWER1, WIRE_POWER2) // Cut to loose power, repair all to gain power.
-			if(mend && !is_cut(WIRE_POWER1) && !is_cut(WIRE_POWER2))
-				A.regainMainPower()
-			else
-				A.loseMainPower()
-			if(isliving(usr))
-				A.shock(usr, 50)
-		if(WIRE_BACKUP1, WIRE_BACKUP2) // Cut to loose backup power, repair all to gain backup power.
-			if(mend && !is_cut(WIRE_BACKUP1) && !is_cut(WIRE_BACKUP2))
-				A.regainBackupPower()
-			else
-				A.loseBackupPower()
-			if(isliving(usr))
-				A.shock(usr, 50)
-		if(WIRE_BOLTS) // Cut to drop bolts, mend does nothing.
+		if(WIRE_IDSCAN)
+			A.aiDisabledIdScanner = !mend
+		if(WIRE_MAIN_POWER1)
+
 			if(!mend)
-				A.bolt()
-		if(WIRE_AI) // Cut to disable WIRE_AI control, mend to re-enable.
-			if(mend)
-				if(A.aiControlDisabled == 1) // 0 = normal, 1 = locked out, 2 = overridden by WIRE_AI, -1 = previously overridden by WIRE_AI
-					A.aiControlDisabled = 0
-				else if(A.aiControlDisabled == 2)
-					A.aiControlDisabled = -1
+				//Cutting either one disables the main door power, but unless backup power is also cut, the backup power re-powers the door in 10 seconds. While unpowered, the door may be crowbarred open, but bolts-raising will not work. Cutting these wires may electocute the user.
+				A.loseMainPower()
+				A.shock(usr, 50)
 			else
-				if(A.aiControlDisabled == 0)
-					A.aiControlDisabled = 1
-				else if(A.aiControlDisabled == -1)
-					A.aiControlDisabled = 2
-		if(WIRE_SHOCK) // Cut to shock the door, mend to unshock.
-			if(mend)
-				if(A.secondsElectrified)
-					A.set_electrified(MACHINE_NOT_ELECTRIFIED, usr)
+				A.regainMainPower()
+				A.shock(usr, 50)
+
+		if(WIRE_BACKUP_POWER1)
+
+			if(!mend)
+				//Cutting either one disables the backup door power (allowing it to be crowbarred open, but disabling bolts-raising), but may electocute the user.
+				A.loseBackupPower()
+				A.shock(usr, 50)
 			else
-				if(A.secondsElectrified != MACHINE_ELECTRIFIED_PERMANENT)
-					A.set_electrified(MACHINE_ELECTRIFIED_PERMANENT, usr)
-		if(WIRE_SAFETY) // Cut to disable safeties, mend to re-enable.
+				A.regainBackupPower()
+				A.shock(usr, 50)
+
+		if(WIRE_DOOR_BOLTS)
+
+			if(!mend)
+				//Cutting this wire also drops the door bolts, and mending it does not raise them. (This is what happens now, except there are a lot more wires going to door bolts at present)
+				A.lock(1)
+				A.update_icon()
+
+		if(WIRE_AI_CONTROL)
+
+			if(!mend)
+				//one wire for AI control. Cutting this prevents the AI from controlling the door unless it has hacked the door through the power connection (which takes about a minute). If both main and backup power are cut, as well as this wire, then the AI cannot operate or hack the door at all.
+				//aiControlDisabled: see explanation in code\__DEFINES\construction.dm#32
+				if(A.aiControlDisabled == AICONTROLDISABLED_OFF)
+					A.aiControlDisabled = AICONTROLDISABLED_ON
+				else if(A.aiControlDisabled == AICONTROLDISABLED_PERMA)
+					A.aiControlDisabled = AICONTROLDISABLED_BYPASS
+			else
+				if(A.aiControlDisabled == AICONTROLDISABLED_ON)
+					A.aiControlDisabled = AICONTROLDISABLED_OFF
+				else if(A.aiControlDisabled == AICONTROLDISABLED_BYPASS)
+					A.aiControlDisabled = AICONTROLDISABLED_PERMA
+
+		if(WIRE_ELECTRIFY)
+			if(!mend)
+				//Cutting this wire electrifies the door, so that the next person to touch the door without insulated gloves gets electrocuted.
+				A.electrify(-1)
+			else
+				A.electrify(0)
+			return // Don't update the dialog.
+
+		if(WIRE_SAFETY)
 			A.safe = mend
-		if(WIRE_TIMING) // Cut to disable auto-close, mend to re-enable.
+
+		if(WIRE_SPEED)
 			A.autoclose = mend
-			if(A.autoclose && !A.density)
-				A.close()
-		if(WIRE_LIGHT) // Cut to disable lights, mend to re-enable.
+			if(mend)
+				if(!A.density)
+					INVOKE_ASYNC(A, /obj/machinery/door/airlock/.proc/close)
+
+		if(WIRE_BOLT_LIGHT)
 			A.lights = mend
 			A.update_icon()
-		if(WIRE_ZAP1, WIRE_ZAP2) // Ouch.
-			if(isliving(usr))
-				A.shock(usr, 50)
+	..()
+
+/datum/wires/airlock/on_pulse(wire)
+	var/obj/machinery/door/airlock/A = holder
+	switch(wire)
+		if(WIRE_IDSCAN)
+			//Sending a pulse through flashes the red light on the door (if the door has power).
+			if(A.arePowerSystemsOn() && A.density)
+				A.do_animate("deny")
+				if(A.emergency)
+					A.emergency = 0
+					A.update_icon()
+
+		if(WIRE_MAIN_POWER1)
+			//Sending a pulse through either one causes a breaker to trip, disabling the door for 10 seconds if backup power is connected, or 1 minute if not (or until backup power comes back on, whichever is shorter).
+			A.loseMainPower()
+
+		if(WIRE_DOOR_BOLTS)
+			//one wire for door bolts. Sending a pulse through this drops door bolts if they're not down (whether power's on or not),
+			//raises them if they are down (only if power's on)
+			if(!A.locked)
+				if(A.lock())
+					A.audible_message("<span class='italics'>You hear a click from the bottom of the door.</span>", hearing_distance =  1)
+			else if(A.unlock())
+				A.audible_message("<span class='italics'>You hear a click from the bottom of the door.</span>", hearing_distance =  1)
+
+		if(WIRE_BACKUP_POWER1)
+			//two wires for backup power. Sending a pulse through either one causes a breaker to trip, but this does not disable it unless main power is down too (in which case it is disabled for 1 minute or however long it takes main power to come back, whichever is shorter).
+			A.loseBackupPower()
+
+		if(WIRE_AI_CONTROL)
+			if(A.aiControlDisabled == AICONTROLDISABLED_OFF)
+				A.aiControlDisabled = AICONTROLDISABLED_ON
+			else if(A.aiControlDisabled == AICONTROLDISABLED_PERMA)
+				A.aiControlDisabled = AICONTROLDISABLED_BYPASS
+
+			addtimer(CALLBACK(A, /obj/machinery/door/airlock/.proc/ai_control_callback), 1 SECONDS)
+
+		if(WIRE_ELECTRIFY)
+			//one wire for electrifying the door. Sending a pulse through this electrifies the door for 30 seconds.
+			A.electrify(30)
+
+		if(WIRE_OPEN_DOOR)
+			//tries to open the door without ID
+			//will succeed only if the ID wire is cut or the door requires no access and it's not emagged
+			if(A.emagged)	return
+			if(!A.requiresID() || A.check_access(null))
+				if(A.density)
+					INVOKE_ASYNC(A, /obj/machinery/door/airlock/.proc/open)
+				else
+					INVOKE_ASYNC(A, /obj/machinery/door/airlock/.proc/close)
+
+		if(WIRE_SAFETY)
+			A.safe = !A.safe
+			if(!A.density)
+				INVOKE_ASYNC(A, /obj/machinery/door/airlock/.proc/close)
+
+		if(WIRE_SPEED)
+			A.normalspeed = !A.normalspeed
+
+		if(WIRE_BOLT_LIGHT)
+			A.lights = !A.lights
+			A.update_icon()
+
+	..()

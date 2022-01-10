@@ -15,15 +15,14 @@
 	var/faction = list("hostile")
 	var/spawner_type = /datum/component/spawner
 
-/obj/structure/spawner/Initialize()
+/obj/structure/spawner/Initialize(mapload)
 	. = ..()
 	AddComponent(spawner_type, mob_types, spawn_time, faction, spawn_text, max_mobs)
 
 /obj/structure/spawner/attack_animal(mob/living/simple_animal/M)
-	if(faction_check(faction, M.faction, FALSE)&&!M.client)
+	if(faction_check(faction, M.faction, FALSE) && !M.client)
 		return
 	..()
-
 
 /obj/structure/spawner/syndicate
 	name = "warp beacon"
@@ -53,7 +52,7 @@
 	max_integrity = 200
 	max_mobs = 15
 	spawn_time = 150
-	mob_types = list(/mob/living/simple_animal/hostile/retaliate/clown, /mob/living/simple_animal/hostile/retaliate/clown/fleshclown, /mob/living/simple_animal/hostile/retaliate/clown/clownhulk, /mob/living/simple_animal/hostile/retaliate/clown/longface, /mob/living/simple_animal/hostile/retaliate/clown/clownhulk/chlown, /mob/living/simple_animal/hostile/retaliate/clown/clownhulk/honcmunculus, /mob/living/simple_animal/hostile/retaliate/clown/mutant/blob, /mob/living/simple_animal/hostile/retaliate/clown/banana, /mob/living/simple_animal/hostile/retaliate/clown/honkling, /mob/living/simple_animal/hostile/retaliate/clown/lube)
+	mob_types = list(/mob/living/simple_animal/hostile/retaliate/clown)
 	spawn_text = "climbs out of"
 	faction = list("clown")
 
@@ -65,7 +64,7 @@
 	max_mobs = 3
 	icon = 'icons/mob/nest.dmi'
 	spawn_text = "crawls out of"
-	mob_types = list(/mob/living/simple_animal/hostile/asteroid/goldgrub, /mob/living/simple_animal/hostile/asteroid/goliath, /mob/living/simple_animal/hostile/asteroid/hivelord, /mob/living/simple_animal/hostile/asteroid/basilisk, /mob/living/simple_animal/hostile/asteroid/fugu)
+	mob_types = list(/mob/living/simple_animal/hostile/asteroid/goldgrub, /mob/living/simple_animal/hostile/asteroid/goliath, /mob/living/simple_animal/hostile/asteroid/hivelord, /mob/living/simple_animal/hostile/asteroid/basilisk)
 	faction = list("mining")
 
 /obj/structure/spawner/mining/goldgrub
@@ -87,8 +86,3 @@
 	name = "basilisk den"
 	desc = "A den housing a nest of basilisks, bring a coat."
 	mob_types = list(/mob/living/simple_animal/hostile/asteroid/basilisk)
-
-/obj/structure/spawner/mining/wumborian
-	name = "wumborian fugu den"
-	desc = "A den housing a nest of wumborian fugus, how do they all even fit in there?"
-	mob_types = list(/mob/living/simple_animal/hostile/asteroid/fugu)

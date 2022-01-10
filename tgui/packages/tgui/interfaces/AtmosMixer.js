@@ -1,73 +1,109 @@
-import { useBackend } from '../backend';
-import { Button, LabeledList, NumberInput, Section } from '../components';
-import { Window } from '../layouts';
+import { useBackend } from "../backend";
+import { Button, Section, NumberInput, LabeledList, Flex } from "../components";
+import { Window } from "../layouts";
 
 export const AtmosMixer = (props, context) => {
   const { act, data } = useBackend(context);
+  const {
+    on,
+    pressure,
+    max_pressure,
+    node1_concentration,
+    node2_concentration,
+  } = data;
+
   return (
-    <Window
-      width={370}
-      height={165}>
+    <Window>
       <Window.Content>
         <Section>
           <LabeledList>
             <LabeledList.Item label="Power">
               <Button
-                icon={data.on ? 'power-off' : 'times'}
-                content={data.on ? 'On' : 'Off'}
-                selected={data.on}
+                icon={on ? "power-off" : "power-off"}
+                content={on ? "On" : "Off"}
+                color={on ? null : "red"}
+                selected={on}
                 onClick={() => act('power')} />
             </LabeledList.Item>
-            <LabeledList.Item label="Output Pressure">
+            <LabeledList.Item label="Rate">
+              <Button
+                icon="fast-backward"
+                textAlign="center"
+                disabled={pressure === 0}
+                width={2.2}
+                onClick={() => act('min_pressure')} />
               <NumberInput
                 animated
-                value={parseFloat(data.set_pressure)}
                 unit="kPa"
-                width="75px"
-                minValue={0}
-                maxValue={4500}
+                width={6.1}
+                lineHeight={1.5}
                 step={10}
-                onChange={(e, value) => act('pressure', {
+                minValue={0}
+                maxValue={max_pressure}
+                value={pressure}
+                onDrag={(e, value) => act('custom_pressure', {
                   pressure: value,
                 })} />
               <Button
-                ml={1}
-                icon="plus"
-                content="Max"
-                disabled={data.set_pressure === data.max_pressure}
-                onClick={() => act('pressure', {
-                  pressure: 'max',
-                })} />
+                icon="fast-forward"
+                textAlign="center"
+                disabled={pressure === max_pressure}
+                width={2.2}
+                onClick={() => act('max_pressure')} />
             </LabeledList.Item>
-            <LabeledList.Item label="Node 1">
-              <NumberInput
-                animated
-                value={data.node1_concentration}
-                unit="%"
-                width="60px"
-                minValue={0}
-                maxValue={100}
-                stepPixelSize={2}
-                onDrag={(e, value) => act('node1', {
-                  concentration: value,
-                })} />
-            </LabeledList.Item>
-            <LabeledList.Item label="Node 2">
-              <NumberInput
-                animated
-                value={data.node2_concentration}
-                unit="%"
-                width="60px"
-                minValue={0}
-                maxValue={100}
-                stepPixelSize={2}
-                onDrag={(e, value) => act('node2', {
-                  concentration: value,
-                })} />
-            </LabeledList.Item>
+            <NodeControls
+              node_name="Node 1"
+              node_ref={node1_concentration} />
+            <NodeControls
+              node_name="Node 2"
+              node_ref={node2_concentration} />
           </LabeledList>
         </Section>
       </Window.Content>
     </Window>
+  );
+};
+
+const NodeControls = (props, context) => {
+  const { act, data } = useBackend(context);
+  const {
+    node_name,
+    node_ref,
+  } = props;
+
+  return (
+    <LabeledList.Item label={node_name}>
+      <Button
+        icon="fast-backward"
+        textAlign="center"
+        width={2.2}
+        disabled={node_ref === 0}
+        onClick={() => act('set_node', {
+          node_name: node_name,
+          concentration: (node_ref - 10) / 100,
+        })} />
+      <NumberInput
+        animated
+        unit="%"
+        width={6.1}
+        lineHeight={1.5}
+        stepPixelSize={10}
+        minValue={0}
+        maxValue={100}
+        value={node_ref}
+        onChange={(e, value) => act('set_node', {
+          node_name: node_name,
+          concentration: (value / 100),
+        })} />
+      <Button
+        icon="fast-forward"
+        textAlign="center"
+        width={2.2}
+        disabled={node_ref === 100}
+        onClick={() => act('set_node', {
+          node_name: node_name,
+          concentration: (node_ref + 10) / 100,
+        })} />
+    </LabeledList.Item>
   );
 };

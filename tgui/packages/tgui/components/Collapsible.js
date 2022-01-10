@@ -1,9 +1,3 @@
-/**
- * @file
- * @copyright 2020 Aleksej Komarov
- * @license MIT
- */
-
 import { Component } from 'inferno';
 import { Box } from './Box';
 import { Button } from './Button';
@@ -28,7 +22,7 @@ export class Collapsible extends Component {
       ...rest
     } = props;
     return (
-      <Box mb={1}>
+      <div className="Collapsible">
         <div className="Table">
           <div className="Table__cell">
             <Button
@@ -51,7 +45,7 @@ export class Collapsible extends Component {
             {children}
           </Box>
         )}
-      </Box>
+      </div>
     );
   }
 }

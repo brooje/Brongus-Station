@@ -9,12 +9,19 @@ SUBSYSTEM_DEF(processing)
 	var/stat_tag = "P" //Used for logging
 	var/list/processing = list()
 	var/list/currentrun = list()
+	offline_implications = "Objects using the default processor will no longer process. Shuttle call recommended."
 
 /datum/controller/subsystem/processing/stat_entry()
-	. = ..("[stat_tag]:[processing.len]")
+	..("[stat_tag]:[processing.len]")
+
+/datum/controller/subsystem/processing/get_metrics()
+	. = ..()
+	var/list/cust = list()
+	cust["processing"] = length(processing)
+	.["custom"] = cust
 
 /datum/controller/subsystem/processing/fire(resumed = 0)
-	if (!resumed)
+	if(!resumed)
 		currentrun = processing.Copy()
 	//cache for sanic speed (lists are references anyways)
 	var/list/current_run = currentrun
@@ -27,10 +34,11 @@ SUBSYSTEM_DEF(processing)
 		else if(thing.process(wait) == PROCESS_KILL)
 			// fully stop so that a future START_PROCESSING will work
 			STOP_PROCESSING(src, thing)
-		if (MC_TICK_CHECK)
+		if(MC_TICK_CHECK)
 			return
 
-// Every aimless process should reach *here* and die; better not write another instakiller like this
+/datum/var/isprocessing = FALSE
+
 /datum/proc/process()
 	set waitfor = 0
 	return PROCESS_KILL

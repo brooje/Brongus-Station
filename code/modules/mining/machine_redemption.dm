@@ -1,366 +1,514 @@
-/**********************Ore Redemption Unit**************************/
-//Turns all the various mining machines into a single unit to speed up mining and establish a point system
+#define BASE_POINT_MULT 0.65
+#define BASE_SHEET_MULT 0.65
+#define POINT_MULT_ADD_PER_RATING 0.35
+#define SHEET_MULT_ADD_PER_RATING 0.35
 
+/**
+  * # Ore Redemption Machine
+  *
+  * Turns all the various mining machines into a single unit to speed up tmining and establish a point system.
+  */
 /obj/machinery/mineral/ore_redemption
 	name = "ore redemption machine"
 	desc = "A machine that accepts ore and instantly transforms it into workable material sheets. Points for ore are generated based on type and can be redeemed at a mining equipment vendor."
 	icon = 'icons/obj/machines/mining_machines.dmi'
 	icon_state = "ore_redemption"
 	density = TRUE
+	anchored = TRUE
 	input_dir = NORTH
 	output_dir = SOUTH
 	req_access = list(ACCESS_MINERAL_STOREROOM)
 	speed_process = TRUE
-	circuit = /obj/item/circuitboard/machine/ore_redemption
-
-
 	layer = BELOW_OBJ_LAYER
-
-	var/obj/item/card/id/inserted_id
+	// Settings
+	/// The access number required to claim points from the machine.
+	var/req_access_claim = ACCESS_MINING_STATION
+	/// If TRUE, [/obj/machinery/mineral/ore_redemption/var/req_access_claim] is ignored and any ID may be used to claim points.
+	var/anyone_claim = FALSE
+	/// List of supply console department names that can receive a notification about ore dumps.
+	/// A list may be provided as entry value to only notify when specific ore is dumped.
+	var/list/supply_consoles = list(
+		"Science",
+		"Robotics",
+		"Research Director's Desk",
+		"Engineering" = list(MAT_METAL, MAT_GLASS, MAT_PLASMA),
+		"Chief Engineer's Desk" = list(MAT_METAL, MAT_GLASS, MAT_PLASMA),
+		"Atmospherics" = list(MAT_METAL, MAT_GLASS, MAT_PLASMA),
+		"Bar" = list(MAT_URANIUM, MAT_PLASMA),
+		"Virology" = list(MAT_PLASMA, MAT_URANIUM, MAT_GOLD)
+	)
+	// Variables
+	/// The currently inserted ID.
+	var/obj/item/card/id/inserted_id = null
+	/// The number of unclaimed points.
 	var/points = 0
-	var/ore_pickup_rate = 15
+	/// Sheet multiplier applied when smelting ore. Updated by [/obj/machinery/proc/RefreshParts].
 	var/sheet_per_ore = 1
+	/// Point multiplier applied when smelting ore. Updated by [/obj/machinery/proc/RefreshParts].
 	var/point_upgrade = 1
-	var/list/ore_values = list(/datum/material/iron = 1, /datum/material/glass = 1, /datum/material/copper = 5, /datum/material/plasma = 15,  /datum/material/silver = 16, /datum/material/gold = 18, /datum/material/titanium = 30, /datum/material/uranium = 30, /datum/material/diamond = 50, /datum/material/bluespace = 50, /datum/material/bananium = 60)
-	var/message_sent = FALSE
-	var/list/ore_buffer = list()
-	var/datum/techweb/stored_research
+	/// Whether the message to relevant supply consoles was sent already or not for an ore dump. If FALSE, another will be sent.
+	var/message_sent = TRUE
+	/// List of ore yet to process.
+	var/list/obj/item/stack/ore/ore_buffer = null
+	/// Locally known R&D designs.
+	var/datum/research/files
+	/// The currently inserted design disk.
 	var/obj/item/disk/design_disk/inserted_disk
-	var/datum/component/remote_materials/materials
 
-/obj/machinery/mineral/ore_redemption/Initialize(mapload)
-	. = ..()
-	stored_research = new /datum/techweb/specialized/autounlocking/smelter
-	materials = AddComponent(/datum/component/remote_materials, "orm", mapload)
+/obj/machinery/mineral/ore_redemption/New()
+	..()
+	ore_buffer = list()
+	// Components
+	AddComponent(/datum/component/material_container, list(MAT_METAL, MAT_GLASS, MAT_SILVER, MAT_GOLD, MAT_DIAMOND, MAT_PLASMA, MAT_URANIUM, MAT_BANANIUM, MAT_TRANQUILLITE, MAT_TITANIUM, MAT_BLUESPACE), INFINITY, FALSE, /obj/item/stack, null, CALLBACK(src, .proc/on_material_insert))
+	files = new /datum/research/smelter(src)
+	// Stock parts
+	component_parts = list()
+	component_parts += new /obj/item/circuitboard/ore_redemption(null)
+	component_parts += new /obj/item/stock_parts/matter_bin(null)
+	component_parts += new /obj/item/stock_parts/manipulator(null)
+	component_parts += new /obj/item/stock_parts/micro_laser(null)
+	component_parts += new /obj/item/assembly/igniter(null)
+	component_parts += new /obj/item/stack/sheet/glass(null)
+	RefreshParts()
+
+/obj/machinery/mineral/ore_redemption/upgraded/New()
+	..()
+	component_parts = list()
+	component_parts += new /obj/item/circuitboard/ore_redemption(null)
+	component_parts += new /obj/item/stock_parts/matter_bin/super(null)
+	component_parts += new /obj/item/stock_parts/manipulator/pico(null)
+	component_parts += new /obj/item/stock_parts/micro_laser/ultra(null)
+	component_parts += new /obj/item/assembly/igniter(null)
+	component_parts += new /obj/item/stack/sheet/glass(null)
+	RefreshParts()
+
+/**
+  * # Ore Redemption Machine (Golem)
+  *
+  * Golem variant of the ORM.
+  */
+/obj/machinery/mineral/ore_redemption/golem
+	req_access = list(ACCESS_FREE_GOLEMS)
+	req_access_claim = ACCESS_FREE_GOLEMS
+
+/obj/machinery/mineral/ore_redemption/golem/New()
+	..()
+	component_parts = list()
+	component_parts += new /obj/item/circuitboard/ore_redemption/golem(null)
+	component_parts += new /obj/item/stock_parts/matter_bin(null)
+	component_parts += new /obj/item/stock_parts/manipulator(null)
+	component_parts += new /obj/item/stock_parts/micro_laser(null)
+	component_parts += new /obj/item/assembly/igniter(null)
+	component_parts += new /obj/item/stack/sheet/glass(null)
+	RefreshParts()
+
+/**
+  * # Ore Redemption Machine (Labor Camp)
+  *
+  * Labor camp variant of the ORM. Points can be claimed by anyone.
+  */
+/obj/machinery/mineral/ore_redemption/labor
+	name = "labor camp ore redemption machine"
+	req_access = list()
+	anyone_claim = TRUE
+
+/obj/machinery/mineral/ore_redemption/labor/New()
+	..()
+	component_parts = list()
+	component_parts += new /obj/item/circuitboard/ore_redemption/labor(null)
+	component_parts += new /obj/item/stock_parts/matter_bin(null)
+	component_parts += new /obj/item/stock_parts/manipulator(null)
+	component_parts += new /obj/item/stock_parts/micro_laser(null)
+	component_parts += new /obj/item/assembly/igniter(null)
+	component_parts += new /obj/item/stack/sheet/glass(null)
+	RefreshParts()
 
 /obj/machinery/mineral/ore_redemption/Destroy()
-	QDEL_NULL(stored_research)
-	materials = null
+	// Move any stuff inside us out
+	var/turf/T = get_turf(src)
+	inserted_id?.forceMove(T)
+	inserted_disk?.forceMove(T)
+	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
+	materials.retrieve_all()
+	// Clean up
+	QDEL_NULL(files)
 	return ..()
 
 /obj/machinery/mineral/ore_redemption/RefreshParts()
-	var/ore_pickup_rate_temp = 15
-	var/point_upgrade_temp = 1
-	var/sheet_per_ore_temp = 1
-	for(var/obj/item/stock_parts/matter_bin/B in component_parts)
-		sheet_per_ore_temp = 0.65 + (0.35 * B.rating)
-	for(var/obj/item/stock_parts/manipulator/M in component_parts)
-		ore_pickup_rate_temp = 15 * M.rating
-	for(var/obj/item/stock_parts/micro_laser/L in component_parts)
-		point_upgrade_temp = 0.65 + (0.35 * L.rating)
-	ore_pickup_rate = ore_pickup_rate_temp
-	point_upgrade = point_upgrade_temp
-	sheet_per_ore = round(sheet_per_ore_temp, 0.01)
-
-/obj/machinery/mineral/ore_redemption/examine(mob/user)
-	. = ..()
-	if(in_range(user, src) || isobserver(user))
-		. += "<span class='notice'>The status display reads: Smelting <b>[sheet_per_ore]</b> sheet(s) per piece of ore.<br>Reward point generation at <b>[point_upgrade*100]%</b>.<br>Ore pickup speed at <b>[ore_pickup_rate]</b>.</span>"
-	if(panel_open)
-		. += "<span class='notice'>Alt-click to rotate the input and output direction.</span>"
-
-/obj/machinery/mineral/ore_redemption/proc/smelt_ore(obj/item/stack/ore/O)
-	var/datum/component/material_container/mat_container = materials.mat_container
-	if (!mat_container)
-		return
-
-	if(O.refined_type == null)
-		return
-
-	ore_buffer -= O
-
-	if(O?.refined_type)
-		points += O.points * point_upgrade * O.amount
-
-	var/material_amount = mat_container.get_item_material_amount(O)
-
-	if(!material_amount)
-		qdel(O) //no materials, incinerate it
-
-	else if(!mat_container.has_space(material_amount * sheet_per_ore * O.amount)) //if there is no space, eject it
-		unload_mineral(O)
-
-	else
-		var/mats = O.materials & mat_container.materials
-		var/amount = O.amount
-		mat_container.insert_item(O, sheet_per_ore) //insert it
-		materials.silo_log(src, "smelted", amount, "someone", mats)
-		qdel(O)
-
-/obj/machinery/mineral/ore_redemption/proc/can_smelt_alloy(datum/design/D)
-	var/datum/component/material_container/mat_container = materials.mat_container
-	if(!mat_container || D.make_reagents.len)
-		return FALSE
-
-	var/build_amount = 0
-
-	for(var/mat in D.materials)
-		var/amount = D.materials[mat]
-		var/datum/material/redemption_mat_amount = mat_container.materials[mat]
-
-		if(!amount || !redemption_mat_amount)
-			return FALSE
-
-		var/smeltable_sheets = FLOOR(redemption_mat_amount / amount, 1)
-
-		if(!smeltable_sheets)
-			return FALSE
-
-		if(!build_amount)
-			build_amount = smeltable_sheets
-
-		build_amount = min(build_amount, smeltable_sheets)
-
-	return build_amount
-
-/obj/machinery/mineral/ore_redemption/proc/process_ores(list/ores_to_process)
-	var/current_amount = 0
-	for(var/ore in ores_to_process)
-		if(current_amount >= ore_pickup_rate)
-			break
-		smelt_ore(ore)
-
-/obj/machinery/mineral/ore_redemption/proc/send_console_message()
-	var/datum/component/material_container/mat_container = materials.mat_container
-	if(!mat_container || !is_station_level(z))
-		return
-	message_sent = TRUE
-
-	var/area/A = get_area(src)
-	var/msg = "Now available in [A]:<br>"
-
-	var/has_minerals = FALSE
-
-	for(var/mat in mat_container.materials)
-		var/datum/material/M = mat
-		var/mineral_amount = mat_container.materials[mat] / MINERAL_MATERIAL_AMOUNT
-		if(mineral_amount)
-			has_minerals = TRUE
-		msg += "[capitalize(M.name)]: [mineral_amount] sheets<br>"
-
-	if(!has_minerals)
-		return
-
-	var/datum/signal/subspace/messaging/rc/signal = new(src, list(
-		"ore_update" = TRUE,
-		"sender" = "Ore Redemption Machine",
-		"message" = msg,
-		"verified" = "<font color='green'><b>Verified by Ore Redemption Machine</b></font>",
-		"priority" = REQ_NORMAL_MESSAGE_PRIORITY
-	))
-	signal.send_to_receivers()
-
-/obj/machinery/mineral/ore_redemption/process()
-	if(!materials.mat_container || panel_open || !powered())
-		return
-	var/atom/input = get_step(src, input_dir)
-	var/obj/structure/ore_box/OB = locate() in input
-	if(OB)
-		input = OB
-
-	for(var/obj/item/stack/ore/O in input)
-		if(QDELETED(O))
+	var/P = 1
+	var/S = 1
+	for(var/sp in component_parts)
+		var/obj/item/stock_parts/SP = sp
+		if(!istype(SP))
 			continue
-		ore_buffer |= O
-		O.forceMove(src)
-		CHECK_TICK
-
-	if(LAZYLEN(ore_buffer))
-		message_sent = FALSE
-		process_ores(ore_buffer)
-	else if(!message_sent)
-		send_console_message()
-
-/obj/machinery/mineral/ore_redemption/attackby(obj/item/W, mob/user, params)
-	if(default_unfasten_wrench(user, W))
-		return
-	if(default_deconstruction_screwdriver(user, "ore_redemption-open", "ore_redemption", W))
-		updateUsrDialog()
-		return
-	if(default_deconstruction_crowbar(W))
-		return
-
-	if(!powered())
-		return ..()
-
-	if(istype(W, /obj/item/disk/design_disk))
-		if(user.transferItemToLoc(W, src))
-			inserted_disk = W
-			return TRUE
-
-	var/obj/item/stack/ore/O = W
-	if(istype(O))
-		if(O.refined_type == null)
-			to_chat(user, "<span class='notice'>[O] has already been refined!</span>")
-			return
-
-	return ..()
-
-/obj/machinery/mineral/ore_redemption/AltClick(mob/living/user)
-	if(!user.canUseTopic(src, BE_CLOSE))
-		return
-	if (panel_open)
-		input_dir = turn(input_dir, -90)
-		output_dir = turn(output_dir, -90)
-		to_chat(user, "<span class='notice'>You change [src]'s I/O settings, setting the input to [dir2text(input_dir)] and the output to [dir2text(output_dir)].</span>")
-		return TRUE
-
-
-/obj/machinery/mineral/ore_redemption/ui_state(mob/user)
-	return GLOB.default_state
-
-/obj/machinery/mineral/ore_redemption/ui_interact(mob/user, datum/tgui/ui)
-	ui = SStgui.try_update_ui(user, src, ui)
-	if(!ui)
-		ui = new(user, src, "OreRedemptionMachine")
-		ui.open()
-
-/obj/machinery/mineral/ore_redemption/ui_data(mob/user)
-	var/list/data = list()
-	data["unclaimedPoints"] = points
-
-	data["materials"] = list()
-	var/datum/component/material_container/mat_container = materials.mat_container
-	if (mat_container)
-		for(var/mat in mat_container.materials)
-			var/datum/material/M = mat
-			var/amount = mat_container.materials[M]
-			var/sheet_amount = amount / MINERAL_MATERIAL_AMOUNT
-			var/ref = REF(M)
-			data["materials"] += list(list("name" = M.name, "id" = ref, "amount" = sheet_amount, "value" = ore_values[M.type] * point_upgrade))
-
-		data["alloys"] = list()
-		for(var/v in stored_research.researched_designs)
-			var/datum/design/D = SSresearch.techweb_design_by_id(v)
-			data["alloys"] += list(list("name" = D.name, "id" = D.id, "amount" = can_smelt_alloy(D)))
-
-	if (!mat_container)
-		data["disconnected"] = "local mineral storage is unavailable"
-	else if (!materials.silo)
-		data["disconnected"] = "no ore silo connection is available; storing locally"
-	else if (materials.on_hold())
-		data["disconnected"] = "mineral withdrawal is on hold"
-
-	data["diskDesigns"] = list()
-	data["hasDisk"] = FALSE
-	if(inserted_disk)
-		data["hasDisk"] = TRUE
-		if(inserted_disk.blueprints.len)
-			var/index = 1
-			for (var/datum/design/thisdesign in inserted_disk.blueprints)
-				if(thisdesign)
-					data["diskDesigns"] += list(list("name" = thisdesign.name, "index" = index, "canupload" = thisdesign.build_type&SMELTER))
-				index++
-	return data
-
-/obj/machinery/mineral/ore_redemption/ui_act(action, params)
-	if(..())
-		return
-	var/datum/component/material_container/mat_container = materials.mat_container
-	switch(action)
-		if("Claim")
-			var/mob/M = usr
-			var/obj/item/card/id/I = M.get_idcard(TRUE)
-			if(points)
-				if(I?.mining_points += points)
-					points = 0
-				else
-					to_chat(usr, "<span class='warning'>No ID detected.</span>")
-			else
-				to_chat(usr, "<span class='warning'>No points to claim.</span>")
-			return TRUE
-		if("Release")
-			if(!mat_container)
-				return
-
-			if(materials.on_hold())
-				to_chat(usr, "<span class='warning'>Mineral access is on hold, please contact the quartermaster.</span>")
-			else if(!allowed(usr)) //Check the ID inside, otherwise check the user
-				to_chat(usr, "<span class='warning'>Required access not found.</span>")
-			else
-				var/datum/material/mat = locate(params["id"])
-
-				var/amount = mat_container.materials[mat]
-				if(!amount)
-					return
-
-				var/stored_amount = CEILING(amount / MINERAL_MATERIAL_AMOUNT, 0.1)
-
-				if(!stored_amount)
-					return
-
-				var/desired = 0
-				if (params["sheets"])
-					desired = text2num(params["sheets"])
-				else
-					desired = input("How many sheets?", "How many sheets would you like to smelt?", 1) as null|num
-
-				var/sheets_to_remove = round(min(desired,50,stored_amount))
-
-				var/count = mat_container.retrieve_sheets(sheets_to_remove, mat, get_step(src, output_dir))
-				var/list/mats = list()
-				mats[mat] = MINERAL_MATERIAL_AMOUNT
-				materials.silo_log(src, "released", -count, "sheets", mats)
-				//Logging deleted for quick coding
-			return TRUE
-		if("diskInsert")
-			var/obj/item/disk/design_disk/disk = usr.get_active_held_item()
-			if(istype(disk))
-				if(!usr.transferItemToLoc(disk,src))
-					return
-				inserted_disk = disk
-			else
-				to_chat(usr, "<span class='warning'>Not a valid Design Disk!</span>")
-			return TRUE
-		if("diskEject")
-			if(inserted_disk)
-				usr.put_in_hands(inserted_disk)
-				inserted_disk = null
-			return TRUE
-		if("diskUpload")
-			var/n = text2num(params["design"])
-			if(inserted_disk && inserted_disk.blueprints && inserted_disk.blueprints[n])
-				stored_research.add_design(inserted_disk.blueprints[n])
-			return TRUE
-		if("Smelt")
-			if(!mat_container)
-				return
-			if(materials.on_hold())
-				to_chat(usr, "<span class='warning'>Mineral access is on hold, please contact the quartermaster.</span>")
-				return
-			var/alloy_id = params["id"]
-			var/datum/design/alloy = stored_research.isDesignResearchedID(alloy_id)
-			if((check_access(inserted_id) || allowed(usr)) && alloy)
-				var/smelt_amount = can_smelt_alloy(alloy)
-				var/desired = 0
-				if (params["sheets"])
-					desired = text2num(params["sheets"])
-				else
-					desired = input("How many sheets?", "How many sheets would you like to smelt?", 1) as null|num
-				var/amount = round(min(desired,50,smelt_amount))
-				mat_container.use_materials(alloy.materials, amount)
-				materials.silo_log(src, "released", -amount, "sheets", alloy.materials)
-				var/output
-				if(ispath(alloy.build_path, /obj/item/stack/sheet))
-					output = new alloy.build_path(src, amount)
-				else
-					output = new alloy.build_path(src)
-				unload_mineral(output)
-			else
-				to_chat(usr, "<span class='warning'>Required access not found.</span>")
-			return TRUE
-
-/obj/machinery/mineral/ore_redemption/ex_act(severity, target)
-	do_sparks(5, TRUE, src)
-	..()
+		switch(SP.type)
+			if(/obj/item/stock_parts/micro_laser)
+				P = BASE_POINT_MULT + (POINT_MULT_ADD_PER_RATING * SP.rating)
+			if(/obj/item/stock_parts/matter_bin)
+				S = BASE_SHEET_MULT + (SHEET_MULT_ADD_PER_RATING * SP.rating)
+			// Manipulators do nothing
+	// Update our values
+	point_upgrade = P
+	sheet_per_ore = S
+	SStgui.update_uis(src)
 
 /obj/machinery/mineral/ore_redemption/power_change()
 	..()
 	update_icon()
+	if(inserted_id && !powered())
+		visible_message("<span class='notice'>The ID slot indicator light flickers on [src] as it spits out a card before powering down.</span>")
+		inserted_id.forceMove(get_turf(src))
+		inserted_id = null
 
 /obj/machinery/mineral/ore_redemption/update_icon()
 	if(powered())
 		icon_state = initial(icon_state)
 	else
 		icon_state = "[initial(icon_state)]-off"
-	return
+
+/obj/machinery/mineral/ore_redemption/process()
+	if(panel_open || !powered())
+		return
+	// Check if the input turf has a [/obj/structure/ore_box] to draw ore from. Otherwise suck ore from the turf
+	var/atom/input = get_step(src, input_dir)
+	var/obj/structure/ore_box/OB = locate() in input
+	if(OB)
+		input = OB
+	// Suck the ore in
+	for(var/obj/item/stack/ore/O in input)
+		if(QDELETED(O))
+			continue
+		ore_buffer |= O
+		O.forceMove(src)
+		CHECK_TICK
+	// Process it
+	if(length(ore_buffer))
+		message_sent = FALSE
+		process_ores(ore_buffer)
+	else if(!message_sent)
+		SStgui.update_uis(src)
+		send_console_message()
+		message_sent = TRUE
+
+// Interactions
+/obj/machinery/mineral/ore_redemption/attackby(obj/item/I, mob/user, params)
+	if(exchange_parts(user, I))
+		return
+	if(!powered())
+		return ..()
+
+	if(istype(I, /obj/item/card/id))
+		try_insert_id(user)
+		return
+
+	else if(istype(I, /obj/item/disk/design_disk))
+		if(!user.drop_item())
+			return
+		I.forceMove(src)
+		inserted_disk = I
+		SStgui.update_uis(src)
+		interact(user)
+		user.visible_message("<span class='notice'>[user] inserts [I] into [src].</span>",
+						 	 "<span class='notice'>You insert [I] into [src].</span>")
+		return
+	return ..()
+
+/obj/machinery/mineral/ore_redemption/crowbar_act(mob/user, obj/item/I)
+	if(default_deconstruction_crowbar(user, I))
+		return TRUE
+
+/obj/machinery/mineral/ore_redemption/multitool_act(mob/user, obj/item/I)
+	if(!panel_open)
+		return
+	. = TRUE
+	if(!powered())
+		return
+	if(!I.tool_start_check(src, user, 0))
+		return
+	input_dir = turn(input_dir, -90)
+	output_dir = turn(output_dir, -90)
+	to_chat(user, "<span class='notice'>You change [src]'s I/O settings, setting the input to [dir2text(input_dir)] and the output to [dir2text(output_dir)].</span>")
+
+/obj/machinery/mineral/ore_redemption/screwdriver_act(mob/user, obj/item/I)
+	if(default_deconstruction_screwdriver(user, "ore_redemption-open", "ore_redemption", I))
+		SStgui.update_uis(src)
+		return TRUE
+
+/obj/machinery/mineral/ore_redemption/wrench_act(mob/user, obj/item/I)
+	if(default_unfasten_wrench(user, I))
+		return TRUE
+
+/obj/machinery/mineral/ore_redemption/attack_ghost(mob/user)
+	ui_interact(user)
+
+/obj/machinery/mineral/ore_redemption/attack_hand(mob/user)
+	if(..())
+		return
+	ui_interact(user)
+
+/obj/machinery/mineral/ore_redemption/ex_act(severity)
+	do_sparks(5, TRUE, src)
+	..()
+
+// UI
+/obj/machinery/mineral/ore_redemption/ui_data(mob/user)
+	var/list/data = list()
+	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
+
+	// General info
+	data["id"] = inserted_id ? list("name" = "[inserted_id.registered_name] ([inserted_id.assignment])", "points" = inserted_id.mining_points) : null
+	data["points"] = points
+	data["disk"] = inserted_disk ? list(
+		"name" = inserted_disk.name,
+		"design" = inserted_disk.blueprint?.name,
+		"compatible" = (inserted_disk.blueprint?.build_type & SMELTER)
+	) : null
+
+	// Sheets
+	var/list/sheets = list()
+	for(var/MAT in materials.materials)
+		var/datum/material/M = materials.materials[MAT]
+		if(!M)
+			continue
+		var/obj/item/stack/ore/O = M.ore_type
+		sheets += list(list(
+			"id" = MAT,
+			"name" = M.name,
+			"amount" = M.amount / MINERAL_MATERIAL_AMOUNT,
+			"value" = initial(O.points) * point_upgrade
+		))
+	data["sheets"] = sheets
+
+	// Alloys
+	var/list/alloys = list()
+	for(var/v in files.known_designs)
+		var/datum/design/D = files.known_designs[v]
+		alloys += list(list(
+			"id" = D.id,
+			"name" = D.name,
+			"amount" = get_num_smeltable_alloy(D)
+		))
+	data["alloys"] = alloys
+
+	return data
+
+/obj/machinery/mineral/ore_redemption/ui_act(action, list/params)
+	if(..())
+		return
+
+	. = TRUE
+	switch(action)
+		if("claim")
+			if(!inserted_id || !points)
+				return
+			if(anyone_claim || (req_access_claim in inserted_id.access))
+				inserted_id.mining_points += points
+				to_chat(usr, "<span class='notice'>[points] points claimed.</span>")
+				points = 0
+			else
+				to_chat(usr, "<span class='warning'>Required access not found.</span>")
+		if("sheet", "alloy")
+			if(!(check_access(inserted_id) || allowed(usr)))
+				to_chat(usr, "<span class='warning'>Required access not found.</span>")
+				return FALSE
+			var/id = params["id"]
+			var/amount = round(text2num(params["amount"]))
+			if(!amount || amount < 1)
+				return FALSE
+			var/out_loc = get_step(src, output_dir)
+			var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
+			if(action == "sheet")
+				var/datum/material/M = materials.materials[id]
+				if(!M)
+					return FALSE
+				var/stored = M.amount / MINERAL_MATERIAL_AMOUNT
+				var/desired = min(amount, stored, MAX_STACK_SIZE)
+				materials.retrieve_sheets(desired, id, out_loc)
+			else
+				var/datum/design/D = files.FindDesignByID(id)
+				if(!D)
+					return FALSE
+				var/stored = get_num_smeltable_alloy(D)
+				var/desired = min(amount, stored, MAX_STACK_SIZE)
+				materials.use_amount(D.materials, desired)
+				// Spawn the alloy
+				var/result = new D.build_path(src)
+				if(istype(result, /obj/item/stack/sheet))
+					var/obj/item/stack/sheet/mineral/A = result
+					A.amount = amount
+					unload_mineral(A)
+				else
+					unload_mineral(result)
+		if("insert_id")
+			try_insert_id(usr)
+		if("eject_id")
+			if(!inserted_id)
+				return FALSE
+			if(ishuman(usr))
+				usr.put_in_hands(inserted_id)
+				usr.visible_message("<span class='notice'>[usr] retrieves [inserted_id] from [src].</span>", \
+									"<span class='notice'>You retrieve [inserted_id] from [src].</span>")
+			else
+				inserted_id.forceMove(get_turf(src))
+			inserted_id = null
+		if("eject_disk")
+			if(!inserted_disk)
+				return FALSE
+			if(ishuman(usr))
+				usr.put_in_hands(inserted_disk)
+				usr.visible_message("<span class='notice'>[usr] retrieves [inserted_disk] from [src].</span>", \
+									"<span class='notice'>You retrieve [inserted_disk] from [src].</span>")
+			else
+				inserted_disk.forceMove(get_turf(src))
+			inserted_disk = null
+		if("download")
+			if(inserted_disk?.blueprint?.build_type & SMELTER)
+				files.AddDesign2Known(inserted_disk.blueprint)
+				atom_say("Design \"[inserted_disk.blueprint.name]\" downloaded successfully.")
+		else
+			return FALSE
+	add_fingerprint(usr)
+
+/obj/machinery/mineral/ore_redemption/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
+	var/datum/asset/materials_assets = get_asset_datum(/datum/asset/simple/materials)
+	materials_assets.send(user)
+
+	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+	if(!ui)
+		ui = new(user, src, ui_key, "OreRedemption", name, 400, 600)
+		ui.open()
+		ui.set_autoupdate(FALSE)
+
+/**
+  * Smelts the given stack of ore.
+  *
+  * Arguments:
+  * * O - The ore stack to smelt.
+  */
+/obj/machinery/mineral/ore_redemption/proc/smelt_ore(obj/item/stack/ore/O)
+	// Award points if the ore actually smelts to something
+	give_points(O.type, O.amount)
+	// Insert materials
+	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
+	var/amount_compatible = materials.get_item_material_amount(O)
+	if(amount_compatible)
+		materials.insert_item(O, sheet_per_ore)
+	// Delete the stack
+	ore_buffer -= O
+	qdel(O)
+
+/**
+  * Adds a set number of mining points, based on the ore points, the ore amount, and the ORM upgrade state.
+  *
+  * Arguments:
+  * * ore_path - The typepath of the inserted ore.
+  * * ore_amount - The amount of ore which has been inserted.
+  */
+/obj/machinery/mineral/ore_redemption/proc/give_points(obj/item/stack/ore/ore_path, ore_amount)
+	if(initial(ore_path.refined_type))
+		points += initial(ore_path.points) * point_upgrade * ore_amount
+
+/**
+  * Returns the amount of alloy sheets that can be produced from the given design.
+  *
+  * Arguments:
+  * * D - The smelting design.
+  */
+/obj/machinery/mineral/ore_redemption/proc/get_num_smeltable_alloy(datum/design/D)
+	if(length(D.make_reagents))
+		return 0
+
+	var/result = 0
+	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
+	for(var/MAT in D.materials)
+		var/M = D.materials[MAT]
+		var/datum/material/stored = materials.materials[MAT]
+		if(!M || !stored)
+			return FALSE
+		var/smeltable = round(stored.amount / M)
+		if(!smeltable)
+			return FALSE
+		if(!result)
+			result = smeltable
+		result = min(result, smeltable)
+	return result
+
+/**
+  * Processes the given list of ores.
+  *
+  * Arguments:
+  * * L - List of ores to process.
+  */
+/obj/machinery/mineral/ore_redemption/proc/process_ores(list/obj/item/stack/ore/L)
+	for(var/ore in L)
+		smelt_ore(ore)
+
+/**
+  * Notifies all relevant supply consoles with the machine's contents.
+  */
+/obj/machinery/mineral/ore_redemption/proc/send_console_message()
+	if(!is_station_level(z))
+		return
+
+	var/list/msg = list("Now available in [get_area_name(src, TRUE) || "Unknown"]:")
+	var/mats_in_stock = list()
+	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
+	for(var/MAT in materials.materials)
+		var/datum/material/M = materials.materials[MAT]
+		var/mineral_amount = M.amount / MINERAL_MATERIAL_AMOUNT
+		if(mineral_amount)
+			mats_in_stock += M.id
+			msg.Add("[capitalize(M.name)]: [mineral_amount] sheets")
+
+	// No point sending a message if we're dry
+	if(!length(mats_in_stock))
+		return
+
+	// Notify
+	for(var/c in GLOB.allRequestConsoles)
+		var/obj/machinery/requests_console/C = c
+		if(!(C.department in supply_consoles))
+			continue
+		if(!supply_consoles[C.department] || length(supply_consoles[C.department] - mats_in_stock))
+			C.createMessage("Ore Redemption Machine", "New Minerals Available!", msg, 1) // RQ_NORMALPRIORITY
+
+/**
+  * Tries to insert the ID card held by the given user into the machine.
+  *
+  * Arguments:
+  * * user - The ID whose active hand to check for an ID card to insert.
+  */
+/obj/machinery/mineral/ore_redemption/proc/try_insert_id(mob/user)
+	. = FALSE
+	var/obj/item/card/id/I = user.get_active_hand()
+	if(!istype(I))
+		return
+	if(inserted_id)
+		to_chat(user, "<span class='warning'>There is already an ID inside!</span>")
+		return
+	if(!user.drop_item())
+		return
+	I.forceMove(src)
+	inserted_id = I
+	SStgui.update_uis(src)
+	interact(user)
+	user.visible_message("<span class='notice'>[user] inserts [I] into [src].</span>", \
+							"<span class='notice'>You insert [I] into [src].</span>")
+	return TRUE
+
+/**
+  * Called when an item is inserted manually as material.
+  *
+  * Arguments:
+  * * inserted_type - The type of the inserted item.
+  * * last_inserted_id - The ID of the last material to have been inserted.
+  * * inserted - The amount of material inserted.
+  */
+/obj/machinery/mineral/ore_redemption/proc/on_material_insert(inserted_type, last_inserted_id, inserted)
+	give_points(inserted_type, inserted)
+	SStgui.update_uis(src)
+
+#undef BASE_POINT_MULT
+#undef BASE_SHEET_MULT
+#undef POINT_MULT_ADD_PER_RATING
+#undef SHEET_MULT_ADD_PER_RATING

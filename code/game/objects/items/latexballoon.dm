@@ -1,6 +1,6 @@
 /obj/item/latexballon
 	name = "latex glove"
-	desc = "Sterile and airtight."
+	desc = "" //todo
 	icon_state = "latexballon"
 	item_state = "lgloves"
 	force = 0
@@ -11,27 +11,33 @@
 	var/state
 	var/datum/gas_mixture/air_contents = null
 
+/obj/item/latexballon/Destroy()
+	QDEL_NULL(air_contents)
+	return ..()
+
 /obj/item/latexballon/proc/blow(obj/item/tank/tank, mob/user)
-	if (icon_state == "latexballon_bursted")
+	if(icon_state == "latexballon_bursted")
 		return
 	icon_state = "latexballon_blow"
 	item_state = "latexballon"
-	user.update_inv_hands()
+	user.update_inv_r_hand()
+	user.update_inv_l_hand()
 	to_chat(user, "<span class='notice'>You blow up [src] with [tank].</span>")
 	air_contents = tank.remove_air_volume(3)
 
 /obj/item/latexballon/proc/burst()
-	if (!air_contents || icon_state != "latexballon_blow")
+	if(!air_contents || icon_state != "latexballon_blow")
 		return
-	playsound(src, 'sound/weapons/gunshot.ogg', 100, 1)
+	playsound(src, 'sound/weapons/gunshots/gunshot.ogg', 100, 1)
 	icon_state = "latexballon_bursted"
 	item_state = "lgloves"
 	if(isliving(loc))
-		var/mob/living/user = src.loc
-		user.update_inv_hands()
+		var/mob/living/user = loc
+		user.update_inv_r_hand()
+		user.update_inv_l_hand()
 	loc.assume_air(air_contents)
 
-/obj/item/latexballon/ex_act(severity, target)
+/obj/item/latexballon/ex_act(severity)
 	burst()
 	switch(severity)
 		if (1)
@@ -46,6 +52,7 @@
 	return ..()
 
 /obj/item/latexballon/temperature_expose(datum/gas_mixture/air, temperature, volume)
+	..()
 	if(temperature > T0C+100)
 		burst()
 
@@ -54,5 +61,5 @@
 		var/obj/item/tank/T = W
 		blow(T, user)
 		return
-	if (W.is_sharp() || W.is_hot() || is_pointed(W))
+	if(is_sharp(W) || is_hot(W) || is_pointed(W))
 		burst()

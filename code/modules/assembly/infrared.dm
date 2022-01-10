@@ -2,46 +2,40 @@
 	name = "infrared emitter"
 	desc = "Emits a visible or invisible beam and is triggered when the beam is interrupted."
 	icon_state = "infrared"
-	custom_materials = list(/datum/material/iron=1000, /datum/material/glass=500)
-	is_position_sensitive = TRUE
+	materials = list(MAT_METAL=1000, MAT_GLASS=500)
+	origin_tech = "magnets=2;materials=2"
 
+	bomb_name = "tripwire mine"
 
+	secured = FALSE // toggle_secure()'ed in New() for correct adding to processing_objects, won't work otherwise
+	dir = EAST
 	var/on = FALSE
-	var/visible = FALSE
-	var/maxlength = 8
-	var/list/obj/effect/beam/i_beam/beams
-	var/olddir = 0
-	var/turf/listeningTo
-	var/hearing_range = 3
-
-/obj/item/assembly/infra/Initialize()
-	. = ..()
-	beams = list()
-	START_PROCESSING(SSobj, src)
-
-/obj/item/assembly/infra/ComponentInitialize()
-	. = ..()
-	var/static/rotation_flags = ROTATION_ALTCLICK | ROTATION_CLOCKWISE | ROTATION_COUNTERCLOCKWISE | ROTATION_FLIP | ROTATION_VERBS
-	AddComponent(/datum/component/simple_rotation, rotation_flags, null, null, CALLBACK(src,.proc/after_rotation))
-
-/obj/item/assembly/infra/proc/after_rotation()
-	refreshBeam()
+	var/visible = TRUE
+	var/obj/effect/beam/i_beam/first = null
+	var/obj/effect/beam/i_beam/last = null
+	var/max_nesting_level = 10
+	var/turf/fire_location
+	var/emission_cycles = 0
+	var/emission_cap = 20
 
 /obj/item/assembly/infra/Destroy()
-	STOP_PROCESSING(SSobj, src)
-	listeningTo = null
-	QDEL_LIST(beams)
-	. = ..()
+	if(first)
+		QDEL_NULL(first)
+		last = null
+		fire_location = null
+	return ..()
+
+/obj/item/assembly/infra/describe()
+	return "The assembly is [secured ? "secure" : "not secure"]. The infrared trigger is [on ? "on" : "off"]."
 
 /obj/item/assembly/infra/examine(mob/user)
 	. = ..()
-	. += "<span class='notice'>The infrared trigger is [on?"on":"off"].</span>"
+	. += describe()
 
 /obj/item/assembly/infra/activate()
 	if(!..())
-		return FALSE //Cooldown check
+		return FALSE//Cooldown check
 	on = !on
-	refreshBeam()
 	update_icon()
 	return TRUE
 
@@ -49,188 +43,243 @@
 	secured = !secured
 	if(secured)
 		START_PROCESSING(SSobj, src)
-		refreshBeam()
 	else
-		QDEL_LIST(beams)
+		on = FALSE
+		if(first)
+			qdel(first)
 		STOP_PROCESSING(SSobj, src)
 	update_icon()
 	return secured
 
+/obj/item/assembly/infra/New()
+	..()
+	if(!secured)
+		toggle_secure()
+
+/obj/item/assembly/infra/proc/arm() // Forces the device to arm no matter its current state.
+	if(!secured) // Checked because arm() might be called sometime after the object is spawned.
+		toggle_secure()
+	on = 1
+
 /obj/item/assembly/infra/update_icon()
-	cut_overlays()
+	overlays.Cut()
 	attached_overlays = list()
 	if(on)
-		add_overlay("infrared_on")
+		overlays += "infrared_on"
 		attached_overlays += "infrared_on"
-		if(visible && secured)
-			add_overlay("infrared_visible")
-			attached_overlays += "infrared_visible"
 
 	if(holder)
 		holder.update_icon()
-	return
-
-/obj/item/assembly/infra/dropped()
-	. = ..()
-	if(holder)
-		holder_movement() //sync the dir of the device as well if it's contained in a TTV or an assembly holder
-	else
-		refreshBeam()
 
 /obj/item/assembly/infra/process()
-	if(!on || !secured)
-		refreshBeam()
-		return
-
-/obj/item/assembly/infra/proc/refreshBeam()
-	QDEL_LIST(beams)
-	if(throwing || !on || !secured)
-		return
-	if(holder)
-		if(holder.master) //incase the sensor is part of an assembly that's contained in another item, such as a single tank bomb
-			if(!holder.master.IsSpecialAssembly() || !isturf(holder.master.loc))
-				return
-		else if(!isturf(holder.loc)) //else just check where the holder is
-			return
-	else if(!isturf(loc)) //or just where the fuck we are in general
-		return
 	var/turf/T = get_turf(src)
-	var/_dir = dir
-	var/turf/_T = get_step(T, _dir)
-	if(_T)
-		for(var/i in 1 to maxlength)
-			var/obj/effect/beam/i_beam/I = new(T)
-			if(istype(holder, /obj/item/assembly_holder))
-				var/obj/item/assembly_holder/assembly_holder = holder
-				I.icon_state = "[initial(I.icon_state)]_[(assembly_holder.a_left == src) ? "l":"r"]" //Sync the offset of the beam with the position of the sensor.
-			else if(istype(holder, /obj/item/transfer_valve))
-				I.icon_state = "[initial(I.icon_state)]_ttv"
-			I.density = TRUE
-			if(!I.Move(_T))
-				qdel(I)
-				switchListener(_T)
-				break
-			I.density = FALSE
-			beams += I
-			I.master = src
-			I.setDir(_dir)
-			I.invisibility = visible? 0 : INVISIBILITY_ABSTRACT
-			T = _T
-			_T = get_step(_T, _dir)
-			CHECK_TICK
-
-/obj/item/assembly/infra/on_detach()
-	. = ..()
-	if(!.)
+	if(first && (!on || !fire_location || fire_location != T || emission_cycles >= emission_cap))
+		qdel(first)
 		return
-	refreshBeam()
+	if(!on)
+		return
+	if(!secured)
+		return
+	if(first && last)
+		last.process()
+		emission_cycles++
+		return
+	if(T)
+		fire_location = T
+		emission_cycles = 0
+		var/obj/effect/beam/i_beam/I = new /obj/effect/beam/i_beam(T)
+		I.master = src
+		I.density = 1
+		I.dir = dir
+		I.update_icon()
+		first = I
+		step(I, I.dir)
+		if(first)
+			I.density = FALSE
+			I.vis_spread(visible)
+			I.limit = 8
+			I.process()
 
 /obj/item/assembly/infra/attack_hand()
-	. = ..()
-	refreshBeam()
+	qdel(first)
+	..()
 
-/obj/item/assembly/infra/Moved()
+/obj/item/assembly/infra/Move()
 	var/t = dir
 	. = ..()
-	setDir(t)
+	dir = t
+	qdel(first)
 
-/obj/item/assembly/infra/throw_at(atom/target, range, speed, mob/thrower, spin=1, diagonals_first = 0, datum/callback/callback, force, gentle = FALSE, quickstart = TRUE)
-	. = ..()
-	olddir = dir
-
-/obj/item/assembly/infra/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
-	. = ..()
-	if(!olddir)
-		return
-	setDir(olddir)
-	olddir = null
-
-/obj/item/assembly/infra/proc/trigger_beam(atom/movable/AM, turf/location)
-	refreshBeam()
-	switchListener(location)
-	if(!secured || !on || next_activate > world.time)
+/obj/item/assembly/infra/holder_movement()
+	if(!holder)
 		return FALSE
+	qdel(first)
+	return TRUE
+
+/obj/item/assembly/infra/equipped(mob/user, slot)
+	qdel(first)
+	return ..()
+
+/obj/item/assembly/infra/pickup(mob/user)
+	qdel(first)
+	return ..()
+
+/obj/item/assembly/infra/proc/trigger_beam()
+	if(!secured || !on || cooldown > 0)
+		return FALSE
+	cooldown = 2
 	pulse(FALSE)
-	audible_message("[icon2html(src, hearers(src))] *beep* *beep* *beep*", null, hearing_range)
-	playsound(get_turf(src), 'sound/machines/triple_beep.ogg', ASSEMBLY_BEEP_VOLUME, TRUE)
-	next_activate =  world.time + 30
+	audible_message("[bicon(src)] *beep* *beep*", hearing_distance = 3)
+	if(first)
+		qdel(first)
+	addtimer(CALLBACK(src, .proc/process_cooldown), 10)
 
-/obj/item/assembly/infra/proc/switchListener(turf/newloc)
-	if(listeningTo == newloc)
+/obj/item/assembly/infra/interact(mob/user)//TODO: change this this to the wire control panel
+	if(!secured)	return
+	user.set_machine(src)
+	var/dat = {"<TT><B>Infrared Laser</B>
+				<B>Status</B>: [on ? "<A href='?src=[UID()];state=0'>On</A>" : "<A href='?src=[UID()];state=1'>Off</A>"]<BR>
+				<B>Visibility</B>: [visible ? "<A href='?src=[UID()];visible=0'>Visible</A>" : "<A href='?src=[UID()];visible=1'>Invisible</A>"]<BR>
+				<B>Current Direction</B>: <A href='?src=[UID()];rotate=1'>[capitalize(dir2text(dir))]</A><BR>
+				</TT>
+				<BR><BR><A href='?src=[UID()];refresh=1'>Refresh</A>
+				<BR><BR><A href='?src=[UID()];close=1'>Close</A>"}
+	var/datum/browser/popup = new(user, "infra", name, 400, 400)
+	popup.set_content(dat)
+	popup.open(0)
+	onclose(user, "infra")
+
+/obj/item/assembly/infra/Topic(href, href_list)
+	..()
+	if(!usr.canmove || usr.stat || usr.restrained() || !in_range(loc, usr))
+		usr << browse(null, "window=infra")
+		onclose(usr, "infra")
 		return
-	if(listeningTo)
-		UnregisterSignal(listeningTo, COMSIG_ATOM_EXITED)
-	RegisterSignal(newloc, COMSIG_ATOM_EXITED, .proc/check_exit)
-	listeningTo = newloc
-
-/obj/item/assembly/infra/proc/check_exit(datum/source, atom/movable/offender)
-	if(QDELETED(src))
+	if(href_list["state"])
+		on = !(on)
+		update_icon()
+	if(href_list["visible"])
+		visible = !(visible)
+		if(first)
+			first.vis_spread(visible)
+	if(href_list["rotate"])
+		rotate()
+	if(href_list["close"])
+		usr << browse(null, "window=infra")
 		return
-	if(offender == src || istype(offender,/obj/effect/beam/i_beam))
-		return
-	if (offender && isitem(offender))
-		var/obj/item/I = offender
-		if (I.item_flags & ABSTRACT)
-			return
-	return refreshBeam()
+	if(usr)
+		attack_self(usr)
 
-/obj/item/assembly/infra/setDir()
-	. = ..()
-	refreshBeam()
+/obj/item/assembly/infra/verb/rotate()//This could likely be better
+	set name = "Rotate Infrared Laser"
+	set category = "Object"
+	set src in usr
 
-/obj/item/assembly/infra/ui_status(mob/user)
-	if(is_secured(user))
-		return ..()
-	return UI_CLOSE
-
-
-/obj/item/assembly/infra/ui_state(mob/user)
-	return GLOB.hands_state
-
-/obj/item/assembly/infra/ui_interact(mob/user, datum/tgui/ui)
-	ui = SStgui.try_update_ui(user, src, ui)
-	if(!ui)
-		ui = new(user, src, "InfraredEmitter")
-		ui.open()
-
-/obj/item/assembly/infra/ui_data(mob/user)
-	var/list/data = list()
-	data["on"] = on
-	data["visible"] = visible
-	return data
-
-/obj/item/assembly/infra/ui_act(action, params)
-	if(..())
+	if(usr.stat || !usr.canmove || usr.restrained())
 		return
 
-	switch(action)
-		if("power")
-			on = !on
-			. = TRUE
-		if("visibility")
-			visible = !visible
-			. = TRUE
+	dir = turn(dir, 90)
 
-	update_icon()
-	refreshBeam()
+	if(usr.machine == src)
+		interact(usr)
+
+	if(first)
+		qdel(first)
+
+
+
+/obj/item/assembly/infra/armed/New()
+	..()
+	spawn(3)
+		if(holder)
+			if(holder.master)
+				dir = holder.master.dir
+		arm()
+
+/obj/item/assembly/infra/armed/stealth
+	visible = FALSE
+
 
 /***************************IBeam*********************************/
 
 /obj/effect/beam/i_beam
-	name = "infrared beam"
+	name = "i beam"
 	icon = 'icons/obj/projectiles.dmi'
 	icon_state = "ibeam"
+	var/obj/effect/beam/i_beam/next = null
+	var/obj/effect/beam/i_beam/previous = null
+	var/obj/item/assembly/infra/master = null
+	var/limit = null
+	var/visible = FALSE
+	var/left = null
+	var/life_cycles = 0
+	var/life_cap = 20
 	anchored = TRUE
-	density = FALSE
-	pass_flags = PASSTABLE|PASSGLASS|PASSGRILLE|LETPASSTHROW
-	var/obj/item/assembly/infra/master
+	pass_flags = PASSTABLE | PASSGLASS | PASSGRILLE | PASSFENCE
 
-/obj/effect/beam/i_beam/Crossed(atom/movable/AM as mob|obj)
-	. = ..()
-	if(istype(AM, /obj/effect/beam))
+
+/obj/effect/beam/i_beam/proc/hit()
+	if(master)
+		master.trigger_beam()
+	qdel(src)
+
+/obj/effect/beam/i_beam/proc/vis_spread(v)
+	visible = v
+	if(next)
+		next.vis_spread(v)
+
+/obj/effect/beam/i_beam/update_icon()
+	transform = turn(matrix(), dir2angle(dir))
+
+/obj/effect/beam/i_beam/process()
+	life_cycles++
+	if(loc.density || !master || life_cycles >= life_cap)
+		qdel(src)
 		return
-	if (isitem(AM))
-		var/obj/item/I = AM
-		if (I.item_flags & ABSTRACT)
-			return
-	master.trigger_beam(AM, get_turf(src))
+	if(left > 0)
+		left--
+	if(left < 1)
+		if(!(visible))
+			invisibility = 101
+		else
+			invisibility = FALSE
+	else
+		invisibility = FALSE
+
+	if(!next && (limit > 0))
+		var/obj/effect/beam/i_beam/I = new /obj/effect/beam/i_beam(loc)
+		I.master = master
+		I.density = 1
+		I.dir = dir
+		I.update_icon()
+		I.previous = src
+		next = I
+		step(I, I.dir)
+		if(next)
+			I.density = FALSE
+			I.vis_spread(visible)
+			I.limit = limit - 1
+			master.last = I
+			I.process()
+
+/obj/effect/beam/i_beam/Bump()
+	qdel(src)
+
+/obj/effect/beam/i_beam/Bumped()
+	hit()
+
+/obj/effect/beam/i_beam/Crossed(atom/movable/AM, oldloc)
+	if(!isobj(AM) && !isliving(AM))
+		return
+	if(istype(AM, /obj/effect))
+		return
+	hit()
+
+/obj/effect/beam/i_beam/Destroy()
+	if(master.first == src)
+		master.first = null
+	QDEL_NULL(next)
+	if(previous)
+		previous.next = null
+		master.last = previous
+	return ..()

@@ -1,28 +1,28 @@
 // This is to replace the previous datum/disease/alien_embryo for slightly improved handling and maintainability
 // It functions almost identically (see code/datums/diseases/alien_embryo.dm)
-/obj/item/organ/body_egg/alien_embryo
+
+/obj/item/organ/internal/body_egg/alien_embryo
 	name = "alien embryo"
 	icon = 'icons/mob/alien.dmi'
 	icon_state = "larva0_dead"
 	var/stage = 0
-	var/bursting = FALSE
+	var/polling = 0
 
-/obj/item/organ/body_egg/alien_embryo/on_find(mob/living/finder)
+/obj/item/organ/internal/body_egg/alien_embryo/on_find(mob/living/finder)
 	..()
 	if(stage < 4)
-		to_chat(finder, "It's small and weak, barely the size of a foetus.")
+		to_chat(finder, "It's small and weak, barely the size of a fetus.")
 	else
 		to_chat(finder, "It's grown quite large, and writhes slightly as you look at it.")
 		if(prob(10))
 			AttemptGrow(0)
 
-/obj/item/organ/body_egg/alien_embryo/prepare_eat()
+/obj/item/organ/internal/body_egg/alien_embryo/prepare_eat()
 	var/obj/S = ..()
-	S.reagents.add_reagent(/datum/reagent/toxin/acid, 10)
+	S.reagents.add_reagent("sacid", 10)
 	return S
 
-/obj/item/organ/body_egg/alien_embryo/on_life()
-	. = ..()
+/obj/item/organ/internal/body_egg/alien_embryo/on_life()
 	switch(stage)
 		if(2, 3)
 			if(prob(2))
@@ -41,86 +41,78 @@
 			if(prob(4))
 				to_chat(owner, "<span class='danger'>Your muscles ache.</span>")
 				if(prob(20))
-					owner.take_bodypart_damage(1)
+					owner.take_organ_damage(1)
 			if(prob(4))
 				to_chat(owner, "<span class='danger'>Your stomach hurts.</span>")
 				if(prob(20))
 					owner.adjustToxLoss(1)
 		if(5)
-			to_chat(owner, "<span class='danger'>You feel something tearing its way out of your stomach.</span>")
+			to_chat(owner, "<span class='danger'>You feel something tearing its way out of your stomach...</span>")
 			owner.adjustToxLoss(10)
 
-/obj/item/organ/body_egg/alien_embryo/egg_process()
-	var/mob/living/L = owner
-	if(L.IsInStasis())
-		return
+/obj/item/organ/internal/body_egg/alien_embryo/egg_process()
 	if(stage < 5 && prob(3))
 		stage++
-		INVOKE_ASYNC(src, .proc/RefreshInfectionImage)
+		spawn(0)
+			RefreshInfectionImage()
 
 	if(stage == 5 && prob(50))
 		for(var/datum/surgery/S in owner.surgeries)
-			if(S.location == BODY_ZONE_CHEST && istype(S.get_surgery_step(), /datum/surgery_step/manipulate_organs))
+			if(S.location == "chest" && istype(S.get_surgery_step(), /datum/surgery_step/internal/manipulate_organs))
 				AttemptGrow(0)
 				return
 		AttemptGrow()
 
 
 
-/obj/item/organ/body_egg/alien_embryo/proc/AttemptGrow(gib_on_success=TRUE)
-	if(!owner || bursting)
+/obj/item/organ/internal/body_egg/alien_embryo/proc/AttemptGrow(gib_on_success = 1)
+	if(!owner || polling)
 		return
+	polling = 1
+	spawn()
+		var/list/candidates = SSghost_spawns.poll_candidates("Do you want to play as an alien?", ROLE_ALIEN, FALSE, source = /mob/living/carbon/alien/larva)
+		var/mob/C = null
 
-	bursting = TRUE
+		// To stop clientless larva, we will check that our host has a client
+		// if we find no ghosts to become the alien. If the host has a client
+		// he will become the alien but if he doesn't then we will set the stage
+		// to 2, so we don't do a process heavy check everytime.
 
-	var/list/candidates = pollGhostCandidates("Do you want to play as an alien larva that will burst out of [owner]?", ROLE_ALIEN, null, ROLE_ALIEN, 100, POLL_IGNORE_ALIEN_LARVA)
+		if(candidates.len)
+			C = pick(candidates)
+		else if(owner.client)
+			C = owner.client
+		else
+			stage = 2 // Let's try again later.
+			polling = 0
+			return
 
-	if(QDELETED(src) || QDELETED(owner))
-		return
+		var/overlay = image('icons/mob/alien.dmi', loc = owner, icon_state = "burst_lie")
+		owner.overlays += overlay
 
-	if(!candidates.len || !owner)
-		bursting = FALSE
-		stage = 4
-		return
+		spawn(6)
+			var/mob/living/carbon/alien/larva/new_xeno = new(owner.drop_location())
+			new_xeno.key = C.key
+			if(SSticker && SSticker.mode)
+				SSticker.mode.xenos += new_xeno.mind
+			new_xeno.mind.name = new_xeno.name
+			new_xeno.mind.assigned_role = SPECIAL_ROLE_XENOMORPH
+			new_xeno.mind.special_role = SPECIAL_ROLE_XENOMORPH
+			new_xeno << sound('sound/voice/hiss5.ogg',0,0,0,100)//To get the player's attention
+			to_chat(new_xeno, "<span class='motd'>For more information, check the wiki page: ([GLOB.configuration.url.wiki_url]/index.php/Xenomorph)</span>")
 
-	var/mob/dead/observer/ghost = pick(candidates)
-
-	var/mutable_appearance/overlay = mutable_appearance('icons/mob/alien.dmi', "burst_lie")
-	owner.add_overlay(overlay)
-
-	var/atom/xeno_loc = get_turf(owner)
-	var/mob/living/carbon/alien/larva/new_xeno = new(xeno_loc)
-	new_xeno.key = ghost.key
-	SEND_SOUND(new_xeno, sound('sound/voice/hiss5.ogg',0,0,0,100))	//To get the player's attention
-	new_xeno.mobility_flags = NONE //so we don't move during the bursting animation
-	new_xeno.notransform = 1
-	new_xeno.invisibility = INVISIBILITY_MAXIMUM
-
-	sleep(6)
-
-	if(QDELETED(src) || QDELETED(owner))
-		return
-
-	if(new_xeno)
-		new_xeno.mobility_flags = MOBILITY_FLAGS_DEFAULT
-		new_xeno.notransform = 0
-		new_xeno.invisibility = 0
-
-	if(gib_on_success)
-		new_xeno.visible_message("<span class='danger'>[new_xeno] bursts out of [owner] in a shower of gore!</span>", "<span class='userdanger'>You exit [owner], your previous host.</span>", "<span class='italics'>You hear organic matter ripping and tearing!</span>")
-		owner.gib(TRUE)
-	else
-		new_xeno.visible_message("<span class='danger'>[new_xeno] wriggles out of [owner]!</span>", "<span class='userdanger'>You exit [owner], your previous host.</span>")
-		owner.adjustBruteLoss(40)
-		owner.cut_overlay(overlay)
-	qdel(src)
-
+			if(gib_on_success)
+				owner.gib()
+			else
+				owner.adjustBruteLoss(40)
+				owner.overlays -= overlay
+			qdel(src)
 
 /*----------------------------------------
 Proc: AddInfectionImages(C)
 Des: Adds the infection image to all aliens for this embryo
 ----------------------------------------*/
-/obj/item/organ/body_egg/alien_embryo/AddInfectionImages()
+/obj/item/organ/internal/body_egg/alien_embryo/AddInfectionImages()
 	for(var/mob/living/carbon/alien/alien in GLOB.player_list)
 		if(alien.client)
 			var/I = image('icons/mob/alien.dmi', loc = owner, icon_state = "infected[stage]")
@@ -130,10 +122,9 @@ Des: Adds the infection image to all aliens for this embryo
 Proc: RemoveInfectionImage(C)
 Des: Removes all images from the mob infected by this embryo
 ----------------------------------------*/
-/obj/item/organ/body_egg/alien_embryo/RemoveInfectionImages()
+/obj/item/organ/internal/body_egg/alien_embryo/RemoveInfectionImages()
 	for(var/mob/living/carbon/alien/alien in GLOB.player_list)
 		if(alien.client)
 			for(var/image/I in alien.client.images)
-				var/searchfor = "infected"
-				if(I.loc == owner && findtext(I.icon_state, searchfor, 1, length(searchfor) + 1))
+				if(dd_hasprefix_case(I.icon_state, "infected") && I.loc == owner)
 					qdel(I)

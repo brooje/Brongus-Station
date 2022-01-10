@@ -14,48 +14,46 @@
  */
 /obj/structure/closet/emcloset
 	name = "emergency closet"
-	desc = "It's a storage unit for emergency breath masks and O2 tanks."
+	desc = "It's a storage unit for emergency breathmasks and o2 tanks."
 	icon_state = "emergency"
+	open_door_sprite = "emergency_door"
 
 /obj/structure/closet/emcloset/anchored
 	anchored = TRUE
 
-/obj/structure/closet/emcloset/PopulateContents()
-	..()
-
-	if (prob(40))
-		new /obj/item/storage/toolbox/emergency(src)
-
-	switch (pickweight(list("small" = 40, "aid" = 25, "tank" = 20, "both" = 10, "nothing" = 4, "delete" = 1)))
-		if ("small")
+/obj/structure/closet/emcloset/populate_contents()
+	switch(pickweight(list("small" = 55, "aid" = 25, "tank" = 10, "both" = 10, "nothing" = 0, "delete" = 0)))
+		if("small")
 			new /obj/item/tank/internals/emergency_oxygen(src)
 			new /obj/item/tank/internals/emergency_oxygen(src)
 			new /obj/item/clothing/mask/breath(src)
 			new /obj/item/clothing/mask/breath(src)
-			for(var/i in 1 to rand(1,3))
-				new /obj/item/clothing/suit/space/hardsuit/skinsuit(src)
-
-		if ("aid")
+		if("aid")
 			new /obj/item/tank/internals/emergency_oxygen(src)
+			new /obj/item/storage/toolbox/emergency(src)
+			new /obj/item/clothing/mask/breath(src)
 			new /obj/item/storage/firstaid/o2(src)
+		if("tank")
+			new /obj/item/tank/internals/emergency_oxygen/engi(src)
 			new /obj/item/clothing/mask/breath(src)
-			for(var/i in 1 to rand(1,3))
-				new /obj/item/clothing/suit/space/hardsuit/skinsuit(src)
-
-		if ("tank")
-			new /obj/item/tank/internals/air(src)
+			new /obj/item/tank/internals/emergency_oxygen/engi(src)
 			new /obj/item/clothing/mask/breath(src)
-			for(var/i in 1 to rand(1,3))
-				new /obj/item/clothing/suit/space/hardsuit/skinsuit(src)
-
-		if ("both")
-			new /obj/item/tank/internals/emergency_oxygen(src)
+		if("both")
+			new /obj/item/storage/toolbox/emergency(src)
+			new /obj/item/tank/internals/emergency_oxygen/engi(src)
 			new /obj/item/clothing/mask/breath(src)
-			new /obj/item/clothing/suit/space/hardsuit/skinsuit(src)
+			new /obj/item/storage/firstaid/o2(src)
+		if("nothing")
+			// doot
 
-		// teehee
-		if ("delete")
+		// teehee - Ah, tg coders...
+		if("delete")
 			qdel(src)
+
+
+/obj/structure/closet/emcloset/legacy/populate_contents()
+	new /obj/item/tank/internals/oxygen(src)
+	new /obj/item/clothing/mask/gas(src)
 
 /*
  * Fire Closet
@@ -64,23 +62,23 @@
 	name = "fire-safety closet"
 	desc = "It's a storage unit for fire-fighting supplies."
 	icon_state = "fire"
+	open_door_sprite = "fire_door"
 
-/obj/structure/closet/firecloset/PopulateContents()
-	..()
-
+/obj/structure/closet/firecloset/populate_contents()
+	new /obj/item/extinguisher(src)
 	new /obj/item/clothing/suit/fire/firefighter(src)
 	new /obj/item/clothing/mask/gas(src)
 	new /obj/item/tank/internals/oxygen/red(src)
-	new /obj/item/extinguisher(src)
 	new /obj/item/clothing/head/hardhat/red(src)
 
-/obj/structure/closet/firecloset/full/PopulateContents()
+/obj/structure/closet/firecloset/full/populate_contents()
+	new /obj/item/extinguisher(src)
 	new /obj/item/clothing/suit/fire/firefighter(src)
 	new /obj/item/clothing/mask/gas(src)
 	new /obj/item/flashlight(src)
 	new /obj/item/tank/internals/oxygen/red(src)
-	new /obj/item/extinguisher(src)
 	new /obj/item/clothing/head/hardhat/red(src)
+
 
 /*
  * Tool Closet
@@ -88,13 +86,13 @@
 /obj/structure/closet/toolcloset
 	name = "tool closet"
 	desc = "It's a storage unit for tools."
-	icon_state = "eng"
-	icon_door = "eng_tool"
+	icon_state = "eng_tool"
+	open_door_sprite = "eng_door"
+	icon_opened = "eng_open"
 
-/obj/structure/closet/toolcloset/PopulateContents()
-	..()
+/obj/structure/closet/toolcloset/populate_contents()
 	if(prob(40))
-		new /obj/item/clothing/suit/hazardvest(src)
+		new /obj/item/clothing/suit/storage/hazardvest(src)
 	if(prob(70))
 		new /obj/item/flashlight(src)
 	if(prob(70))
@@ -131,18 +129,14 @@
 /obj/structure/closet/radiation
 	name = "radiation suit closet"
 	desc = "It's a storage unit for rad-protective suits."
-	icon_state = "eng"
-	icon_door = "eng_rad"
+	icon_state = "eng_rad"
+	open_door_sprite = "eng_door"
+	icon_opened = "eng_open"
 
-/obj/structure/closet/radiation/PopulateContents()
-	..()
+/obj/structure/closet/radiation/populate_contents()
 	new /obj/item/geiger_counter(src)
 	new /obj/item/clothing/suit/radiation(src)
 	new /obj/item/clothing/head/radiation(src)
-	if(prob(50))
-		new /obj/item/storage/firstaid/radbgone(src)
-	else
-		new /obj/item/storage/pill_bottle/antirad(src)
 
 /*
  * Bombsuit closet
@@ -151,33 +145,23 @@
 	name = "\improper EOD closet"
 	desc = "It's a storage unit for explosion-protective suits."
 	icon_state = "bomb"
+	open_door_sprite = "bomb_door"
 
-/obj/structure/closet/bombcloset/PopulateContents()
-	..()
-	new /obj/item/clothing/suit/bomb_suit(src)
-	new /obj/item/clothing/under/color/black(src)
-	new /obj/item/clothing/shoes/sneakers/black(src)
-	new /obj/item/clothing/head/bomb_hood(src)
+/obj/structure/closet/bombcloset/populate_contents()
+	new /obj/item/clothing/suit/bomb_suit( src )
+	new /obj/item/clothing/under/color/black( src )
+	new /obj/item/clothing/shoes/black( src )
+	new /obj/item/clothing/head/bomb_hood( src )
 
-/obj/structure/closet/bombcloset/security/PopulateContents()
-	new /obj/item/clothing/suit/bomb_suit/security(src)
-	new /obj/item/clothing/under/rank/security/officer(src)
-	new /obj/item/clothing/shoes/jackboots(src)
-	new /obj/item/clothing/head/bomb_hood/security(src)
 
-/obj/structure/closet/bombcloset/white/PopulateContents()
-	new /obj/item/clothing/suit/bomb_suit/white(src)
-	new /obj/item/clothing/under/color/black(src)
-	new /obj/item/clothing/shoes/sneakers/black(src)
-	new /obj/item/clothing/head/bomb_hood/white(src)
+/obj/structure/closet/bombclosetsecurity
+	name = "\improper EOD closet"
+	desc = "It's a storage unit for explosion-protective suits."
+	icon_state = "bomb"
+	open_door_sprite = "bomb_door"
 
-/*
- * Ammunition
- */
-/obj/structure/closet/ammunitionlocker
-	name = "ammunition locker"
-
-/obj/structure/closet/ammunitionlocker/PopulateContents()
-	..()
-	for(var/i in 1 to 8)
-		new /obj/item/ammo_casing/shotgun/beanbag(src)
+/obj/structure/closet/bombclosetsecurity/populate_contents()
+	new /obj/item/clothing/suit/bomb_suit/security( src )
+	new /obj/item/clothing/under/rank/security( src )
+	new /obj/item/clothing/shoes/brown( src )
+	new /obj/item/clothing/head/bomb_hood/security( src )

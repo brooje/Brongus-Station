@@ -5,22 +5,24 @@ import { Window } from '../layouts';
 
 export const Wires = (props, context) => {
   const { act, data } = useBackend(context);
+
   const wires = data.wires || [];
   const statuses = data.status || [];
+
   return (
-    <Window
-      width={320}
-      height={wires.length * 30 + 150}>
+
+    <Window>
       <Window.Content>
+
         <Section>
           <LabeledList>
             {wires.map(wire => (
               <LabeledList.Item
-                key={wire.color}
+                key={wire.seen_color}
                 className="candystripe"
-                label={wire.color}
-                labelColor={wire.color}
-                color={wire.color}
+                label={wire.color_name}
+                labelColor={wire.seen_color}
+                color={wire.seen_color}
                 buttons={(
                   <Fragment>
                     <Button
@@ -49,15 +51,20 @@ export const Wires = (props, context) => {
             ))}
           </LabeledList>
         </Section>
+
         {!!statuses.length && (
           <Section>
             {statuses.map(status => (
-              <Box key={status}>
+              <Box
+                key={status}
+                color="lightgray"
+                mt={0.1}>
                 {status}
               </Box>
             ))}
           </Section>
         )}
+
       </Window.Content>
     </Window>
   );

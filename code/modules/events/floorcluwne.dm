@@ -1,22 +1,15 @@
-/datum/round_event_control/floor_cluwne
-	name = "Floor Cluwne"
-	typepath = /datum/round_event/floor_cluwne
-	max_occurrences = 1
-	min_players = 20
+/datum/event/spawn_floor_cluwne
 
 
-/datum/round_event/floor_cluwne/start()
-	var/list/spawn_locs = list()
-	for(var/X in GLOB.xeno_spawn)
-		spawn_locs += X
+/datum/event/spawn_floor_cluwne/start()
 
-	if(!spawn_locs.len)
+	if(!GLOB.xeno_spawn)
 		message_admins("No valid spawn locations found, aborting...")
-		return MAP_ERROR
+		return kill()
 
-	var/turf/T = get_turf(pick(spawn_locs))
+	var/turf/T = get_turf(pick(GLOB.xeno_spawn))
 	var/mob/living/simple_animal/hostile/floor_cluwne/S = new(T)
-	playsound(S, 'sound/misc/bikehorn_creepy.ogg', 50, 1, -1)
+	playsound(S, 'sound/spookoween/scary_horn.ogg', 50, 1, -1)
 	message_admins("A floor cluwne has been spawned at [COORD(T)][ADMIN_JMP(T)]")
 	log_game("A floor cluwne has been spawned at [COORD(T)]")
-	return SUCCESSFUL_SPAWN
+	return 1

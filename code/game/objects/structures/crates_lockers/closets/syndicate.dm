@@ -1,54 +1,81 @@
 /obj/structure/closet/syndicate
-	name = "armory closet"
+	name = "armoury closet"
 	desc = "Why is this here?"
 	icon_state = "syndicate"
+	open_door_sprite = "syndicate_door"
 
 /obj/structure/closet/syndicate/personal
-	desc = "It's a personal storage unit for operative gear."
+	desc = "It's a storage unit for operative gear."
 
-/obj/structure/closet/syndicate/personal/PopulateContents()
-	..()
+/obj/structure/closet/syndicate/personal/populate_contents()
 	new /obj/item/clothing/under/syndicate(src)
-	new /obj/item/clothing/shoes/sneakers/black(src)
-	new /obj/item/radio/headset/syndicate(src)
+	new /obj/item/clothing/shoes/black(src)
 	new /obj/item/ammo_box/magazine/m10mm(src)
 	new /obj/item/storage/belt/military(src)
 	new /obj/item/crowbar/red(src)
 	new /obj/item/clothing/glasses/night(src)
 
+/obj/structure/closet/syndicate/suits
+	desc = "It's a storage unit for operative space gear."
+
+/obj/structure/closet/syndicate/suits/populate_contents()
+	new /obj/item/clothing/mask/gas/syndicate(src)
+	new /obj/item/clothing/suit/space/hardsuit/syndi(src)
+	new /obj/item/tank/internals/oxygen/red(src)
+
 /obj/structure/closet/syndicate/nuclear
 	desc = "It's a storage unit for a Syndicate boarding party."
 
-/obj/structure/closet/syndicate/nuclear/PopulateContents()
-	for(var/i in 1 to 5)
-		new /obj/item/ammo_box/magazine/m10mm(src)
-	new /obj/item/storage/box/flashbangs(src)
+/obj/structure/closet/syndicate/nuclear/populate_contents()
+	new /obj/item/ammo_box/magazine/m10mm(src)
+	new /obj/item/ammo_box/magazine/m10mm(src)
+	new /obj/item/ammo_box/magazine/m10mm(src)
+	new /obj/item/ammo_box/magazine/m10mm(src)
+	new /obj/item/ammo_box/magazine/m10mm(src)
 	new /obj/item/storage/box/teargas(src)
-	new /obj/item/storage/backpack/duffelbag/syndie/med(src)
+	new /obj/item/storage/box/flashbangs(src)
+	new /obj/item/storage/backpack/duffel/syndie/med(src)
+	new /obj/item/tank/jetpack/oxygen/harness(src)
+	new /obj/item/gun/projectile/automatic/shotgun/bulldog(src)
+	new /obj/item/gun/projectile/automatic/shotgun/bulldog(src)
+	new /obj/item/gun/projectile/automatic/shotgun/bulldog(src)
+	new /obj/item/gun/projectile/automatic/shotgun/bulldog(src)
+	new /obj/item/gun/projectile/automatic/shotgun/bulldog(src)
 	new /obj/item/pda/syndicate(src)
+
+/obj/structure/closet/syndicate/sst
+	desc = "It's a storage unit for an elite syndicate strike team's gear."
+
+/obj/structure/closet/syndicate/sst/populate_contents()
+	new /obj/item/ammo_box/magazine/mm556x45(src)
+	new /obj/item/gun/projectile/automatic/l6_saw(src)
+	new /obj/item/tank/internals/oxygen/red(src)
+	new /obj/item/storage/belt/military/sst(src)
+	new /obj/item/clothing/glasses/thermal(src)
+	new /obj/item/clothing/shoes/magboots/syndie/advance(src)
+	new /obj/item/clothing/mask/gas/syndicate(src)
+	new /obj/item/clothing/suit/space/hardsuit/syndi/elite/sst(src)
 
 /obj/structure/closet/syndicate/resources
 	desc = "An old, dusty locker."
 
-/obj/structure/closet/syndicate/resources/PopulateContents()
-	..()
+/obj/structure/closet/syndicate/resources/populate_contents()
 	var/common_min = 30 //Minimum amount of minerals in the stack for common minerals
 	var/common_max = 50 //Maximum amount of HONK in the stack for HONK common minerals
 	var/rare_min = 5  //Minimum HONK of HONK in the stack HONK HONK rare minerals
 	var/rare_max = 20 //Maximum HONK HONK HONK in the HONK for HONK rare HONK
-
 
 	var/pickednum = rand(1, 50)
 
 	//Sad trombone
 	if(pickednum == 1)
 		var/obj/item/paper/P = new /obj/item/paper(src)
-		P.name = "\improper IOU"
+		P.name = "IOU"
 		P.info = "Sorry man, we needed the money so we sold your stash. It's ok, we'll double our money for sure this time!"
 
-	//Iron (common ore)
+	//Metal (common ore)
 	if(pickednum >= 2)
-		new /obj/item/stack/sheet/iron(src, rand(common_min, common_max))
+		new /obj/item/stack/sheet/metal(src, rand(common_min, common_max))
 
 	//Glass (common ore)
 	if(pickednum >= 5)
@@ -93,9 +120,9 @@
 /obj/structure/closet/syndicate/resources/everything
 	desc = "It's an emergency storage closet for repairs."
 
-/obj/structure/closet/syndicate/resources/everything/PopulateContents()
+/obj/structure/closet/syndicate/resources/everything/populate_contents()
 	var/list/resources = list(
-	/obj/item/stack/sheet/iron,
+	/obj/item/stack/sheet/metal,
 	/obj/item/stack/sheet/glass,
 	/obj/item/stack/sheet/mineral/gold,
 	/obj/item/stack/sheet/mineral/silver,
@@ -103,18 +130,13 @@
 	/obj/item/stack/sheet/mineral/uranium,
 	/obj/item/stack/sheet/mineral/diamond,
 	/obj/item/stack/sheet/mineral/bananium,
-	/obj/item/stack/sheet/plasteel,
 	/obj/item/stack/sheet/mineral/titanium,
 	/obj/item/stack/sheet/mineral/plastitanium,
-	/obj/item/stack/rods,
-	/obj/item/stack/sheet/bluespace_crystal,
-	/obj/item/stack/sheet/mineral/abductor,
-	/obj/item/stack/sheet/plastic,
-	/obj/item/stack/sheet/mineral/wood,
-	/obj/item/stack/sheet/mineral/copper
+	/obj/item/stack/sheet/plasteel,
+	/obj/item/stack/rods
 	)
 
-	for(var/i = 0, i<2, i++)
+	for(var/i in 1 to 2)
 		for(var/res in resources)
-			var/obj/item/stack/R = res
-			new res(src, initial(R.max_amount))
+			var/obj/item/stack/R = new res(src)
+			R.amount = R.max_amount

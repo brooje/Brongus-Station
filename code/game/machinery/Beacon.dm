@@ -1,43 +1,91 @@
 /obj/machinery/bluespace_beacon
-
 	icon = 'icons/obj/objects.dmi'
 	icon_state = "floor_beaconf"
-	name = "bluespace gigabeacon"
+	name = "Bluespace Gigabeacon"
 	desc = "A device that draws power from bluespace and creates a permanent tracking beacon."
 	level = 1		// underfloor
-	layer = LOW_OBJ_LAYER
+	layer = WIRE_LAYER
+	plane = FLOOR_PLANE
+	anchored = 1
 	use_power = IDLE_POWER_USE
 	idle_power_usage = 0
-	var/obj/item/beacon/Beacon
+	var/syndicate = 0
+	var/area_bypass = FALSE
+	var/obj/item/radio/beacon/Beacon
+	var/enabled = TRUE
+	var/cc_beacon = FALSE //can be teleported to even if on zlevel2
 
-/obj/machinery/bluespace_beacon/Initialize()
-	. = ..()
+/obj/machinery/bluespace_beacon/New()
+	..()
+	create_beacon()
+
+/obj/machinery/bluespace_beacon/proc/create_beacon()
 	var/turf/T = loc
-	Beacon = new(T)
+	Beacon = new /obj/item/radio/beacon
 	Beacon.invisibility = INVISIBILITY_MAXIMUM
+	Beacon.loc = T
+	Beacon.syndicate = syndicate
+	Beacon.area_bypass = area_bypass
+	Beacon.cc_beacon = cc_beacon
+	if(!T.transparent_floor)
+		hide(T.intact)
 
-	hide(T.intact)
+/obj/machinery/bluespace_beacon/proc/destroy_beacon()
+	QDEL_NULL(Beacon)
+
+/obj/machinery/bluespace_beacon/proc/toggle()
+	enabled = !enabled
+	return enabled
 
 /obj/machinery/bluespace_beacon/Destroy()
-	QDEL_NULL(Beacon)
+	destroy_beacon()
 	return ..()
 
-// update the invisibility and icon
 /obj/machinery/bluespace_beacon/hide(intact)
 	invisibility = intact ? INVISIBILITY_MAXIMUM : 0
-	updateicon()
+	update_icon()
 
 // update the icon_state
-/obj/machinery/bluespace_beacon/proc/updateicon()
+/obj/machinery/bluespace_beacon/update_icon()
+	var/state="floor_beacon"
 	if(invisibility)
-		icon_state = "floor_beaconf"
+		icon_state = "[state]f"
 	else
-		icon_state = "floor_beacon"
+		icon_state = "[state]"
 
 /obj/machinery/bluespace_beacon/process()
-	if(!Beacon)
-		var/turf/T = loc
-		Beacon = new(T)
-		Beacon.invisibility = INVISIBILITY_MAXIMUM
-	else if (Beacon.loc != loc)
-		Beacon.forceMove(loc)
+	if(enabled)
+		if(Beacon)
+			if(Beacon.loc != loc)
+				Beacon.loc = loc
+		else
+			create_beacon()
+			update_icon()
+	else
+		if(Beacon)
+			destroy_beacon()
+			update_icon()
+
+
+/obj/machinery/bluespace_beacon/syndicate
+	syndicate = TRUE
+	enabled = FALSE
+	area_bypass = TRUE // This enables teleports to this beacon to bypass the tele_proof flag of /area/s. Intended for depot syndi teleport computer.
+	var/obj/machinery/computer/syndicate_depot/teleporter/mycomputer
+
+/obj/machinery/bluespace_beacon/syndicate/New()
+	..()
+	if(!GAMEMODE_IS_NUCLEAR && prob(50))
+		enabled = TRUE
+
+/obj/machinery/bluespace_beacon/syndicate/Destroy()
+	if(mycomputer)
+		mycomputer.mybeacon = null
+	return ..()
+
+/obj/machinery/bluespace_beacon/syndicate/infiltrator //beacon guaranteed offline at roundstart for infiltrator base
+	cc_beacon = TRUE
+
+/obj/machinery/bluespace_beacon/syndicate/infiltrator/New()
+	..()
+	enabled = FALSE

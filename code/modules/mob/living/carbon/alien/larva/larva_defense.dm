@@ -1,29 +1,35 @@
-
-
 /mob/living/carbon/alien/larva/attack_hand(mob/living/carbon/human/M)
 	if(..())
 		var/damage = rand(1, 9)
-		if (prob(90))
+		if(prob(90))
 			playsound(loc, "punch", 25, 1, -1)
-			log_combat(M, src, "attacked")
-			visible_message("<span class='danger'>[M] kicks [src]!</span>", \
-					"<span class='userdanger'>[M] kicks you!</span>", null, COMBAT_MESSAGE_RANGE)
-			if ((stat != DEAD) && (damage > 4.9))
-				Unconscious(rand(100,200))
+			add_attack_logs(M, src, "Melee attacked with fists")
+			visible_message("<span class='danger'>[M] has kicked [src]!</span>", \
+					"<span class='userdanger'>[M] has kicked [src]!</span>")
+			if((stat != DEAD) && (damage > 4.9))
+				Paralyse(rand(5,10))
 
-			var/obj/item/bodypart/affecting = get_bodypart(ran_zone(M.zone_selected))
-			apply_damage(damage, BRUTE, affecting)
+			adjustBruteLoss(damage)
+			updatehealth()
 		else
 			playsound(loc, 'sound/weapons/punchmiss.ogg', 25, 1, -1)
-			visible_message("<span class='danger'>[M]'s kick misses [src]!</span>", \
-					"<span class='userdanger'>[M]'s kick misses you!</span>", null, COMBAT_MESSAGE_RANGE)
+			visible_message("<span class='danger'>[M] has attempted to kick [src]!</span>", \
+					"<span class='userdanger'>[M] has attempted to kick [src]!</span>")
 
-/mob/living/carbon/alien/larva/attack_hulk(mob/living/carbon/human/user, does_attack_animation = 0)
+
+/mob/living/carbon/alien/larva/attack_hulk(mob/living/carbon/human/user, does_attack_animation = FALSE)
 	if(user.a_intent == INTENT_HARM)
-		..(user, 1)
-		adjustBruteLoss(5 + rand(1,9))
-		new /datum/forced_movement(src, get_step_away(user,src, 30), 1)
-		return 1
+		if(HAS_TRAIT(user, TRAIT_PACIFISM))
+			to_chat(user, "<span class='warning'>You don't want to hurt [src]!</span>")
+			return FALSE
+		..(user, TRUE)
+		adjustBruteLoss(5 + rand(1, 9))
+		spawn(0)
+			Paralyse(1)
+			step_away(src, user, 15)
+			sleep(3)
+			step_away(src, user, 15)
+		return TRUE
 
 /mob/living/carbon/alien/larva/do_attack_animation(atom/A, visual_effect_icon, obj/item/used_item, no_effect)
 	if(!no_effect && !visual_effect_icon)

@@ -1,7 +1,10 @@
 ---
 name: Feature request
 about: Suggest an idea for this project
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
-Feature requests are handled in the repository, but you could also discuss your ideas on beestation discord or forums here: https://forums.beestation13.com/
+Please place all features requests here: https://www.paradisestation.org/forum/60-suggestions/

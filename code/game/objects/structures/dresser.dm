@@ -3,56 +3,73 @@
 	desc = "A nicely-crafted wooden dresser. It's filled with lots of undies."
 	icon = 'icons/obj/stationobjs.dmi'
 	icon_state = "dresser"
-	density = TRUE
-	anchored = TRUE
+	density = 1
+	anchored = 1
 
-/obj/structure/dresser/attackby(obj/item/I, mob/user, params)
-	if(I.tool_behaviour == TOOL_WRENCH)
-		to_chat(user, "<span class='notice'>You begin to [anchored ? "unwrench" : "wrench"] [src].</span>")
-		if(I.use_tool(src, user, 20, volume=50))
-			to_chat(user, "<span class='notice'>You successfully [anchored ? "unwrench" : "wrench"] [src].</span>")
-			setAnchored(!anchored)
-	else
-		return ..()
-
-/obj/structure/dresser/deconstruct(disassembled = TRUE)
-	new /obj/item/stack/sheet/mineral/wood(drop_location(), 10)
-	qdel(src)
-
-/obj/structure/dresser/attack_hand(mob/user)
-	. = ..()
-	if(.)
-		return
+/obj/structure/dresser/attack_hand(mob/user as mob)
 	if(!Adjacent(user))//no tele-grooming
 		return
-	if(ishuman(user))
+	if(ishuman(user) && anchored)
 		var/mob/living/carbon/human/H = user
 
-		if(H.dna && H.dna.species && (NO_UNDERWEAR in H.dna.species.species_traits))
-			to_chat(user, "<span class='warning'>You are not capable of wearing underwear.</span>")
-			return
-
-		var/choice = input(user, "Underwear, Undershirt, or Socks?", "Changing") as null|anything in list("Underwear","Underwear Color","Undershirt","Socks")
+		var/choice = input(user, "Underwear, Undershirt, or Socks?", "Changing") as null|anything in list("Underwear","Undershirt","Socks")
 
 		if(!Adjacent(user))
 			return
 		switch(choice)
 			if("Underwear")
-				var/new_undies = input(user, "Select your underwear", "Changing")  as null|anything in GLOB.underwear_list
-				if(new_undies)
-					H.underwear = new_undies
-			if("Underwear Color")
-				var/new_underwear_color = input(H, "Choose your underwear color", "Underwear Color","#"+H.underwear_color) as color|null
-				if(new_underwear_color)
-					H.underwear_color = sanitize_hexcolor(new_underwear_color)
+				var/list/valid_underwear = list()
+				for(var/underwear in GLOB.underwear_list)
+					var/datum/sprite_accessory/S = GLOB.underwear_list[underwear]
+					if(!(H.dna.species.name in S.species_allowed))
+						continue
+					valid_underwear[underwear] = GLOB.underwear_list[underwear]
+				var/new_underwear = input(user, "Choose your underwear:", "Changing") as null|anything in valid_underwear
+				if(new_underwear)
+					H.underwear = new_underwear
+
 			if("Undershirt")
-				var/new_undershirt = input(user, "Select your undershirt", "Changing") as null|anything in GLOB.undershirt_list
+				var/list/valid_undershirts = list()
+				for(var/undershirt in GLOB.undershirt_list)
+					var/datum/sprite_accessory/S = GLOB.undershirt_list[undershirt]
+					if(!(H.dna.species.name in S.species_allowed))
+						continue
+					valid_undershirts[undershirt] = GLOB.undershirt_list[undershirt]
+				var/new_undershirt = input(user, "Choose your undershirt:", "Changing") as null|anything in valid_undershirts
 				if(new_undershirt)
 					H.undershirt = new_undershirt
+
 			if("Socks")
-				var/new_socks = input(user, "Select your socks", "Changing") as null|anything in GLOB.socks_list
+				var/list/valid_sockstyles = list()
+				for(var/sockstyle in GLOB.socks_list)
+					var/datum/sprite_accessory/S = GLOB.socks_list[sockstyle]
+					if(!(H.dna.species.name in S.species_allowed))
+						continue
+					valid_sockstyles[sockstyle] = GLOB.socks_list[sockstyle]
+				var/new_socks = input(user, "Choose your socks:", "Changing")  as null|anything in valid_sockstyles
 				if(new_socks)
-					H.socks= new_socks
+					H.socks = new_socks
 
 		add_fingerprint(H)
 		H.update_body()
+
+
+/obj/structure/dresser/crowbar_act(mob/user, obj/item/I)
+	. = TRUE
+	if(!I.use_tool(src, user, 0))
+		return
+	TOOL_ATTEMPT_DISMANTLE_MESSAGE
+	if(I.use_tool(src, user, 50, volume = I.tool_volume))
+		TOOL_DISMANTLE_SUCCESS_MESSAGE
+		deconstruct(disassembled = TRUE)
+
+/obj/structure/dresser/wrench_act(mob/user, obj/item/I)
+	. = TRUE
+	default_unfasten_wrench(user, I, time = 20)
+
+/obj/structure/dresser/deconstruct(disassembled = FALSE)
+	var/mat_drop = 15
+	if(disassembled)
+		mat_drop = 30
+	new /obj/item/stack/sheet/wood(drop_location(), mat_drop)
+	..()

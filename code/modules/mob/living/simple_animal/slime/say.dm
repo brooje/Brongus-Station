@@ -1,7 +1,18 @@
-/mob/living/simple_animal/slime/Hear(message, atom/movable/speaker, message_langs, raw_message, radio_freq, spans, list/message_mods = list())
-	. = ..()
-	if(speaker != src && !radio_freq && !stat)
-		if (speaker in Friends)
+/mob/living/simple_animal/slime/say_quote(text, datum/language/speaking)
+	var/verb = "blorbles"
+	var/ending = copytext(text, length(text))
+
+	if(ending == "?")
+		verb = "inquisitively blorbles"
+	else if(ending == "!")
+		verb = "loudly blorbles"
+
+	return verb
+
+/mob/living/simple_animal/slime/hear_say(list/message_pieces, verb = "says", italics = 0, mob/speaker = null, sound/speech_sound, sound_vol, sound_frequency, use_voice = TRUE)
+	if(speaker != src && !stat)
+		if(speaker in Friends)
 			speech_buffer = list()
-			speech_buffer += speaker
-			speech_buffer += lowertext(html_decode(message))
+			speech_buffer.Add(speaker)
+			speech_buffer.Add(lowertext(html_decode(multilingual_to_message(message_pieces))))
+	..()

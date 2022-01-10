@@ -17,20 +17,29 @@
 	icon = 'icons/obj/machines/mining_machines.dmi'
 	icon_state = "console"
 	density = TRUE
+	anchored = TRUE
 	var/obj/machinery/mineral/processing_unit/machine = null
 	var/machinedir = EAST
 	speed_process = TRUE
 
-/obj/machinery/mineral/processing_unit_console/Initialize()
+/obj/machinery/mineral/processing_unit_console/Initialize(mapload)
 	. = ..()
 	machine = locate(/obj/machinery/mineral/processing_unit, get_step(src, machinedir))
-	if (machine)
+	if(machine)
 		machine.CONSOLE = src
 	else
 		return INITIALIZE_HINT_QDEL
 
-/obj/machinery/mineral/processing_unit_console/ui_interact(mob/user)
-	. = ..()
+/obj/machinery/mineral/processing_unit_console/attack_ghost(mob/user)
+	return open_ui(user)
+
+/obj/machinery/mineral/processing_unit_console/attack_hand(mob/user)
+	if(..())
+		return TRUE
+
+	return open_ui(user)
+
+/obj/machinery/mineral/processing_unit_console/proc/open_ui(mob/user)
 	if(!machine)
 		return
 
@@ -42,15 +51,14 @@
 
 /obj/machinery/mineral/processing_unit_console/Topic(href, href_list)
 	if(..())
-		return
+		return TRUE
+
 	usr.set_machine(src)
 	add_fingerprint(usr)
 
 	if(href_list["material"])
-		var/datum/material/new_material = locate(href_list["material"])
-		if(istype(new_material))
-			machine.selected_material = new_material
-			machine.selected_alloy = null
+		machine.selected_material = href_list["material"]
+		machine.selected_alloy = null
 
 	if(href_list["alloy"])
 		machine.selected_material = null
@@ -60,42 +68,55 @@
 		machine.on = (href_list["set_on"] == "on")
 
 	updateUsrDialog()
-	return
+	return TRUE
 
 /obj/machinery/mineral/processing_unit_console/Destroy()
 	machine = null
 	return ..()
 
-
 /**********************Mineral processing unit**************************/
-
 
 /obj/machinery/mineral/processing_unit
 	name = "furnace"
 	icon = 'icons/obj/machines/mining_machines.dmi'
 	icon_state = "furnace"
 	density = TRUE
+	anchored = TRUE
 	var/obj/machinery/mineral/CONSOLE = null
 	var/on = FALSE
-	var/datum/material/selected_material = null
+	var/selected_material = MAT_METAL
 	var/selected_alloy = null
-	var/datum/techweb/stored_research
+	var/datum/research/files
+	speed_process = TRUE
 
-/obj/machinery/mineral/processing_unit/Initialize()
+/obj/machinery/mineral/processing_unit/Initialize(mapload)
 	. = ..()
-	proximity_monitor = new(src, 1)
-	AddComponent(/datum/component/material_container, list(/datum/material/iron, /datum/material/glass, /datum/material/copper, /datum/material/silver, /datum/material/gold, /datum/material/diamond, /datum/material/plasma, /datum/material/uranium, /datum/material/bananium, /datum/material/titanium, /datum/material/bluespace), INFINITY, TRUE, /obj/item/stack)
-	stored_research = new /datum/techweb/specialized/autounlocking/smelter
-	selected_material = getmaterialref(/datum/material/iron)
+	AddComponent(/datum/component/material_container, list(MAT_METAL, MAT_GLASS, MAT_SILVER, MAT_GOLD, MAT_DIAMOND, MAT_PLASMA, MAT_URANIUM, MAT_BANANIUM, MAT_TRANQUILLITE, MAT_TITANIUM, MAT_BLUESPACE), INFINITY, TRUE, /obj/item/stack)
+	files = new /datum/research/smelter(src)
 
 /obj/machinery/mineral/processing_unit/Destroy()
 	CONSOLE = null
-	QDEL_NULL(stored_research)
+	QDEL_NULL(files)
+	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
+	materials.retrieve_all()
 	return ..()
 
-/obj/machinery/mineral/processing_unit/HasProximity(atom/movable/AM)
-	if(istype(AM, /obj/item/stack/ore) && AM.loc == get_step(src, input_dir))
-		process_ore(AM)
+/obj/machinery/mineral/processing_unit/process()
+	var/turf/T = get_step(src, input_dir)
+	if(T)
+		for(var/obj/item/stack/ore/O in T)
+			process_ore(O)
+			CHECK_TICK
+
+	if(on)
+		if(selected_material)
+			smelt_ore()
+
+		else if(selected_alloy)
+			smelt_alloy()
+
+		if(CONSOLE)
+			CONSOLE.updateUsrDialog()
 
 /obj/machinery/mineral/processing_unit/proc/process_ore(obj/item/stack/ore/O)
 	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
@@ -111,63 +132,50 @@
 /obj/machinery/mineral/processing_unit/proc/get_machine_data()
 	var/dat = "<b>Smelter control console</b><br><br>"
 	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
-	for(var/datum/material/M in materials.materials)
-		var/amount = materials.materials[M]
-		dat += "<span class=\"res_name\">[M.name]: </span>[amount] cm&sup3;"
-		if (selected_material == M)
+	for(var/mat_id in materials.materials)
+		var/datum/material/M = materials.materials[mat_id]
+		dat += "<span class=\"res_name\">[M.name]: </span>[M.amount] cm&sup3;"
+		if(selected_material == mat_id)
 			dat += " <i>Smelting</i>"
 		else
-			dat += " <A href='?src=[REF(CONSOLE)];material=[REF(M)]'><b>Not Smelting</b></A> "
+			dat += " <A href='?src=[CONSOLE.UID()];material=[mat_id]'><b>Not Smelting</b></A> "
 		dat += "<br>"
 
 	dat += "<br><br>"
 	dat += "<b>Smelt Alloys</b><br>"
 
-	for(var/v in stored_research.researched_designs)
-		var/datum/design/D = SSresearch.techweb_design_by_id(v)
+	for(var/v in files.known_designs)
+		var/datum/design/D = files.known_designs[v]
 		dat += "<span class=\"res_name\">[D.name] "
-		if (selected_alloy == D.id)
+		if(selected_alloy == D.id)
 			dat += " <i>Smelting</i>"
 		else
-			dat += " <A href='?src=[REF(CONSOLE)];alloy=[D.id]'><b>Not Smelting</b></A> "
+			dat += " <A href='?src=[CONSOLE.UID()];alloy=[D.id]'><b>Not Smelting</b></A> "
 		dat += "<br>"
 
 	dat += "<br><br>"
 	//On or off
 	dat += "Machine is currently "
-	if (on)
-		dat += "<A href='?src=[REF(CONSOLE)];set_on=off'>On</A> "
+	if(on)
+		dat += "<A href='?src=[CONSOLE.UID()];set_on=off'>On</A> "
 	else
-		dat += "<A href='?src=[REF(CONSOLE)];set_on=on'>Off</A> "
+		dat += "<A href='?src=[CONSOLE.UID()];set_on=on'>Off</A> "
 
 	return dat
 
-/obj/machinery/mineral/processing_unit/process()
-	if (on)
-		if(selected_material)
-			smelt_ore()
-
-		else if(selected_alloy)
-			smelt_alloy()
-
-
-		if(CONSOLE)
-			CONSOLE.updateUsrDialog()
-
 /obj/machinery/mineral/processing_unit/proc/smelt_ore()
 	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
-	var/datum/material/mat = selected_material
+	var/datum/material/mat = materials.materials[selected_material]
 	if(mat)
-		var/sheets_to_remove = (materials.materials[mat] >= (MINERAL_MATERIAL_AMOUNT * SMELT_AMOUNT) ) ? SMELT_AMOUNT : round(materials.materials[mat] /  MINERAL_MATERIAL_AMOUNT)
+		var/sheets_to_remove = (mat.amount >= (MINERAL_MATERIAL_AMOUNT * SMELT_AMOUNT) ) ? SMELT_AMOUNT : round(mat.amount /  MINERAL_MATERIAL_AMOUNT)
 		if(!sheets_to_remove)
 			on = FALSE
 		else
 			var/out = get_step(src, output_dir)
-			materials.retrieve_sheets(sheets_to_remove, mat, out)
-
+			materials.retrieve_sheets(sheets_to_remove, selected_material, out)
 
 /obj/machinery/mineral/processing_unit/proc/smelt_alloy()
-	var/datum/design/alloy = stored_research.isDesignResearchedID(selected_alloy) //check if it's a valid design
+	var/datum/design/alloy = files.FindDesignByID(selected_alloy) //check if it's a valid design
 	if(!alloy)
 		on = FALSE
 		return
@@ -179,7 +187,7 @@
 		return
 
 	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
-	materials.use_materials(alloy.materials, amount)
+	materials.use_amount(alloy.materials, amount)
 
 	generate_mineral(alloy.build_path)
 
@@ -191,21 +199,19 @@
 
 	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
 
-	for(var/mat_cat in D.materials)
-		var/required_amount = D.materials[mat_cat]
-		var/amount = materials.materials[mat_cat]
+	for(var/mat_id in D.materials)
+		var/M = D.materials[mat_id]
+		var/datum/material/smelter_mat  = materials.materials[mat_id]
 
-		build_amount = min(build_amount, round(amount / required_amount))
+		if(!M || !smelter_mat)
+			return FALSE
+
+		build_amount = min(build_amount, round(smelter_mat.amount / M))
 
 	return build_amount
 
 /obj/machinery/mineral/processing_unit/proc/generate_mineral(P)
 	var/O = new P(src)
 	unload_mineral(O)
-
-/obj/machinery/mineral/processing_unit/on_deconstruction()
-	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
-	materials.retrieve_all()
-	..()
 
 #undef SMELT_AMOUNT

@@ -1,15 +1,37 @@
-/client/proc/air_status(turf/target)
+/client/proc/air_status(turf/target as turf)
 	set category = "Debug"
 	set name = "Display Air Status"
 
+	if(!check_rights(R_DEBUG))
+		return
+
 	if(!isturf(target))
 		return
-	atmosanalyzer_scan(usr, target, TRUE)
-	SSblackbox.record_feedback("tally", "admin_verb", 1, "Show Air Status") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+
+	var/datum/gas_mixture/GM = target.return_air()
+	var/burning = 0
+	if(istype(target, /turf/simulated))
+		var/turf/simulated/T = target
+		if(T.active_hotspot)
+			burning = 1
+
+	to_chat(usr, "<span class='notice'>@[target.x],[target.y]: O:[GM.oxygen] T:[GM.toxins] N:[GM.nitrogen] C:[GM.carbon_dioxide] N2O: [GM.sleeping_agent] Agent B: [GM.agent_b] w [GM.temperature] Kelvin, [GM.return_pressure()] kPa [(burning)?("<span class='warning'>BURNING</span>"):(null)]</span>")
+
+	message_admins("[key_name_admin(usr)] has checked the air status of [target]")
+	log_admin("[key_name(usr)] has checked the air status of [target]")
+
+	SSblackbox.record_feedback("tally", "admin_verb", 1, "Display Air Status") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
 /client/proc/fix_next_move()
 	set category = "Debug"
 	set name = "Unfreeze Everyone"
+
+	if(!check_rights(R_DEBUG))
+		return
+
+	message_admins("[key_name_admin(usr)] has unfrozen everyone")
+	log_admin("[key_name(usr)] has unfrozen everyone")
+
 	var/largest_move_time = 0
 	var/largest_click_time = 0
 	var/mob/largest_move_mob = null
@@ -29,12 +51,14 @@
 				largest_click_time = M.next_click - world.time
 			else
 				largest_click_time = 0
-		log_admin("DEBUG: [key_name(M)]  next_move = [M.next_move]  lastDblClick = [M.next_click]  world.time = [world.time]")
+		log_admin("DEBUG: [key_name(M)]  next_move = [M.next_move]  next_click = [M.next_click]  world.time = [world.time]")
 		M.next_move = 1
 		M.next_click = 0
-	message_admins("[ADMIN_LOOKUPFLW(largest_move_mob)] had the largest move delay with [largest_move_time] frames / [DisplayTimeText(largest_move_time)]!")
-	message_admins("[ADMIN_LOOKUPFLW(largest_click_mob)] had the largest click delay with [largest_click_time] frames / [DisplayTimeText(largest_click_time)]!")
-	message_admins("world.time = [world.time]")
+
+	message_admins("[key_name_admin(largest_move_mob)] had the largest move delay with [largest_move_time] frames / [largest_move_time/10] seconds!", 1)
+	message_admins("[key_name_admin(largest_click_mob)] had the largest click delay with [largest_click_time] frames / [largest_click_time/10] seconds!", 1)
+	message_admins("world.time = [world.time]", 1)
+
 	SSblackbox.record_feedback("tally", "admin_verb", 1, "Unfreeze Everyone") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 	return
 
@@ -42,68 +66,75 @@
 	set category = "Debug"
 	set name = "Radio report"
 
+	if(!check_rights(R_DEBUG))
+		return
+
+	var/filters = list(
+		"1" = "RADIO_TO_AIRALARM",
+		"2" = "RADIO_FROM_AIRALARM",
+		"3" = "RADIO_CHAT",
+		"4" = "RADIO_ATMOSIA",
+		"5" = "RADIO_NAVBEACONS",
+		"6" = "RADIO_AIRLOCK",
+		"7" = "RADIO_SECBOT",
+		"8" = "RADIO_MULEBOT",
+		"_default" = "NO_FILTER"
+		)
 	var/output = "<b>Radio Report</b><hr>"
-	for (var/fq in SSradio.frequencies)
+	for(var/fq in SSradio.frequencies)
 		output += "<b>Freq: [fq]</b><br>"
 		var/datum/radio_frequency/fqs = SSradio.frequencies[fq]
-		if (!fqs)
+		if(!fqs)
 			output += "&nbsp;&nbsp;<b>ERROR</b><br>"
 			continue
-		for (var/filter in fqs.devices)
+		for(var/filter in fqs.devices)
 			var/list/f = fqs.devices[filter]
-			if (!f)
-				output += "&nbsp;&nbsp;[filter]: ERROR<br>"
+			if(!f)
+				output += "&nbsp;&nbsp;[filters[filter]]: ERROR<br>"
 				continue
-			output += "&nbsp;&nbsp;[filter]: [f.len]<br>"
-			for (var/device in f)
-				if (istype(device, /atom))
-					var/atom/A = device
-					output += "&nbsp;&nbsp;&nbsp;&nbsp;[device] ([AREACOORD(A)])<br>"
+			output += "&nbsp;&nbsp;[filters[filter]]: [f.len]<br>"
+			for(var/device in f)
+				if(isobj(device))
+					output += "&nbsp;&nbsp;&nbsp;&nbsp;[device] ([device:x],[device:y],[device:z] in area [get_area(device:loc)])<br>"
 				else
 					output += "&nbsp;&nbsp;&nbsp;&nbsp;[device]<br>"
 
 	usr << browse(output,"window=radioreport")
-	SSblackbox.record_feedback("tally", "admin_verb", 1, "Show Radio Report") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+
+	message_admins("[key_name_admin(usr)] has generated a radio report")
+	log_admin("[key_name(usr)] has generated a radio report")
+
+	SSblackbox.record_feedback("tally", "admin_verb", 1, "Radio Report") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 
 /client/proc/reload_admins()
 	set name = "Reload Admins"
 	set category = "Server"
 
-	if(!src.holder)
+	if(!check_rights(R_SERVER))
 		return
 
-	var/confirm = alert(src, "Are you sure you want to reload all admins?", "Confirm", "Yes", "No")
-	if(confirm !="Yes")
+	message_admins("[key_name_admin(usr)] has manually reloaded admins")
+	log_admin("[key_name(usr)] has manually reloaded admins")
+
+	load_admins(run_async=TRUE)
+	SSblackbox.record_feedback("tally", "admin_verb", 1, "Reload Admins") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+
+/client/proc/vv_by_ref()
+	set name = "VV by Ref"
+	set desc = "Give this a ref string, and you will see its corresponding VV panel if it exists"
+	set category = "Debug"
+
+	// It's gated by "Debug Verbs", so might as well gate it to the debug permission
+	if(!check_rights(R_DEBUG))
 		return
 
-	load_admins()
-	SSblackbox.record_feedback("tally", "admin_verb", 1, "Reload All Admins") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
-	message_admins("[key_name_admin(usr)] manually reloaded admins")
-
-/client/proc/toggle_cdn()
-	set name = "Toggle CDN"
-	set category = "Server"
-	var/static/admin_disabled_cdn_transport = null
-	if (alert(usr, "Are you sure you want to toggle the CDN asset transport?", "Confirm", "Yes", "No") != "Yes")
+	var/refstring = clean_input("Which reference?","Ref")
+	if(!refstring)
 		return
-	var/current_transport = CONFIG_GET(string/asset_transport)
-	if (!current_transport || current_transport == "simple")
-		if (admin_disabled_cdn_transport)
-			CONFIG_SET(string/asset_transport, admin_disabled_cdn_transport)
-			admin_disabled_cdn_transport = null
-			SSassets.OnConfigLoad()
-			message_admins("[key_name_admin(usr)] re-enabled the CDN asset transport")
-			log_admin("[key_name(usr)] re-enabled the CDN asset transport")
-		else
-			to_chat(usr, "<span class='adminnotice'>The CDN is not enabled!</span>")
-			if (alert(usr, "The CDN asset transport is not enabled! If you having issues with assets you can also try disabling filename mutations.", "The CDN asset transport is not enabled!", "Try disabling filename mutations", "Nevermind") == "Try disabling filename mutations")
-				SSassets.transport.dont_mutate_filenames = !SSassets.transport.dont_mutate_filenames
-				message_admins("[key_name_admin(usr)] [(SSassets.transport.dont_mutate_filenames ? "disabled" : "re-enabled")] asset filename transforms")
-				log_admin("[key_name(usr)] [(SSassets.transport.dont_mutate_filenames ? "disabled" : "re-enabled")] asset filename transforms")
-	else
-		admin_disabled_cdn_transport = current_transport
-		CONFIG_SET(string/asset_transport, "simple")
-		SSassets.OnConfigLoad()
-		SSassets.transport.dont_mutate_filenames = TRUE
-		message_admins("[key_name_admin(usr)] disabled the CDN asset transport")
-		log_admin("[key_name(usr)] disabled the CDN asset transport")
+
+	var/datum/D = locate(refstring)
+	if(!D)
+		to_chat(usr, "<span class='warning'>That ref string does not correspond to any datum.</span>")
+		return
+
+	debug_variables(D)

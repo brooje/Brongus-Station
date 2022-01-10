@@ -1,4 +1,3 @@
-
 /client
 		//////////////////////
 		//BLACK MAGIC THINGS//
@@ -7,121 +6,136 @@
 		////////////////
 		//ADMIN THINGS//
 		////////////////
-
-	/// The admin state of the client. If this is null, the client is not an admin.
 	var/datum/admins/holder = null
-	var/datum/click_intercept = null // Needs to implement InterceptClickOn(user,params,atom) proc
 
-	/// Whether the client has ai interacting as a ghost enabled or not
-	var/AI_Interact		= 0
-
-	/// Used to cache this client's bans to save on DB queries
-	var/ban_cache = null
-	/// Contains the last message sent by this client - used to protect against copy-paste spamming.
-	var/last_message	= ""
-	/// Contains a number of how many times a message identical to last_message was sent.
-	var/last_message_count = 0
-	/// How many messages sent in the last 10 seconds
-	var/total_message_count = 0
-	/// Next tick to reset the total message counter
-	var/total_count_reset = 0
-	var/ircreplyamount = 0
-	var/cryo_warned = -3000//when was the last time we warned them about not cryoing without an ahelp, set to -5 minutes so that rounstart cryo still warns
+	var/last_message	= "" //contains the last message sent by this client - used to protect against copy-paste spamming.
+	var/last_message_count = 0 //contains a number of how many times a message identical to last_message was sent.
+	var/last_message_time = 0 //holds the last time (based on world.time) a message was sent
+	var/datum/pm_tracker/pm_tracker = new()
 
 		/////////
 		//OTHER//
 		/////////
-	/// The client's preferences
 	var/datum/preferences/prefs = null
-	var/list/keybindings[0]
-
-	/// The last world.time that the client's mob turned
-	var/last_turn = 0
-
-	/// The next world.time this client is allowed to move
-	var/move_delay = 0
+	var/skip_antag = FALSE //TRUE when a player declines to be included for the selection process of game mode antagonists.
+	var/move_delay		= 1
+	var/moving			= null
 	var/area			= null
+	var/time_died_as_mouse = null //when the client last died as a mouse
+
+	var/typing = FALSE // Prevents typing window stacking
+
+	var/adminhelped = 0
 
 		///////////////
 		//SOUND STUFF//
 		///////////////
-	var/ambient_buzz_playing = null // What buzz ambience is currently playing
-	var/ambient_buzz = null
-	var/ambient_effect_last_played = 0 // What was the last time we played an ambient effect noise?
+
+	var/ambience_playing = FALSE
+
 		////////////
 		//SECURITY//
 		////////////
+
+	///Used for limiting the rate of topic sends by the client to avoid abuse
+	var/list/topiclimiter
+
 	// comment out the line below when debugging locally to enable the options & messages menu
-	control_freak = 1
+	//control_freak = 1
+
+	var/ssd_warning_acknowledged = FALSE
 
 		////////////////////////////////////
 		//things that require the database//
 		////////////////////////////////////
+	var/player_age = "--"	//So admins know why it isn't working - Used to determine how old the account is - in days.
+	var/list/related_accounts_ip = list()	//So admins know why it isn't working - Used to determine what other accounts previously logged in from this ip
+	var/list/related_accounts_cid = list()	//So admins know why it isn't working - Used to determine what other accounts previously logged in from this computer id
 
-	/// Used to determine how old the account is - in days.
-	var/player_age = -1
-	/// Date that this account was first seen in the server
-	var/player_join_date = null
-	var/related_accounts_ip = "Requires database"	//So admins know why it isn't working - Used to determine what other accounts previously logged in from this ip
-	var/related_accounts_cid = "Requires database"	//So admins know why it isn't working - Used to determine what other accounts previously logged in from this computer id
-	/// Date of byond account creation in ISO 8601 format
-	var/account_join_date = null
-	/// Age of byond account in days
-	var/account_age = -1
+	preload_rsc = 0 // This is 0 so we can set it to an URL once the player logs in and have them download the resources from a different server.
 
-	preload_rsc = PRELOAD_RSC
+	var/global/obj/screen/click_catcher/void
 
-	var/atom/movable/screen/click_catcher/void
-
-	//These two vars are used to make a special mouse cursor, with a unique icon for clicking
-	/// Mouse icon while not clicking
-	var/mouse_up_icon = null
-	/// Mouse icon while clicking
-	var/mouse_down_icon = null
+	control_freak = CONTROL_FREAK_ALL | CONTROL_FREAK_SKIN | CONTROL_FREAK_MACROS
 
 	var/ip_intel = "Disabled"
 
-	/// Datum that controls the displaying and hiding of tooltips
+	var/datum/click_intercept/click_intercept = null
+
+	//datum that controls the displaying and hiding of tooltips
 	var/datum/tooltip/tooltips
 
-	var/lastping = 0
-	var/avgping = 0
-	/// world.time they connected
-	var/connection_time
-	/// world.realtime they connected
-	var/connection_realtime
-	/// world.timeofday they connected
-	var/connection_timeofday
+	/// Persistent storage for the flavour text of examined atoms.
+	var/list/description_holders = list()
 
-	var/inprefs = FALSE
-	var/list/topiclimiter
-	var/list/clicklimiter
+	// Their chat window, sort of important.
+	// See /goon/code/datums/browserOutput.dm
+	var/datum/chatOutput/chatOutput
 
-	/// These persist between logins/logouts during the same round.
-	var/datum/player_details/player_details
+	// Donator stuff.
+	var/donator_level = 0
 
-	var/list/char_render_holders			//Should only be a key-value list of north/south/east/west = atom/movable/screen.
+	// If set to true, this client can interact with atoms such as buttons and doors on top of regular machinery interaction
+	var/advanced_admin_interaction = FALSE
 
 	var/client_keysend_amount = 0
 	var/next_keysend_reset = 0
 	var/next_keysend_trip_reset = 0
 	var/keysend_tripped = FALSE
 
-	var/datum/viewData/view_size
-
-	// List of all asset filenames sent to this client by the asset cache, along with their assoicated md5s
-	var/list/sent_assets = list()
-	/// List of all completed blocking send jobs awaiting acknowledgement by send_asset
-	var/list/completed_asset_jobs = list()
-	/// Last asset send job id.
-	var/last_asset_job = 0
-	var/last_completed_asset_job = 0
-
-	/// rate limiting for the crew manifest
-	var/crew_manifest_delay
-
-	//Tick when ghost roles are useable again
-	var/next_ghost_role_tick = 0
-
 	/// Messages currently seen by this client
 	var/list/seen_messages
+
+	// Last world.time that the player tried to request their resources.
+	var/last_ui_resource_send = 0
+
+	/// If true, client cannot ready up, late join, or observe. Used for players with EXTREMELY old byond versions.
+	var/version_blocked = FALSE
+
+	/// Date the client registered their BYOND account on
+	var/byondacc_date
+	/// Days since the client's BYOND account was created
+	var/byondacc_age = 0
+
+
+	// Do not attempt to merge these vars together. They are for different things
+	/// Last world.time that a PM was send to discord by a player
+	var/last_discord_pm_time = 0
+
+	/// Last world/time that a PM was sent to the player by an admin
+	var/received_discord_pm = -99999 // Yes this super low number is intentional
+
+	/// Has the client accepted the TOS about data collection and other stuff
+	var/tos_consent = FALSE
+
+	/// Is the client watchlisted
+	var/watchlisted = FALSE
+
+	/// Client's pAI save
+	var/datum/pai_save/pai_save
+
+	/// List of the clients CUIs
+	var/list/datum/custom_user_item/cui_entries = list()
+
+	/// The client's karma holder
+	var/datum/karma_holder/karmaholder
+
+	/// The client's job ban holder
+	var/datum/job_ban_holder/jbh = new()
+
+/client/vv_edit_var(var_name, var_value)
+	switch(var_name)
+		// I know we will never be in a world where admins are editing client vars to let people bypass TOS
+		// But guess what, if I have the ability to overengineer something, I am going to do it
+		if("tos_consent")
+			return FALSE
+		// Dont fuck with this
+		if("cui_entries")
+			return FALSE
+		// or this
+		if("karmaholder")
+			return FALSE
+		// or this
+		if("jbh")
+			return FALSE
+	return ..()

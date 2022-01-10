@@ -47,8 +47,8 @@ GLOBAL_LIST_INIT(AISwarmerCapsByType, list(/mob/living/simple_animal/hostile/swa
 	icon_state = "swarmer_console"
 	health = 750
 	maxHealth = 750 //""""low-ish"""" HP because it's a passive boss, and the swarm itself is the real foe
-	mob_biotypes = list(MOB_ROBOTIC)
-	gps_name = "Hungry Signal"
+	mob_biotypes = MOB_ROBOTIC
+	internal_type = /obj/item/gps/internal/swarmer_beacon
 	medal_type = BOSS_MEDAL_SWARMERS
 	score_type = SWARMER_BEACON_SCORE
 	faction = list("mining", "boss", "swarmer")
@@ -57,17 +57,22 @@ GLOBAL_LIST_INIT(AISwarmerCapsByType, list(/mob/living/simple_animal/hostile/swa
 	wander = FALSE
 	layer = BELOW_MOB_LAYER
 	AIStatus = AI_OFF
+	del_on_death = TRUE
+	/// Current spawn cooldown remaining
 	var/swarmer_spawn_cooldown = 0
-	var/swarmer_spawn_cooldown_amt = 150 //Deciseconds between the swarmers we spawn
+	/// Current help cooldown remaining
 	var/call_help_cooldown = 0
-	var/call_help_cooldown_amt = 150 //Deciseconds between calling swarmers to help us when attacked
+	/// Time between the swarmers we spawn
+	var/swarmer_spawn_cooldown_amt = 15 SECONDS
+	/// Time between calling swarmers to help us when attacked
+	var/call_help_cooldown_amt = 15 SECONDS
 	var/static/list/swarmer_caps
 
 
-/mob/living/simple_animal/hostile/megafauna/swarmer_swarm_beacon/Initialize()
+/mob/living/simple_animal/hostile/megafauna/swarmer_swarm_beacon/Initialize(mapload)
 	. = ..()
 	swarmer_caps = GLOB.AISwarmerCapsByType //for admin-edits
-	for(var/ddir in GLOB.cardinals)
+	for(var/ddir in GLOB.cardinal)
 		new /obj/structure/swarmer/blockade (get_step(src, ddir))
 		var/mob/living/simple_animal/hostile/swarmer/ai/resource/R = new(loc)
 		step(R, ddir) //Step the swarmers, instead of spawning them there, incase the turf is solid
@@ -82,12 +87,20 @@ GLOBAL_LIST_INIT(AISwarmerCapsByType, list(/mob/living/simple_animal/hostile/swa
 			new createtype(loc)
 
 
-/mob/living/simple_animal/hostile/megafauna/swarmer_swarm_beacon/adjustHealth(amount, updating_health = TRUE, forced = FALSE)
+/mob/living/simple_animal/hostile/megafauna/swarmer_swarm_beacon/adjustHealth(amount, updating_health = TRUE)
 	. = ..()
 	if(. > 0 && world.time > call_help_cooldown)
 		call_help_cooldown = world.time + call_help_cooldown_amt
 		summon_backup(25) //long range, only called max once per 15 seconds, so it's not deathlag
 
+/mob/living/simple_animal/hostile/megafauna/swarmer_swarm_beacon/emp_act(severity)
+	adjustHealth(50)
+
+/obj/item/gps/internal/swarmer_beacon
+	icon_state = null
+	gpstag = "Hungry Signal"
+	desc = "Transmitted over the signal is a strange message repeated in every language you know of, and some you don't too..." //the message is "nom nom nom"
+	invisibility = 100
 
 //SWARMER AI
 //AI versions of the swarmer mini-antag
@@ -98,7 +111,7 @@ GLOBAL_LIST_INIT(AISwarmerCapsByType, list(/mob/living/simple_animal/hostile/swa
 	weather_immunities = list("ash") //wouldn't be fun otherwise
 	AIStatus = AI_ON
 
-/mob/living/simple_animal/hostile/swarmer/ai/Initialize()
+/mob/living/simple_animal/hostile/swarmer/ai/Initialize(mapload)
 	. = ..()
 	ToggleLight() //so you can see them eating you out of house and home/shooting you/stunlocking you for eternity
 	LAZYINITLIST(GLOB.AISwarmersByType[type])
@@ -130,7 +143,7 @@ GLOBAL_LIST_INIT(AISwarmerCapsByType, list(/mob/living/simple_animal/hostile/swa
 	if(newloc)
 		if(newloc.z == z) //so these actions are Z-specific
 			if(islava(newloc))
-				var/turf/open/lava/L = newloc
+				var/turf/simulated/floor/plating/lava/L = newloc
 				if(!L.is_safe())
 					StartAction(20)
 					new /obj/structure/lattice/catwalk/swarmer_catwalk(newloc)
@@ -145,13 +158,13 @@ GLOBAL_LIST_INIT(AISwarmerCapsByType, list(/mob/living/simple_animal/hostile/swa
 
 /mob/living/simple_animal/hostile/swarmer/ai/proc/StartAction(deci = 0)
 	stop_automated_movement = TRUE
-	toggle_ai(AI_OFF)
+	AIStatus = AI_OFF
 	addtimer(CALLBACK(src, .proc/EndAction), deci)
 
 
 /mob/living/simple_animal/hostile/swarmer/ai/proc/EndAction()
 	stop_automated_movement = FALSE
-	toggle_ai(AI_ON)
+	AIStatus = AI_ON
 
 
 
@@ -164,7 +177,7 @@ GLOBAL_LIST_INIT(AISwarmerCapsByType, list(/mob/living/simple_animal/hostile/swa
 	search_objects = 1
 	attack_all_objects = TRUE //attempt to nibble everything
 	lose_patience_timeout = 150
-	var/static/list/sharedWanted = typecacheof(list(/turf/closed/mineral, /turf/closed/wall)) //eat rocks and walls
+	var/static/list/sharedWanted = typecacheof(list(/turf/simulated/mineral, /turf/simulated/wall)) //eat rocks and walls
 	var/static/list/sharedIgnore = list()
 
 //This handles viable things to eat/attack
@@ -269,13 +282,10 @@ GLOBAL_LIST_INIT(AISwarmerCapsByType, list(/mob/living/simple_animal/hostile/swa
 		else
 			var/mob/living/L = target
 			L.attack_animal(src)
-			L.electrocute_act(10, src, safety = TRUE) //safety = TRUE means we don't check gloves... Ok?
+			L.electrocute_act(10, src, flags = SHOCK_NOGLOVES)
 		return TRUE
 	else
 		return ..()
-
-
-
 
 //SWARMER CATWALKS
 //Used so they can survive lavaland better
@@ -283,4 +293,5 @@ GLOBAL_LIST_INIT(AISwarmerCapsByType, list(/mob/living/simple_animal/hostile/swa
 	name = "swarmer catwalk"
 	desc = "A catwalk-like mesh, produced by swarmers to allow them to navigate hostile terrain."
 	icon = 'icons/obj/smooth_structures/swarmer_catwalk.dmi'
-	icon_state = "swarmer_catwalk"
+	icon_state = "swarmer_catwalk-0"
+	base_icon_state = "swarmer_catwalk"

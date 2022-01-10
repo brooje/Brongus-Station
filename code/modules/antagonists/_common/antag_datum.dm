@@ -1,59 +1,63 @@
 GLOBAL_LIST_EMPTY(antagonists)
-GLOBAL_LIST(admin_antag_list)
 
 /datum/antagonist
-	var/tips
+	/// The name of the antagonist.
 	var/name = "Antagonist"
-	var/roundend_category = "other antagonists"				//Section of roundend report, datums with same category will be displayed together, also default header for the section
-	var/show_in_roundend = TRUE								//Set to false to hide the antagonists from roundend report
-	var/prevent_roundtype_conversion = TRUE		//If false, the roundtype will still convert with this antag active
-	var/datum/mind/owner						//Mind that owns this datum
-	var/silent = FALSE							//Silent will prevent the gain/lose texts to show
-	var/can_coexist_with_others = TRUE			//Whether or not the person will be able to have more than one datum
-	var/list/typecache_datum_blacklist = list()	//List of datums this type can't coexist with
+	/// Section of roundend report, datums with same category will be displayed together, also default header for the section.
+	var/roundend_category = "other antagonists"
+	/// Set to false to hide the antagonists from roundend report.
+	var/show_in_roundend = TRUE
+	/// Mind that owns this datum.
+	var/datum/mind/owner
+	/// Should the owner mob get a greeting text? Determines whether or not the `greet()` proc is called.
+	var/silent = FALSE
+	/// List of antagonist datums that this type can't coexist with.
+	var/list/typecache_datum_blacklist
+	/// Should this datum be deleted when the owner's mind is deleted.
 	var/delete_on_mind_deletion = TRUE
+	/// Used to determine if the player jobbanned from this role. Things like `SPECIAL_ROLE_TRAITOR` should go here to determine the role.
 	var/job_rank
-	var/give_objectives = TRUE //Should the default objectives be generated?
-	var/replace_banned = TRUE //Should replace jobbanned player with ghosts if granted.
-	var/list/objectives = list()
-	var/antag_memory = ""//These will be removed with antag datum
-	var/antag_moodlet //typepath of moodlet that the mob will gain with their status
-	var/can_hijack = HIJACK_NEUTRAL //If these antags are alone on shuttle hijack happens.
-	var/delay_roundend = TRUE
-
-	//Antag panel properties
-	var/show_in_antagpanel = TRUE	//This will hide adding this antag type in antag panel, use only for internal subtypes that shouldn't be added directly but still show if possessed by mind
-	var/antagpanel_category = "Uncategorized"	//Antagpanel will display these together, REQUIRED
-	var/show_name_in_check_antagonists = FALSE //Will append antagonist name in admin listings - use for categories that share more than one antag type
-	var/show_to_ghosts = FALSE // Should this antagonist be shown as antag to ghosts? Shouldn't be used for stealthy antagonists like traitors
-
-/datum/antagonist/proc/show_tips(fileid)
-	if(!owner || !owner.current || !owner.current.client)
-		return
-	var/datum/asset/stuff = get_asset_datum(/datum/asset/simple/bee_antags)
-	stuff.send(owner.current.client)
-	var/datum/browser/popup = new(owner.current, "antagTips", null, 600, 400)
-	popup.set_window_options("titlebar=1;can_minimize=0;can_resize=0")
-	//Replaces traitor.png with the appropriate hashed url
-	popup.set_content(replacetext(rustg_file_read("html/antagtips/[html_encode(fileid)].html"), regex("\\w*.png", "gm"), /datum/antagonist/proc/get_asset_url_from))
-	popup.open(FALSE)
-
-/datum/antagonist/proc/get_asset_url_from(match)
-	return SSassets.transport.get_asset_url(match)
+	/// Should we replace the role-banned player with a ghost?
+	var/replace_banned = TRUE
+	/// List of objectives connected to this datum.
+	var/list/objectives
+	/// A list of strings which contain [targets][/datum/objective/var/target] of the antagonist's objectives. Used to prevent duplicate objectives.
+	var/list/assigned_targets
+	/// Antagonist datum specific information that appears in the player's notes. Information stored here will be removed when the datum is removed from the player.
+	var/antag_memory
+	/// The special role that will be applied to the owner's `special_role` var. i.e. `SPECIAL_ROLE_TRAITOR`, `SPECIAL_ROLE_VAMPIRE`.
+	var/special_role
+	/// Should we automatically give this antagonist objectives upon them gaining the datum?
+	var/give_objectives = TRUE
+	/// Holds the type of antagonist hud this datum will get, i.e. `ANTAG_HUD_TRAITOR`, `ANTAG_HUD_VAMPIRE`, etc.
+	var/antag_hud_type
+	/// Holds the name of the hud's icon in the .dmi files, i.e "hudtraitor", "hudvampire", etc.
+	var/antag_hud_name
+	/// If the owner is a clown, this text will be displayed to them when they gain this datum.
+	var/clown_gain_text = "You are no longer clumsy."
+	/// If the owner is a clown, this text will be displayed to them when they lose this datum.
+	var/clown_removal_text = "You are clumsy again."
+	/// The url page name for this antagonist, appended to the end of the wiki url in the form of: [GLOB.configuration.url.wiki_url]/index.php/[wiki_page_name]
+	var/wiki_page_name
 
 /datum/antagonist/New()
 	GLOB.antagonists += src
+	objectives = list()
+	assigned_targets = list()
 	typecache_datum_blacklist = typecacheof(typecache_datum_blacklist)
 
 /datum/antagonist/Destroy()
+	QDEL_LIST(objectives)
 	GLOB.antagonists -= src
-	if(owner)
-		LAZYREMOVE(owner.antag_datums, src)
 	owner = null
 	return ..()
 
+/**
+ * Loops through the owner's `antag_datums` list and determines if this one is blacklisted by any others.
+ *
+ * If it's in one of their blacklists, return FALSE. It cannot coexist with the datum we're trying to add here.
+ */
 /datum/antagonist/proc/can_be_owned(datum/mind/new_owner)
-	. = TRUE
 	var/datum/mind/tested = new_owner || owner
 	if(tested.has_antag_datum(type))
 		return FALSE
@@ -61,103 +65,288 @@ GLOBAL_LIST(admin_antag_list)
 		var/datum/antagonist/A = i
 		if(is_type_in_typecache(src, A.typecache_datum_blacklist))
 			return FALSE
+	return TRUE
 
-//This will be called in add_antag_datum before owner assignment.
-//Should return antag datum without owner.
+/**
+ * This will be called in `add_antag_datum` before owner assignment.
+ *
+ * Should return antagonist datum without owner.
+ */
 /datum/antagonist/proc/specialization(datum/mind/new_owner)
 	return src
 
-///Called by the transfer_to() mind proc after the mind (mind.current and new_character.mind) has moved but before the player (key and client) is transfered.
+/**
+ * Removes antagonist datum effects from the old body and applies it to the new one.
+ *
+ * Called in the`/datum/mind/proc/transfer_to()`.
+ *
+ * Arguments:
+ * * new_body - the new body the antag mob is transferring into.
+ * * old_body - the old body the antag mob is leaving.
+ */
 /datum/antagonist/proc/on_body_transfer(mob/living/old_body, mob/living/new_body)
-	SHOULD_CALL_PARENT(TRUE)
 	remove_innate_effects(old_body)
-	if(old_body.stat != DEAD && !LAZYLEN(old_body.mind?.antag_datums))
-		old_body.remove_from_current_living_antags()
 	apply_innate_effects(new_body)
-	if(new_body.stat != DEAD)
-		new_body.add_to_current_living_antags()
 
-//This handles the application of antag huds/special abilities
-/datum/antagonist/proc/apply_innate_effects(mob/living/mob_override)
+/**
+ * This handles the application of antag huds/special abilities.
+ *
+ * Gives the antag mob their assigned hud.
+ * If they're a clown, removes their clumsy mutataion.
+ *
+ * Arguments:
+ * * new_body - the new body that the antag mob is transferring into.
+ */
+/datum/antagonist/proc/apply_innate_effects(mob/living/new_body)
+	var/mob/living/L = new_body || owner.current
+	if(antag_hud_type && antag_hud_name)
+		add_antag_hud(L)
+	// If `new_body` exists it means we're only transferring this datum, we don't need to show the clown any text.
+	handle_clown_mutation(L, new_body ? null : clown_gain_text, TRUE)
+
+/**
+ * This handles the removal of antag huds/special abilities.
+ *
+ * Removes the antag's assigned hud.
+ * If they're a clown, gives them back their clumsy mutataion.
+ *
+ * Arguments:
+ * * old_body - the old body the antag is leaving behind.
+ */
+/datum/antagonist/proc/remove_innate_effects(mob/living/old_body)
+	var/mob/living/L = old_body || owner.current
+	if(antag_hud_type && antag_hud_name)
+		remove_antag_hud(L)
+	// If `old_body` exists it means we're only transferring this datum, we don't need to show the clown any text.
+	handle_clown_mutation(L, old_body ? null : clown_removal_text)
+
+/**
+ * Adds this datum's antag hud to `antag_mob`.
+ *
+ * Arguments:
+ * * antag_mob - the mob to add the antag hud to.
+ */
+/datum/antagonist/proc/add_antag_hud(mob/living/antag_mob)
+	var/datum/atom_hud/antag/hud = GLOB.huds[antag_hud_type]
+	hud.join_hud(antag_mob)
+	set_antag_hud(antag_mob, antag_hud_name)
+
+/**
+ * Removes this datum's antag hud from `antag_mob`.
+ *
+ * Arguments:
+ * * antag_mob - the mob to remove the antag hud from.
+ */
+/datum/antagonist/proc/remove_antag_hud(mob/living/antag_mob)
+	var/datum/atom_hud/antag/hud = GLOB.huds[antag_hud_type]
+	hud.leave_hud(antag_mob)
+	set_antag_hud(antag_mob, null)
+
+/**
+ * Handles adding and removing the clumsy mutation from clown antags.
+ *
+ * Arguments:
+ * * clown - the mob in which to add or remove clumsy from.
+ * * message - the chat message to display to them the clown mob
+ * * granting_datum - TRUE if the datum is being applied to the clown mob.
+ */
+/datum/antagonist/proc/handle_clown_mutation(mob/living/carbon/human/clown, message, granting_datum = FALSE)
+	if(!istype(clown) || owner.assigned_role != "Clown")
+		return FALSE
+
+	// Remove clumsy and give them an action to toggle it on and off.
+	if(granting_datum)
+		clown.dna.SetSEState(GLOB.clumsyblock, FALSE)
+		singlemutcheck(clown, GLOB.clumsyblock, MUTCHK_FORCED)
+		// Don't give them another action if they already have one.
+		if(!(locate(/datum/action/innate/toggle_clumsy) in clown.actions))
+			var/datum/action/innate/toggle_clumsy/A = new
+			A.Grant(clown)
+	// Give them back the clumsy gene and remove their toggle action, but ONLY if they don't have any other antag datums.
+	else if(LAZYLEN(owner.antag_datums) <= 1)
+		clown.dna.SetSEState(GLOB.clumsyblock, TRUE)
+		singlemutcheck(clown, GLOB.clumsyblock, MUTCHK_FORCED)
+		if(locate(/datum/action/innate/toggle_clumsy) in clown.actions)
+			var/datum/action/innate/toggle_clumsy/A = locate() in clown.actions
+			A.Remove(clown)
+	else
+		return FALSE
+
+	if(!silent && message)
+		to_chat(clown, "<span class='boldnotice'>[message]</span>")
+	return TRUE
+
+/**
+ * Give the antagonist their objectives. Base proc, override as needed.
+ */
+/datum/antagonist/proc/give_objectives()
 	return
 
-//This handles the removal of antag huds/special abilities
-/datum/antagonist/proc/remove_innate_effects(mob/living/mob_override)
-	return
+#define NO_TARGET_OBJECTIVES list(/datum/objective/escape, /datum/objective/hijack, /datum/objective/survive, /datum/objective/block, /datum/objective/die)
 
-//Assign default team and creates one for one of a kind team antagonists
-/datum/antagonist/proc/create_team(datum/team/team)
-	return
+/**
+ * Create and add an objective of the given type.
+ *
+ * If the given objective type needs a target, it will try to find a target which isn't already the target of different objective for this antag.
+ * If one cannot be found, it tries one more time. If one still cannot be found, it will be added as a "Free Objective" without a target.
+ *
+ * Arguments:
+ * * objective_type - A type path of an objective, for example: /datum/objective/steal
+ */
+/datum/antagonist/proc/add_objective(objective_type)
+	var/datum/objective/O = new objective_type
+	O.owner = owner
 
-///Called by the add_antag_datum() mind proc after the instanced datum is added to the mind's antag_datums list.
+	if(is_type_in_list(O, NO_TARGET_OBJECTIVES))
+		objectives += O // No need to find a target, just add the objective and return.
+		return
+
+	O.find_target()
+	var/duplicate = FALSE
+
+	// Steal objectives need snowflake handling here unfortunately.
+	if(istype(O, /datum/objective/steal))
+		var/datum/objective/steal/S = O
+		// Check if it's a duplicate.
+		if("[S.steal_target]" in assigned_targets)
+			S.find_target() // Try again.
+			if("[S.steal_target]" in assigned_targets)
+				S.steal_target = null
+				S.explanation_text = "Free Objective" // Still a duplicate, so just make it a free objective.
+				duplicate = TRUE
+		if(S.steal_target && !duplicate)
+			assigned_targets += "[S.steal_target]"
+	else
+		if("[O.target]" in assigned_targets)
+			O.find_target()
+			if("[O.target]" in assigned_targets)
+				O.target = null
+				O.explanation_text = "Free Objective"
+				duplicate = TRUE
+		if(O.target && !duplicate)
+			assigned_targets += "[O.target]"
+
+	objectives += O
+
+#undef NO_TARGET_OBJECTIVES
+
+/**
+ * Announces all objectives of this datum, and only this datum.
+ */
+/datum/antagonist/proc/announce_objectives()
+	if(!length(objectives))
+		return FALSE
+	to_chat(owner.current, "<span class='notice'>Your current objectives:</span>")
+	var/objective_num = 1
+	for(var/objective in objectives)
+		var/datum/objective/O = objective
+		to_chat(owner.current, "<span><B>Objective #[objective_num++]</B>: [O.explanation_text]</span><br>")
+	return TRUE
+
+/**
+ * Proc called when the datum is given to a mind.
+ */
 /datum/antagonist/proc/on_gain()
-	SHOULD_CALL_PARENT(TRUE)
-	if(!owner)
-		CRASH("[src] ran on_gain() without a mind")
-	if(!owner.current)
-		CRASH("[src] ran on_gain() on a mind without a mob")
-	if(!silent && tips)
-		show_tips(tips)
-	greet()
+	owner.special_role = special_role
+	if(give_objectives)
+		give_objectives()
+	if(!silent)
+		greet()
+		announce_objectives()
 	apply_innate_effects()
-	give_antag_moodies()
+	finalize_antag()
+	if(wiki_page_name)
+		to_chat(owner.current, "<span class='motd'>For more information, check the wiki page: ([GLOB.configuration.url.wiki_url]/index.php/[wiki_page_name])</span>")
 	if(is_banned(owner.current) && replace_banned)
-		replace_banned_player()
-	else if(owner.current.client?.holder && (CONFIG_GET(flag/auto_deadmin_antagonists) || owner.current.client.prefs?.toggles & DEADMIN_ANTAGONIST))
-		owner.current.client.holder.auto_deadmin()
-	if(owner.current.stat != DEAD)
-		owner.current.add_to_current_living_antags()
+		INVOKE_ASYNC(src, .proc/replace_banned_player)
+	return TRUE
 
+/**
+ * Called when `remove_antag_datum()` is called on the owner's mind.
+ *
+ * Removes all effects this datum granted and deletes itself afterwards.
+ */
+/datum/antagonist/proc/on_removal()
+	if(!silent)
+		farewell()
+	remove_innate_effects()
+	antag_memory = null
+	var/datum/team/team = get_team()
+	team?.remove_member(owner)
+	LAZYREMOVE(owner.antag_datums, src)
+	restore_last_hud_and_role()
+	qdel(src)
+
+/**
+ * Re-sets the antag hud and `special_role` of the owner to that of the previous antag datum they had before this one was added.
+ *
+ * For example, if the owner has a traitor datum and a vampire datum, both at index 1 and 2 respectively,
+ * After the vampire datum gets removed, it sets the owner's antag hud/role to whatever is set for traitor datum.
+ */
+/datum/antagonist/proc/restore_last_hud_and_role()
+	if(!LAZYLEN(owner.antag_datums))
+		// If they only had 1 antag datum, no need to restore anything. `remove_innate_effects()` will handle the removal of their hud.
+		owner.special_role = null
+		return FALSE
+	var/datum/antagonist/A = owner.antag_datums[LAZYLEN(owner.antag_datums)]
+	ASSERT(A)
+	A.add_antag_hud(owner.current) // Restore the hud of the previous antagonist datum.
+	owner.special_role = A.special_role
+
+/**
+ * Checks if the person trying to recieve this datum is role banned from it.
+ */
 /datum/antagonist/proc/is_banned(mob/M)
 	if(!M)
 		return FALSE
-	. = (is_banned_from(M.ckey, list(ROLE_SYNDICATE, job_rank)) || QDELETED(M))
+	return (jobban_isbanned(M, ROLE_SYNDICATE) || (job_rank && jobban_isbanned(M, job_rank)))
 
+/**
+ * Attempts to replace the role banned antag with a ghost player.
+ */
 /datum/antagonist/proc/replace_banned_player()
-	set waitfor = FALSE
+	var/list/mob/dead/observer/candidates = SSghost_spawns.poll_candidates("Do you want to play as a [name]?", job_rank, TRUE, 10 SECONDS)
+	if(!length(candidates))
+		return FALSE
+	var/mob/dead/observer/C = pick(candidates)
+	to_chat(owner, "Your mob has been taken over by a ghost! Appeal your job ban if you want to avoid this in the future!")
+	message_admins("[key_name_admin(C)] has taken control of ([key_name_admin(owner.current)]) to replace a jobbaned player.")
+	owner.current.ghostize(FALSE)
+	owner.current.key = C.key
+	return TRUE
 
-	var/list/mob/dead/observer/candidates = pollCandidatesForMob("Do you want to play as a [name]?", "[name]", null, job_rank, 50, owner.current)
-	if(LAZYLEN(candidates))
-		var/mob/dead/observer/C = pick(candidates)
-		to_chat(owner, "Your mob has been taken over by a ghost! Appeal your job ban if you want to avoid this in the future!")
-		message_admins("[key_name_admin(C)] has taken control of ([key_name_admin(owner)]) to replace a jobbanned player.")
-		owner.current.ghostize(0)
-		owner.current.key = C.key
-
-///Called by the remove_antag_datum() and remove_all_antag_datums() mind procs for the antag datum to handle its own removal and deletion.
-/datum/antagonist/proc/on_removal()
-	SHOULD_CALL_PARENT(TRUE)
-	remove_innate_effects()
-	clear_antag_moodies()
-	if(owner)
-		LAZYREMOVE(owner.antag_datums, src)
-		if(!LAZYLEN(owner.antag_datums))
-			owner.current.remove_from_current_living_antags()
-		if(!silent && owner.current)
-			farewell()
-	var/datum/team/team = get_team()
-	if(team)
-		team.remove_member(owner)
-	qdel(src)
-
+/**
+ * Displays a message and their objectives to the antag mob after the datum is added to them, i.e. "Greetings you are a traitor! etc.
+ *
+ * Called in `on_gain()` if silent it set to FALSE.
+ */
 /datum/antagonist/proc/greet()
-	return
+	to_chat(owner.current, "<span class='userdanger'>You are a [special_role]!</span>")
 
+/**
+ * Displays a message to the antag mob while the datum is being deleted, i.e. "Your powers are gone and you're no longer a vampire!"
+ *
+ * Called in `on_removal()` if silent is set to FALSE.
+ */
 /datum/antagonist/proc/farewell()
+	to_chat(owner.current,"<span class='userdanger'>You are no longer a [special_role]! </span>")
+
+/**
+ * Creates a new antagonist team.
+ */
+/datum/antagonist/proc/create_team(datum/team/team)
 	return
 
-/datum/antagonist/proc/give_antag_moodies()
-	if(!antag_moodlet)
-		return
-	SEND_SIGNAL(owner.current, COMSIG_ADD_MOOD_EVENT, "antag_moodlet", antag_moodlet)
-
-/datum/antagonist/proc/clear_antag_moodies()
-	if(!antag_moodlet)
-		return
-	SEND_SIGNAL(owner.current, COMSIG_CLEAR_MOOD_EVENT, "antag_moodlet")
-
-//Returns the team antagonist belongs to if any.
+/**
+ * Returns the team the antagonist belongs to, if any.
+ */
 /datum/antagonist/proc/get_team()
+	return
+
+/**
+ * Give the antag any final information or items.
+ */
+/datum/antagonist/proc/finalize_antag()
 	return
 
 //Individual roundend report
@@ -170,14 +359,14 @@ GLOBAL_LIST(admin_antag_list)
 	report += printplayer(owner)
 
 	var/objectives_complete = TRUE
-	if(objectives.len)
-		report += printobjectives(objectives)
-		for(var/datum/objective/objective in objectives)
+	if(owner.objectives.len)
+		report += printobjectives(owner)
+		for(var/datum/objective/objective in owner.objectives)
 			if(!objective.check_completion())
 				objectives_complete = FALSE
 				break
 
-	if(objectives.len == 0 || objectives_complete)
+	if(owner.objectives.len == 0 || objectives_complete)
 		report += "<span class='greentext big'>The [name] was successful!</span>"
 	else
 		report += "<span class='redtext big'>The [name] has failed!</span>"
@@ -191,126 +380,3 @@ GLOBAL_LIST(admin_antag_list)
 //Displayed at the end of roundend_category section
 /datum/antagonist/proc/roundend_report_footer()
 	return
-
-
-//ADMIN TOOLS
-
-//Called when using admin tools to give antag status
-/datum/antagonist/proc/admin_add(datum/mind/new_owner,mob/admin)
-	message_admins("[key_name_admin(admin)] made [key_name_admin(new_owner)] into [name].")
-	log_admin("[key_name(admin)] made [key_name(new_owner)] into [name].")
-	new_owner.add_antag_datum(src)
-
-//Called when removing antagonist using admin tools
-/datum/antagonist/proc/admin_remove(mob/user)
-	if(!user)
-		return
-	message_admins("[key_name_admin(user)] has removed [name] antagonist status from [key_name_admin(owner)].")
-	log_admin("[key_name(user)] has removed [name] antagonist status from [key_name(owner)].")
-	on_removal()
-
-//gamemode/proc/is_mode_antag(antagonist/A) => TRUE/FALSE
-
-//Additional data to display in antagonist panel section
-//nuke disk code, genome count, etc
-/datum/antagonist/proc/antag_panel_data()
-	return ""
-
-/datum/antagonist/proc/enabled_in_preferences(datum/mind/M)
-	if(job_rank)
-		if(M.current && M.current.client && (job_rank in M.current.client.prefs.be_special))
-			return TRUE
-		else
-			return FALSE
-	return TRUE
-
-// List if ["Command"] = CALLBACK(), user will be appeneded to callback arguments on execution
-/datum/antagonist/proc/get_admin_commands()
-	. = list()
-
-/datum/antagonist/Topic(href,href_list)
-	if(!check_rights(R_ADMIN))
-		return
-	//Antag memory edit
-	if (href_list["memory_edit"])
-		edit_memory(usr)
-		owner.traitor_panel()
-		return
-
-	//Some commands might delete/modify this datum clearing or changing owner
-	var/datum/mind/persistent_owner = owner
-
-	var/commands = get_admin_commands()
-	for(var/admin_command in commands)
-		if(href_list["command"] == admin_command)
-			var/datum/callback/C = commands[admin_command]
-			C.Invoke(usr)
-			persistent_owner.traitor_panel()
-			return
-
-/datum/antagonist/proc/edit_memory(mob/user)
-	var/new_memo = stripped_multiline_input(user, "Write new memory", "Memory", antag_memory, MAX_MESSAGE_LEN)
-	if (isnull(new_memo))
-		return
-	antag_memory = new_memo
-
-//This one is created by admin tools for custom objectives
-/datum/antagonist/custom
-	antagpanel_category = "Custom"
-	show_name_in_check_antagonists = TRUE //They're all different
-	var/datum/team/custom_team
-
-/datum/antagonist/custom/create_team(datum/team/team)
-	custom_team = team
-
-/datum/antagonist/custom/get_team()
-	return custom_team
-
-/datum/antagonist/custom/admin_add(datum/mind/new_owner,mob/admin)
-	var/custom_name = stripped_input(admin, "Custom antagonist name:", "Custom antag", "Antagonist")
-	if(custom_name)
-		name = custom_name
-	else
-		return
-	..()
-
-/proc/generate_admin_antag_list()
-	GLOB.admin_antag_list = list()
-
-	var/list/allowed_types = list(
-		/datum/antagonist/traitor,
-		/datum/antagonist/blob,
-		/datum/antagonist/changeling,
-		/datum/antagonist/devil,
-		/datum/antagonist/ninja,
-		/datum/antagonist/nukeop,
-		/datum/antagonist/wizard,
-	)
-
-	for(var/T in allowed_types)
-		var/datum/antagonist/A = T
-		GLOB.admin_antag_list[initial(A.name)] = T
-
-// Adds the specified antag hud to the player. Usually called in an antag datum file
-/datum/antagonist/proc/add_antag_hud(antag_hud_type, antag_hud_name, mob/living/mob_override)
-	var/datum/atom_hud/antag/hud = GLOB.huds[antag_hud_type]
-	hud.join_hud(mob_override)
-	set_antag_hud(mob_override, antag_hud_name)
-
-
-// Removes the specified antag hud from the player. Usually called in an antag datum file
-/datum/antagonist/proc/remove_antag_hud(antag_hud_type, mob/living/mob_override)
-	var/datum/atom_hud/antag/hud = GLOB.huds[antag_hud_type]
-	hud.leave_hud(mob_override)
-	set_antag_hud(mob_override, null)
-
-// Handles adding and removing the clumsy mutation from clown antags. Gets called in apply/remove_innate_effects
-/datum/antagonist/proc/handle_clown_mutation(mob/living/mob_override, message, removing = TRUE)
-	var/mob/living/carbon/human/H = mob_override
-	if(H && istype(H) && owner.assigned_role == "Clown")
-		if(removing) // They're a clown becoming an antag, remove clumsy
-			H.dna.remove_mutation(CLOWNMUT)
-			if(!silent && message)
-				to_chat(H, "<span class='boldnotice'>[message]</span>")
-		else
-			H.dna.add_mutation(CLOWNMUT) // We're removing their antag status, add back clumsy

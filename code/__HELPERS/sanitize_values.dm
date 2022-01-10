@@ -1,95 +1,56 @@
 //general stuff
-/// Return `number` if it is in the range `min to max`, otherwise `default`
 /proc/sanitize_integer(number, min=0, max=1, default=0)
-	if(isnum_safe(number))
+	if(isnum(number))
 		number = round(number)
 		if(min <= number && number <= max)
 			return number
 	return default
 
-/// Return `text` if it is text, otherwise `default`
 /proc/sanitize_text(text, default="")
 	if(istext(text))
 		return text
 	return default
 
-/// Return `value` if it is a list, otherwise `default`
-/proc/sanitize_islist(value, default)
-	if(length(value))
-		return value
-	if(default)
-		return default
-
-/// Return `value` if it's in List, otherwise `default`
 /proc/sanitize_inlist(value, list/List, default)
-	if(value in List)
-		return value
-	if(default)
-		return default
-	if(List?.len)
-		return pick(List)
+	if(value in List)	return value
+	if(default)			return default
+	if(List && List.len)return pick(List)
 
+/proc/sanitize_json(json_input)
+	if(length(json_input) && istext(json_input))
+		return json_decode(json_input)
+	return list()
 
 
 //more specialised stuff
-/// Return `gender` if it is a valid gender, otherwise `default`. No I did not mean to offend you. -qwerty
 /proc/sanitize_gender(gender,neuter=0,plural=0, default="male")
 	switch(gender)
-		if(MALE, FEMALE)
-			return gender
+		if(MALE, FEMALE)return gender
 		if(NEUTER)
-			if(neuter)
-				return gender
-			else
-				return default
+			if(neuter)	return gender
+			else		return default
 		if(PLURAL)
-			if(plural)
-				return gender
-			else
-				return default
+			if(plural)	return gender
+			else		return default
 	return default
 
-/// Return `color` if it is a valid hex color, otherwise `default`
-/proc/sanitize_hexcolor(color, desired_format=3, include_crunch=0, default)
-	var/crunch = include_crunch ? "#" : ""
-	if(!istext(color))
-		color = ""
-
-	var/start = 1 + (text2ascii(color, 1) == 35)
+/proc/sanitize_hexcolor(color, default="#000000")
+	if(!istext(color)) return default
 	var/len = length(color)
-	var/char = ""
-	// RRGGBB -> RGB but awful
-	var/convert_to_shorthand = desired_format == 3 && length_char(color) > 3
+	if(len != 7 && len !=4) return default
+	if(text2ascii(color,1) != 35) return default	//35 is the ascii code for "#"
+	. = "#"
+	for(var/i=2,i<=len,i++)
+		var/ascii = text2ascii(color,i)
+		switch(ascii)
+			if(48 to 57)	. += ascii2text(ascii)		//numbers 0 to 9
+			if(97 to 102)	. += ascii2text(ascii)		//letters a to f
+			if(65 to 70)	. += ascii2text(ascii+32)	//letters A to F - translates to lowercase
+			else			return default
+	return .
 
-	. = ""
-	var/i = start
-	while(i <= len)
-		char = color[i]
-		switch(text2ascii(char))
-			if(48 to 57)		//numbers 0 to 9
-				. += char
-			if(97 to 102)		//letters a to f
-				. += char
-			if(65 to 70)		//letters A to F
-				. += lowertext(char)
-			else
-				break
-		i += length(char)
-		if(convert_to_shorthand && i <= len) //skip next one
-			i += length(color[i])
-
-	if(length_char(.) != desired_format)
-		if(default)
-			return default
-		return crunch + repeat_string(desired_format, "0")
-
-	return crunch + .
-
-/// Return `color` as a formatted ooc valid hex color
 /proc/sanitize_ooccolor(color)
-	if(length(color) != length_char(color))
-		CRASH("Invalid characters in color '[color]'")
-	var/list/HSL = rgb2hsl(hex2num(copytext(color, 2, 4)), hex2num(copytext(color, 4, 6)), hex2num(copytext(color, 6, 8)))
+	var/list/HSL = rgb2hsl(hex2num(copytext(color,2,4)),hex2num(copytext(color,4,6)),hex2num(copytext(color,6,8)))
 	HSL[3] = min(HSL[3],0.4)
 	var/list/RGB = hsl2rgb(arglist(HSL))
 	return "#[num2hex(RGB[1],2)][num2hex(RGB[2],2)][num2hex(RGB[3],2)]"

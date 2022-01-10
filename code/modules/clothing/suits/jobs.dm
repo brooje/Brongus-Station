@@ -1,6 +1,19 @@
 /*
  * Job related
  */
+//Paramedic
+/obj/item/clothing/suit/storage/paramedic
+	name = "paramedic vest"
+	desc = "A hazard vest used in the recovery of bodies."
+	icon_state = "paramedic-vest"
+	item_state = "paramedic-vest"
+	allowed = list(/obj/item/stack/medical, /obj/item/reagent_containers/dropper, /obj/item/reagent_containers/hypospray, /obj/item/reagent_containers/applicator, /obj/item/reagent_containers/syringe,
+	/obj/item/healthanalyzer, /obj/item/flashlight, /obj/item/radio, /obj/item/tank/internals/emergency_oxygen,/obj/item/rad_laser)
+	armor = list(melee = 0, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 10, rad = 10, fire = 50, acid = 50)
+
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
 
 //Botanist
 /obj/item/clothing/suit/apron
@@ -9,9 +22,12 @@
 	icon_state = "apron"
 	item_state = "apron"
 	blood_overlay_type = "armor"
-	body_parts_covered = CHEST|GROIN
-	allowed = list(/obj/item/reagent_containers/spray/plantbgone, /obj/item/plant_analyzer, /obj/item/seeds, /obj/item/reagent_containers/glass/bottle, /obj/item/reagent_containers/glass/beaker, /obj/item/cultivator, /obj/item/reagent_containers/spray/pestspray, /obj/item/hatchet, /obj/item/storage/bag/plants)
-	pocket_storage_component_path = /datum/component/storage/concrete/pockets/exo/large
+	body_parts_covered = UPPER_TORSO|LOWER_TORSO
+	allowed = list(/obj/item/reagent_containers/spray/plantbgone,/obj/item/plant_analyzer,/obj/item/seeds,/obj/item/reagent_containers/glass/bottle, /obj/item/reagent_containers/glass/beaker, /obj/item/cultivator,/obj/item/reagent_containers/spray/pestspray,/obj/item/hatchet,/obj/item/storage/bag/plants)
+
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
 
 //Captain
 /obj/item/clothing/suit/captunic
@@ -19,102 +35,304 @@
 	desc = "Worn by a Captain to show their class."
 	icon_state = "captunic"
 	item_state = "bio_suit"
-	body_parts_covered = CHEST|GROIN|LEGS|ARMS
+	body_parts_covered = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS
 	flags_inv = HIDEJUMPSUIT
-	allowed = list(/obj/item/disk, /obj/item/stamp, /obj/item/reagent_containers/food/drinks/flask, /obj/item/melee, /obj/item/storage/lockbox/medal, /obj/item/assembly/flash/handheld, /obj/item/storage/box/matches, /obj/item/lighter, /obj/item/clothing/mask/cigarette, /obj/item/storage/fancy/cigarettes, /obj/item/tank/internals/emergency_oxygen, /obj/item/tank/internals/plasmaman)
+	allowed = list(/obj/item/disk, /obj/item/stamp, /obj/item/reagent_containers/food/drinks/flask, /obj/item/melee, /obj/item/storage/lockbox/medal, /obj/item/flash, /obj/item/storage/box/matches, /obj/item/lighter, /obj/item/clothing/mask/cigarette, /obj/item/storage/fancy/cigarettes, /obj/item/tank/internals/emergency_oxygen)
+
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
+
+/obj/item/clothing/suit/captunic/capjacket
+	name = "captain's uniform jacket"
+	desc = "A less formal jacket for everyday captain use."
+	icon_state = "capjacket"
+	item_state = "bio_suit"
+	body_parts_covered = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS
+	flags_inv = HIDEJUMPSUIT
+
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
+
+/obj/item/clothing/suit/mantle/armor/captain
+	name = "captain's cloak"
+	desc = "An armor-plated piece of fashion for the ruling elite. Protect your upper half in style."
+	icon_state = "capmantle"
+	item_state = "capmantle"
+	armor = list(melee = 50, bullet = 40, laser = 50, energy = 10, bomb = 25, bio = 0, rad = 0, fire = 50, acid = 50)
+
+//Chaplain
+/obj/item/clothing/suit/hooded/chaplain_hoodie
+	name = "chaplain hoodie"
+	desc = "This suit says to you 'hush'!"
+	icon_state = "chaplain_hoodie"
+	item_state = "chaplain_hoodie"
+	body_parts_covered = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS
+	hoodtype = /obj/item/clothing/head/hooded/chaplain_hood
+	allowed = list(/obj/item/storage/bible, /obj/item/nullrod, /obj/item/reagent_containers/food/drinks/bottle/holywater, /obj/item/storage/fancy/candle_box, /obj/item/candle, /obj/item/tank/internals/emergency_oxygen)
+
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
+
+//Chaplain
+/obj/item/clothing/suit/hooded/nun
+	name = "nun robe"
+	desc = "Maximum piety in this star system."
+	icon_state = "nun"
+	item_state = "nun"
+	body_parts_covered = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS|HANDS
+	flags_inv = HIDESHOES|HIDEJUMPSUIT
+	hoodtype = /obj/item/clothing/head/hooded/nun_hood
+	allowed = list(/obj/item/storage/bible, /obj/item/nullrod, /obj/item/reagent_containers/food/drinks/bottle/holywater, /obj/item/storage/fancy/candle_box, /obj/item/candle, /obj/item/tank/internals/emergency_oxygen)
+
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
+
+//Chaplain
+/obj/item/clothing/suit/hooded/monk
+	name = "monk robe"
+	desc = "Wooden board not included."
+	icon_state = "monkrobe"
+	item_state = "monkrobe"
+	body_parts_covered = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS|HANDS
+	flags_inv = HIDESHOES|HIDEJUMPSUIT
+	hoodtype = /obj/item/clothing/head/hooded/monk_hood
+	allowed = list(/obj/item/storage/bible, /obj/item/nullrod, /obj/item/reagent_containers/food/drinks/bottle/holywater, /obj/item/storage/fancy/candle_box, /obj/item/candle, /obj/item/tank/internals/emergency_oxygen)
+
+/obj/item/clothing/suit/witchhunter
+	name = "witchhunter garb"
+	desc = "Dosen't weigh the same a a duck."
+	icon_state = "witchhunter"
+	item_state = "witchhunter"
+	body_parts_covered = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS
+	allowed = list(/obj/item/storage/bible, /obj/item/nullrod, /obj/item/reagent_containers/food/drinks/bottle/holywater, /obj/item/storage/fancy/candle_box, /obj/item/candle, /obj/item/tank/internals/emergency_oxygen)
+
+
+	//Chef
+/obj/item/clothing/suit/toggle/chef
+  	name = "chef's apron"
+
 
 //Chef
-/obj/item/clothing/suit/toggle/chef
+/obj/item/clothing/suit/chef
 	name = "chef's apron"
-	desc = "An apron-jacket used by a high class chef."
+	desc = "An apron used by a high class chef."
 	icon_state = "chef"
 	item_state = "chef"
-	gas_transfer_coefficient = 0.9
-	permeability_coefficient = 0.5
-	body_parts_covered = CHEST|GROIN|ARMS
-	allowed = list(/obj/item/kitchen)
-	togglename = "sleeves"
+	gas_transfer_coefficient = 0.90
+	permeability_coefficient = 0.50
+	body_parts_covered = UPPER_TORSO|LOWER_TORSO|ARMS
+	allowed = list (/obj/item/kitchen/knife)
 
-//Cook
-/obj/item/clothing/suit/apron/chef
-	name = "cook's apron"
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
+
+//Chef
+/obj/item/clothing/suit/chef/classic
+	name = "classic chef's apron"
 	desc = "A basic, dull, white chef's apron."
 	icon_state = "apronchef"
 	item_state = "apronchef"
 	blood_overlay_type = "armor"
-	body_parts_covered = CHEST|GROIN
-	allowed = list(/obj/item/kitchen)
+	body_parts_covered = UPPER_TORSO|LOWER_TORSO
+	allowed = list(/obj/item/kitchen/knife)
+
+//Chief Engineer
+/obj/item/clothing/suit/mantle/chief_engineer
+	name = "chief engineer's mantle"
+	desc = "A slick, authoritative cloak designed for the Chief Engineer."
+	icon_state = "cemantle"
+	item_state = "cemantle"
+	allowed = list(/obj/item/flashlight, /obj/item/tank/internals, /obj/item/t_scanner, /obj/item/rcd, /obj/item/rpd)
+
+//Chief Medical Officer
+/obj/item/clothing/suit/mantle/labcoat/chief_medical_officer
+	name = "chief medical officer's mantle"
+	desc = "An absorbent, clean cover found on the shoulders of the Chief Medical Officer."
+	icon_state = "cmomantle"
+	item_state = "cmomantle"
 
 //Detective
-/obj/item/clothing/suit/det_suit
-	name = "trenchcoat"
+/obj/item/clothing/suit/storage/det_suit
+	name = "coat"
 	desc = "An 18th-century multi-purpose trenchcoat. Someone who wears this means serious business."
 	icon_state = "detective"
 	item_state = "det_suit"
 	blood_overlay_type = "coat"
-	body_parts_covered = CHEST|GROIN|LEGS|ARMS
-	armor = list("melee" = 25, "bullet" = 10, "laser" = 25, "energy" = 10, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 0, "acid" = 45, "stamina" = 40)
-	cold_protection = CHEST|GROIN|LEGS|ARMS
-	heat_protection = CHEST|GROIN|LEGS|ARMS
+	body_parts_covered = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS
+	allowed = list(/obj/item/tank/internals/emergency_oxygen, /obj/item/reagent_containers/spray/pepper, /obj/item/flashlight, /obj/item/gun, /obj/item/ammo_box, /obj/item/ammo_casing, /obj/item/melee/baton, /obj/item/restraints/handcuffs, /obj/item/storage/fancy/cigarettes, /obj/item/lighter, /obj/item/detective_scanner, /obj/item/taperecorder)
+	armor = list(MELEE = 25, BULLET = 10, LASER = 25, ENERGY = 10, BOMB = 0, BIO = 0, RAD = 0, FIRE = 0, ACID = 45)
+	cold_protection = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS
+	heat_protection = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS
 
-/obj/item/clothing/suit/det_suit/Initialize()
-	. = ..()
-	allowed = GLOB.detective_vest_allowed
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
 
-/obj/item/clothing/suit/det_suit/grey
-	name = "noir trenchcoat"
-	desc = "A hard-boiled private investigator's grey trenchcoat."
-	icon_state = "greydet"
-	item_state = "greydet"
+//Forensics
+/obj/item/clothing/suit/storage/det_suit/forensics
+	name = "jacket"
+	desc = "A forensics technician jacket."
+	item_state = "det_suit"
+	body_parts_covered = UPPER_TORSO|LOWER_TORSO|ARMS
+	cold_protection = UPPER_TORSO|LOWER_TORSO|ARMS
+	heat_protection = UPPER_TORSO|LOWER_TORSO|ARMS
 
-/obj/item/clothing/suit/det_suit/noir
-	name = "noir suit coat"
-	desc = "A dapper private investigator's grey suit coat."
-	icon_state = "detsuit"
-	item_state = "detsuit"
+/obj/item/clothing/suit/storage/det_suit/forensics/red
+	name = "red jacket"
+	desc = "A red forensics technician jacket."
+	icon_state = "forensics_red"
 
-//Brig Phys
-/obj/item/clothing/suit/hazardvest/brig_phys
-	name = "brig physician's vest"
-	desc = "A lightweight vest worn by the Brig Physician."
-	icon_state = "brig_phys_vest"
-	item_state = "sec_helm"//looks kinda similar, I guess
-	allowed = list(/obj/item/analyzer, /obj/item/stack/medical, /obj/item/dnainjector, /obj/item/reagent_containers/dropper, /obj/item/reagent_containers/syringe, /obj/item/reagent_containers/hypospray, /obj/item/healthanalyzer, /obj/item/flashlight, /obj/item/reagent_containers/glass/bottle, /obj/item/reagent_containers/glass/beaker, /obj/item/reagent_containers/pill, /obj/item/storage/pill_bottle, /obj/item/paper, /obj/item/melee/classic_baton/police/telescopic, /obj/item/soap, /obj/item/sensor_device, /obj/item/tank/internals/emergency_oxygen, /obj/item/tank/internals/plasmaman)
-	armor = list(melee = 10, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 10, rad = 0, fire = 50, acid = 50, stamina = 30)
+/obj/item/clothing/suit/storage/det_suit/forensics/blue
+	name = "blue jacket"
+	desc = "A blue forensics technician jacket."
+	icon_state = "forensics_blue"
+
+//Blueshield
+/obj/item/clothing/suit/storage/blueshield
+	name = "blueshield's coat"
+	desc = "NT deluxe ripoff. You finally have your own coat."
+	icon_state = "blueshieldcoat"
+	item_state = "blueshieldcoat"
+	blood_overlay_type = "coat"
+	body_parts_covered = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS
+	allowed = list(/obj/item/gun/energy,/obj/item/reagent_containers/spray/pepper,/obj/item/gun/projectile,/obj/item/ammo_box,/obj/item/ammo_casing,/obj/item/melee/baton,/obj/item/restraints/handcuffs,/obj/item/flashlight/seclite,/obj/item/melee/classic_baton/telescopic)
+	armor = list(melee = 25, bullet = 10, laser = 25, energy = 10, bomb = 0, bio = 0, rad = 0, fire = 0, acid = 45)
+	cold_protection = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS
+	heat_protection = UPPER_TORSO|LOWER_TORSO|LEGS|ARMS
+
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
 
 //Engineering
-/obj/item/clothing/suit/hazardvest
+/obj/item/clothing/suit/storage/hazardvest
 	name = "hazard vest"
 	desc = "A high-visibility vest used in work zones."
 	icon_state = "hazard"
 	item_state = "hazard"
 	blood_overlay_type = "armor"
-	allowed = list(/obj/item/flashlight, /obj/item/tank/internals/emergency_oxygen, /obj/item/tank/internals/plasmaman, /obj/item/t_scanner, /obj/item/radio)
+	allowed = list (/obj/item/flashlight, /obj/item/t_scanner, /obj/item/tank/internals/emergency_oxygen, /obj/item/rcd, /obj/item/rpd)
 	resistance_flags = NONE
-	pocket_storage_component_path = /datum/component/storage/concrete/pockets/exo/large
+
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
 
 //Lawyer
-/obj/item/clothing/suit/toggle/lawyer
+/obj/item/clothing/suit/storage/lawyer
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
+
+/obj/item/clothing/suit/storage/lawyer/blackjacket
+	name = "black suit jacket"
+	desc = "A snappy dress jacket."
+	icon_state = "suitjacket_black_open"
+	item_state = "suitjacket_black_open"
+	blood_overlay_type = "coat"
+	body_parts_covered = UPPER_TORSO|ARMS
+	ignore_suitadjust = 0
+	suit_adjusted = 1
+	actions_types = list(/datum/action/item_action/button)
+	adjust_flavour = "unbutton"
+
+/obj/item/clothing/suit/storage/lawyer/bluejacket
 	name = "blue suit jacket"
 	desc = "A snappy dress jacket."
-	icon_state = "suitjacket_blue"
-	item_state = "suitjacket_blue"
+	icon_state = "suitjacket_blue_open"
+	item_state = "suitjacket_blue_open"
 	blood_overlay_type = "coat"
-	body_parts_covered = CHEST|ARMS
-	togglename = "buttons"
+	body_parts_covered = UPPER_TORSO|ARMS
+	ignore_suitadjust = 0
+	suit_adjusted = 1
+	actions_types = list(/datum/action/item_action/button)
+	adjust_flavour = "unbutton"
 
-/obj/item/clothing/suit/toggle/lawyer/purple
+/obj/item/clothing/suit/storage/lawyer/purpjacket
 	name = "purple suit jacket"
-	desc = "A foppish dress jacket."
+	desc = "A snappy dress jacket."
 	icon_state = "suitjacket_purp"
 	item_state = "suitjacket_purp"
+	blood_overlay_type = "coat"
+	body_parts_covered = UPPER_TORSO|ARMS
 
-/obj/item/clothing/suit/toggle/lawyer/black
-	name = "black suit jacket"
-	desc = "A professional suit jacket."
-	icon_state = "suitjacket_black"
-	item_state = "ro_suit"
+//Head of Security
+/obj/item/clothing/suit/mantle/armor
+	name = "armored shawl"
+	desc = "A reinforced shawl, worn by the Head of Security. Do you dare take up their mantle?"
+	icon_state = "hosmantle"
+	item_state = "hosmantle"
+	allowed = list(/obj/item/gun/energy, /obj/item/reagent_containers/spray/pepper, /obj/item/gun/projectile, /obj/item/ammo_box, /obj/item/ammo_casing, /obj/item/melee/baton, /obj/item/restraints/handcuffs, /obj/item/flashlight/seclite, /obj/item/melee/classic_baton/telescopic, /obj/item/kitchen/knife/combat)
+	armor = list(melee = 30, bullet = 30, laser = 30, energy = 10, bomb = 25, bio = 0, rad = 0, fire = 50, acid = 50)
+	min_cold_protection_temperature = ARMOR_MIN_TEMP_PROTECT
+	heat_protection = UPPER_TORSO|ARMS
+	max_heat_protection_temperature = ARMOR_MAX_TEMP_PROTECT
+	strip_delay = 60
+	put_on_delay = 40
+	resistance_flags = NONE
 
+//Head of Personnel
+/obj/item/clothing/suit/mantle/armor/head_of_personnel
+	name = "head of personnel's shawl"
+	desc = "An armored shawl for the head of personnel. It's remarkably well kept."
+	icon_state = "hopmantle"
+	item_state = "hopmantle"
+	armor = list(melee = 25, bullet = 15, laser = 25, energy = 10, bomb = 25, bio = 0, rad = 0, fire = 50, acid = 50)
+
+//Internal Affairs
+/obj/item/clothing/suit/storage/internalaffairs
+	name = "\improper Internal Affairs jacket"
+	desc = "A smooth black jacket."
+	icon_state = "ia_jacket_open"
+	item_state = "ia_jacket_open"
+	blood_overlay_type = "coat"
+	body_parts_covered = UPPER_TORSO|ARMS
+	ignore_suitadjust = 0
+	suit_adjusted = 1
+	actions_types = list(/datum/action/item_action/button)
+	adjust_flavour = "unbutton"
+
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
+
+/obj/item/clothing/suit/storage/ntrep
+	name = "\improper Nanotrasen Representative jacket"
+	desc = "A fancy black jacket; standard issue to Nanotrasen Representatives."
+	icon_state = "ntrep"
+	item_state = "ntrep"
+	blood_overlay_type = "coat"
+	body_parts_covered = UPPER_TORSO|ARMS
+	ignore_suitadjust = 0
+	actions_types = list(/datum/action/item_action/button)
+	adjust_flavour = "unbutton"
+
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
+
+//Medical
+/obj/item/clothing/suit/storage/fr_jacket
+	name = "first responder jacket"
+	desc = "A high-visibility jacket worn by medical first responders."
+	icon_state = "fr_jacket_open"
+	item_state = "fr_jacket_open"
+	blood_overlay_type = "armor"
+	allowed = list(/obj/item/stack/medical, /obj/item/reagent_containers/dropper, /obj/item/reagent_containers/hypospray, /obj/item/reagent_containers/applicator, /obj/item/reagent_containers/syringe,
+	/obj/item/healthanalyzer, /obj/item/flashlight, /obj/item/radio, /obj/item/tank/internals/emergency_oxygen,/obj/item/rad_laser)
+	ignore_suitadjust = 0
+	suit_adjusted = 1
+	actions_types = list(/datum/action/item_action/button)
+	adjust_flavour = "unbutton"
+
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
 
 //Mime
 /obj/item/clothing/suit/suspenders
@@ -124,62 +342,26 @@
 	icon_state = "suspenders"
 	blood_overlay_type = "armor" //it's the less thing that I can put here
 
-//Security
-/obj/item/clothing/suit/security/officer
-	name = "security officer's jacket"
-	desc = "This jacket is for those special occasions when a security officer isn't required to wear their armor."
-	icon_state = "officerbluejacket"
-	item_state = "officerbluejacket"
-	body_parts_covered = CHEST|ARMS
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
 
-/obj/item/clothing/suit/security/warden
-	name = "warden's jacket"
-	desc = "Perfectly suited for the warden that wants to leave an impression of style on those who visit the brig."
-	icon_state = "wardenbluejacket"
-	item_state = "wardenbluejacket"
-	body_parts_covered = CHEST|ARMS
+/obj/item/clothing/suit/suspenders/nodrop
+	flags = NODROP
 
-/obj/item/clothing/suit/security/hos
-	name = "head of security's jacket"
-	desc = "This piece of clothing was specifically designed for asserting superior authority."
-	icon_state = "hosbluejacket"
-	item_state = "hosbluejacket"
-	body_parts_covered = CHEST|ARMS
-
-//Surgeon
+// Surgeon
 /obj/item/clothing/suit/apron/surgical
 	name = "surgical apron"
 	desc = "A sterile blue surgical apron."
 	icon_state = "surgical"
+	item_state = "surgical"
 	allowed = list(/obj/item/scalpel, /obj/item/surgical_drapes, /obj/item/cautery, /obj/item/hemostat, /obj/item/retractor)
 
-//Curator
-/obj/item/clothing/suit/curator
-	name = "treasure hunter's coat"
-	desc = "Both fashionable and lightly armoured, this jacket is favoured by treasure hunters the galaxy over."
-	icon_state = "curator"
-	item_state = "curator"
-	blood_overlay_type = "coat"
-	body_parts_covered = CHEST|ARMS
-	allowed = list(/obj/item/tank/internals, /obj/item/melee/curator_whip)
-	armor = list("melee" = 25, "bullet" = 10, "laser" = 25, "energy" = 10, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 0, "acid" = 45, "stamina" = 30)
-	cold_protection = CHEST|ARMS
-	heat_protection = CHEST|ARMS
-
-//Roboticist
-
-/obj/item/clothing/suit/hooded/techpriest
-	name = "techpriest robes"
-	desc = "For those who REALLY love their toasters."
-	icon_state = "techpriest"
-	item_state = "techpriest"
-	body_parts_covered = CHEST|GROIN|LEGS|ARMS
-	hoodtype = /obj/item/clothing/head/hooded/techpriest
-
-/obj/item/clothing/head/hooded/techpriest
-	name = "techpriest's hood"
-	desc = "A hood for those who REALLY love their toasters."
-	icon_state = "techpriesthood"
-	item_state = "techpriesthood"
-	body_parts_covered = HEAD
-	flags_inv = HIDEHAIR|HIDEEARS
+//Research Director
+/obj/item/clothing/suit/mantle/labcoat
+	name = "research director's mantle"
+	desc = "A tweed mantle, worn by the Research Director. Smells like science."
+	icon_state = "rdmantle"
+	item_state = "rdmantle"
+	allowed = list(/obj/item/analyzer, /obj/item/stack/medical, /obj/item/dnainjector, /obj/item/reagent_containers/dropper, /obj/item/reagent_containers/syringe, /obj/item/reagent_containers/hypospray, /obj/item/reagent_containers/applicator, /obj/item/healthanalyzer, /obj/item/flashlight/pen, /obj/item/reagent_containers/glass/bottle, /obj/item/reagent_containers/glass/beaker, /obj/item/reagent_containers/food/pill, /obj/item/storage/pill_bottle, /obj/item/paper, /obj/item/rad_laser)
+	armor = list(melee = 0, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 50, rad = 0, fire = 50, acid = 50)

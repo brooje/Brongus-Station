@@ -8,8 +8,8 @@
 	resistance_flags = FLAMMABLE
 	var/obj/item/seeds/seed = null // type path, gets converted to item on New(). It's safe to assume it's always a seed item.
 
-/obj/item/grown/Initialize(newloc, obj/item/seeds/new_seed)
-	. = ..()
+/obj/item/grown/New(newloc, obj/item/seeds/new_seed = null)
+	..()
 	create_reagents(50)
 
 	if(new_seed)
@@ -31,6 +31,9 @@
 		transform *= TRANSFORM_USING_VARIABLE(seed.potency, 100) + 0.5
 		add_juice()
 
+/obj/item/grown/Destroy()
+	QDEL_NULL(seed)
+	return ..()
 
 /obj/item/grown/attackby(obj/item/O, mob/user, params)
 	..()
@@ -47,15 +50,14 @@
 		return 1
 	return 0
 
-/obj/item/grown/throw_impact(atom/hit_atom, datum/thrownthing/throwingdatum)
+/obj/item/grown/after_slip(mob/living/carbon/human/H)
+	if(!seed)
+		return
+	for(var/datum/plant_gene/trait/T in seed.genes)
+		T.on_slip(src, H)
+
+/obj/item/grown/throw_impact(atom/hit_atom)
 	if(!..()) //was it caught by a mob?
 		if(seed)
 			for(var/datum/plant_gene/trait/T in seed.genes)
 				T.on_throw_impact(src, hit_atom)
-
-/obj/item/grown/microwave_act(obj/machinery/microwave/M)
-	return
-
-/obj/item/grown/on_grind()
-	for(var/i in 1 to grind_results.len)
-		grind_results[grind_results[i]] = round(seed.potency)

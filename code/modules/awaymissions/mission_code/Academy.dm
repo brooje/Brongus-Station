@@ -1,65 +1,27 @@
-
 //Academy Areas
 
 /area/awaymission/academy
-	name = "Academy Asteroids"
+	name = "\improper Academy Asteroids"
 	icon_state = "away"
+	report_alerts = FALSE
 
 /area/awaymission/academy/headmaster
-	name = "Academy Fore Block"
+	name = "\improper Academy Fore Block"
 	icon_state = "away1"
 
 /area/awaymission/academy/classrooms
-	name = "Academy Classroom Block"
+	name = "\improper Academy Classroom Block"
 	icon_state = "away2"
 
 /area/awaymission/academy/academyaft
-	name = "Academy Ship Aft Block"
+	name = "\improper Academy Ship Aft Block"
 	icon_state = "away3"
 
 /area/awaymission/academy/academygate
-	name = "Academy Gateway"
-	icon_state = "away4"
-
-/area/awaymission/academy/academycellar
-	name = "Academy Cellar"
-	icon_state = "away4"
-
-/area/awaymission/academy/academyengine
-	name = "Academy Engine"
+	name = "\improper Academy Gateway"
 	icon_state = "away4"
 
 //Academy Items
-
-/obj/item/paper/fluff/awaymissions/academy/console_maint
-	name = "Console Maintenance"
-	info = "We're upgrading to the latest mainframes for our consoles, the shipment should be in before spring break is over!"
-
-/obj/item/paper/fluff/awaymissions/academy/class/automotive
-	name = "Automotive Repair 101"
-
-/obj/item/paper/fluff/awaymissions/academy/class/pyromancy
-	name = "Pyromancy 250"
-
-/obj/item/paper/fluff/awaymissions/academy/class/biology
-	name = "Biology Lab"
-
-/obj/item/paper/fluff/awaymissions/academy/grade/aplus
-	name = "Summoning Midterm Exam"
-	info = "Grade: A+ Educator's Notes: Excellent form."
-
-/obj/item/paper/fluff/awaymissions/academy/grade/bminus
-	name = "Summoning Midterm Exam"
-	info = "Grade: B- Educator's Notes: Keep applying yourself, you're showing improvement."
-
-/obj/item/paper/fluff/awaymissions/academy/grade/dminus
-	name = "Summoning Midterm Exam"
-	info = "Grade: D- Educator's Notes: SEE ME AFTER CLASS."
-
-/obj/item/paper/fluff/awaymissions/academy/grade/failure
-	name = "Pyromancy Evaluation"
-	info = "Current Grade: F. Educator's Notes: No improvement shown despite multiple private lessons.  Suggest additional tutelage."
-
 
 /obj/singularity/academy
 	dissipate = 0
@@ -74,103 +36,19 @@
 	if(prob(1))
 		mezzer()
 
-
 /obj/item/clothing/glasses/meson/truesight
 	name = "The Lens of Truesight"
 	desc = "I can see forever!"
 	icon_state = "monocle"
 	item_state = "headset"
 
-
-/obj/structure/academy_wizard_spawner
-	name = "Academy Defensive System"
-	desc = "Made by Abjuration, Inc."
-	icon = 'icons/obj/cult.dmi'
-	icon_state = "forge"
-	anchored = TRUE
-	max_integrity = 200
-	var/mob/living/current_wizard = null
-	var/next_check = 0
-	var/cooldown = 600
-	var/faction = ROLE_WIZARD
-	var/braindead_check = 0
-
-/obj/structure/academy_wizard_spawner/New()
-	START_PROCESSING(SSobj, src)
-
-/obj/structure/academy_wizard_spawner/Destroy()
-	if(!broken)
-		STOP_PROCESSING(SSobj, src)
-	return ..()
-
-/obj/structure/academy_wizard_spawner/process()
-	if(next_check < world.time)
-		if(!current_wizard)
-			for(var/mob/living/L in GLOB.player_list)
-				if(L.z == src.z && L.stat != DEAD && !(faction in L.faction))
-					summon_wizard()
-					break
-		else
-			if(current_wizard.stat == DEAD)
-				current_wizard = null
-				summon_wizard()
-			if(!current_wizard.client)
-				if(!braindead_check)
-					braindead_check = 1
-				else
-					braindead_check = 0
-					give_control()
-		next_check = world.time + cooldown
-
-/obj/structure/academy_wizard_spawner/proc/give_control()
-	set waitfor = FALSE
-
-	if(!current_wizard)
-		return
-	var/list/mob/dead/observer/candidates = pollCandidatesForMob("Do you want to play as Wizard Academy Defender?", ROLE_WIZARD, null, ROLE_WIZARD, 50, current_wizard)
-
-	if(LAZYLEN(candidates))
-		var/mob/dead/observer/C = pick(candidates)
-		message_admins("[ADMIN_LOOKUPFLW(C)] was spawned as Wizard Academy Defender")
-		current_wizard.ghostize() // on the off chance braindead defender gets back in
-		current_wizard.key = C.key
-
-/obj/structure/academy_wizard_spawner/proc/summon_wizard()
-	var/turf/T = src.loc
-	var/mob/living/carbon/human/wizbody = new(T)
-	wizbody.fully_replace_character_name(wizbody.real_name, "Academy Teacher")
-	wizbody.mind_initialize()
-	var/datum/mind/wizmind = wizbody.mind
-	wizmind.special_role = "Academy Defender"
-	wizmind.add_antag_datum(/datum/antagonist/wizard/academy)
-	current_wizard = wizbody
-
-	give_control()
-
-/obj/structure/academy_wizard_spawner/deconstruct(disassembled = TRUE)
-	if(!broken)
-		broken = 1
-		visible_message("<span class='warning'>[src] breaks down!</span>")
-		icon_state = "forge_off"
-		STOP_PROCESSING(SSobj, src)
-
-/datum/outfit/wizard/academy
-	name = "Academy Wizard"
-	r_pocket = null
-	r_hand = null
-	suit = /obj/item/clothing/suit/wizrobe/red
-	head = /obj/item/clothing/head/wizard/red
-	backpack_contents = list(/obj/item/storage/box/survival = 1)
-
+// Die of Fate
 /obj/item/dice/d20/fate
 	name = "\improper Die of Fate"
 	desc = "A die with twenty sides. You can feel unearthly energies radiating from it. Using this might be VERY risky."
 	icon_state = "d20"
-	sides = 20
-	microwave_riggable = FALSE
 	var/reusable = TRUE
 	var/used = FALSE
-	var/roll_in_progress = FALSE
 
 /obj/item/dice/d20/fate/stealth
 	name = "d20"
@@ -193,10 +71,6 @@
 
 /obj/item/dice/d20/fate/diceroll(mob/user)
 	. = ..()
-	if(roll_in_progress)
-		to_chat(user, "<span class='warning'>The dice is already channeling its power! Be patient!</span>")
-		return
-
 	if(!used)
 		if(!ishuman(user) || !user.mind || (user.mind in SSticker.mode.wizards))
 			to_chat(user, "<span class='warning'>You feel the magic of the dice is restricted to ordinary humans!</span>")
@@ -204,25 +78,28 @@
 
 		if(!reusable)
 			used = TRUE
-		roll_in_progress = TRUE
+
 		var/turf/T = get_turf(src)
 		T.visible_message("<span class='userdanger'>[src] flares briefly.</span>")
+
 		addtimer(CALLBACK(src, .proc/effect, user, .), 1 SECONDS)
 
 /obj/item/dice/d20/fate/equipped(mob/user, slot)
 	if(!ishuman(user) || !user.mind || (user.mind in SSticker.mode.wizards))
 		to_chat(user, "<span class='warning'>You feel the magic of the dice is restricted to ordinary humans! You should leave it alone.</span>")
-		user.dropItemToGround(src)
+		user.unEquip(src)
 
+/obj/item/dice/d20/fate/proc/create_smoke(amount)
+	var/datum/effect_system/smoke_spread/smoke = new
+	smoke.set_up(amount, 0, drop_location())
+	smoke.start()
 
-/obj/item/dice/d20/fate/proc/effect(var/mob/living/carbon/human/user,roll)
+/obj/item/dice/d20/fate/proc/effect(mob/living/carbon/human/user, roll)
 	var/turf/T = get_turf(src)
-
 	switch(roll)
 		if(1)
 			//Dust
 			T.visible_message("<span class='userdanger'>[user] turns to dust!</span>")
-			user.hellbound = TRUE
 			user.dust()
 		if(2)
 			//Death
@@ -247,13 +124,14 @@
 		if(6)
 			//Cut speed
 			T.visible_message("<span class='userdanger'>[user] starts moving slower!</span>")
-			user.add_movespeed_modifier(MOVESPEED_ID_DIE_OF_FATE, update=TRUE, priority=100, multiplicative_slowdown=1)
+			var/datum/species/S = user.dna.species
+			S.speed_mod += 1
 		if(7)
 			//Throw
 			T.visible_message("<span class='userdanger'>Unseen forces throw [user]!</span>")
-			user.Stun(60)
+			user.Stun(6)
 			user.adjustBruteLoss(50)
-			var/throw_dir = pick(GLOB.cardinals)
+			var/throw_dir = GLOB.cardinal
 			var/atom/throw_target = get_edge_target_turf(user, throw_dir)
 			user.throw_at(throw_target, 200, 4)
 		if(8)
@@ -264,7 +142,7 @@
 			//Cold
 			var/datum/disease/D = new /datum/disease/cold()
 			T.visible_message("<span class='userdanger'>[user] looks a little under the weather!</span>")
-			user.ForceContractDisease(D, FALSE, TRUE)
+			user.ForceContractDisease(D)
 		if(10)
 			//Nothing
 			T.visible_message("<span class='userdanger'>Nothing seems to happen.</span>")
@@ -272,12 +150,12 @@
 			//Cookie
 			T.visible_message("<span class='userdanger'>A cookie appears out of thin air!</span>")
 			var/obj/item/reagent_containers/food/snacks/cookie/C = new(drop_location())
-			do_smoke(0, drop_location())
+			create_smoke(2)
 			C.name = "Cookie of Fate"
 		if(12)
 			//Healing
 			T.visible_message("<span class='userdanger'>[user] looks very healthy!</span>")
-			user.revive(full_heal = 1, admin_revive = 1)
+			user.revive()
 		if(13)
 			//Mad Dosh
 			T.visible_message("<span class='userdanger'>Mad dosh shoots out of [src]!</span>")
@@ -293,46 +171,49 @@
 		if(14)
 			//Free Gun
 			T.visible_message("<span class='userdanger'>An impressive gun appears!</span>")
-			do_smoke(0, drop_location())
-			new /obj/item/gun/ballistic/revolver/mateba(drop_location())
+			create_smoke(2)
+			new /obj/item/gun/projectile/revolver/mateba(drop_location())
 		if(15)
 			//Random One-use spellbook
 			T.visible_message("<span class='userdanger'>A magical looking book drops to the floor!</span>")
-			do_smoke(0, drop_location())
-			new /obj/item/book/granter/spell/random(drop_location())
+			create_smoke(2)
+			new /obj/item/spellbook/oneuse/random(drop_location())
 		if(16)
 			//Servant & Servant Summon
 			T.visible_message("<span class='userdanger'>A Dice Servant appears in a cloud of smoke!</span>")
 			var/mob/living/carbon/human/H = new(drop_location())
-			do_smoke(0, drop_location())
+			create_smoke(2)
 
 			H.equipOutfit(/datum/outfit/butler)
 			var/datum/mind/servant_mind = new /datum/mind()
-			var/datum/antagonist/magic_servant/A = new
-			servant_mind.add_antag_datum(A)
-			A.setup_master(user)
+			var/datum/objective/O = new
+			O.owner = servant_mind
+			O.target = user.mind
+			O.explanation_text = "Serve [user.real_name]."
+			servant_mind.objectives += O
 			servant_mind.transfer_to(H)
 
-			var/list/mob/dead/observer/candidates = pollCandidatesForMob("Do you want to play as [user.real_name] Servant?", ROLE_WIZARD, null, ROLE_WIZARD, 50, H)
-			if(LAZYLEN(candidates))
+			var/list/mob/dead/observer/candidates = SSghost_spawns.poll_candidates("Do you want to play as the servant of [user.real_name]?", ROLE_WIZARD, poll_time = 30 SECONDS, source = H)
+			if(length(candidates) && !QDELETED(H))
 				var/mob/dead/observer/C = pick(candidates)
 				message_admins("[ADMIN_LOOKUPFLW(C)] was spawned as Dice Servant")
 				H.key = C.key
+				to_chat(H, "<span class='notice'>You are a servant of [user.real_name]. You must do everything in your power to follow their orders.</span>")
 
-			var/obj/effect/proc_holder/spell/targeted/summonmob/S = new
+			var/obj/effect/proc_holder/spell/summonmob/S = new
 			S.target_mob = H
 			user.mind.AddSpell(S)
 
 		if(17)
 			//Tator Kit
 			T.visible_message("<span class='userdanger'>A suspicious box appears!</span>")
-			new /obj/item/storage/box/syndicate/bundle_A(drop_location())
-			do_smoke(0, drop_location())
+			new /obj/item/storage/box/syndicate(drop_location())
+			create_smoke(2)
 		if(18)
 			//Captain ID
 			T.visible_message("<span class='userdanger'>A golden identification card appears!</span>")
 			new /obj/item/card/id/captains_spare(drop_location())
-			do_smoke(0, drop_location())
+			create_smoke(2)
 		if(19)
 			//Instrinct Resistance
 			T.visible_message("<span class='userdanger'>[user] looks very robust!</span>")
@@ -343,35 +224,34 @@
 			//Free wizard!
 			T.visible_message("<span class='userdanger'>Magic flows out of [src] and into [user]!</span>")
 			user.mind.make_Wizard()
-	//roll is completed, allow others players to roll the dice
-	roll_in_progress = FALSE
 
-
+// Butler outfit
 /datum/outfit/butler
 	name = "Butler"
-	uniform = /obj/item/clothing/under/suit/black_really
+	uniform = /obj/item/clothing/under/suit_jacket/really_black
 	shoes = /obj/item/clothing/shoes/laceup
-	head = /obj/item/clothing/head/bowler
+	head = /obj/item/clothing/head/bowlerhat
 	glasses = /obj/item/clothing/glasses/monocle
 	gloves = /obj/item/clothing/gloves/color/white
 
-/obj/effect/proc_holder/spell/targeted/summonmob
+/obj/effect/proc_holder/spell/summonmob
 	name = "Summon Servant"
 	desc = "This spell can be used to call your servant, whenever you need it."
 	charge_max = 100
 	clothes_req = 0
 	invocation = "JE VES"
 	invocation_type = "whisper"
-	range = -1
 	level_max = 0 //cannot be improved
 	cooldown_min = 100
-	include_user = 1
 
 	var/mob/living/target_mob
 
 	action_icon_state = "summons"
 
-/obj/effect/proc_holder/spell/targeted/summonmob/cast(list/targets,mob/user = usr)
+/obj/effect/proc_holder/spell/summonmob/create_new_targeting()
+	return new /datum/spell_targeting/self
+
+/obj/effect/proc_holder/spell/summonmob/cast(list/targets, mob/user = usr)
 	if(!target_mob)
 		return
 	var/turf/Start = get_turf(user)
@@ -379,20 +259,3 @@
 		var/turf/T = get_step(Start,direction)
 		if(!T.density)
 			target_mob.Move(T)
-
-/obj/structure/ladder/unbreakable/rune
-	name = "\improper Teleportation Rune"
-	desc = "Could lead anywhere."
-	icon = 'icons/obj/rune.dmi'
-	icon_state = "1"
-	color = rgb(0,0,255)
-
-/obj/structure/ladder/unbreakable/rune/update_icon()
-	return
-
-/obj/structure/ladder/unbreakable/rune/show_fluff_message(up,mob/user)
-	user.visible_message("[user] activates \the [src].","<span class='notice'>You activate \the [src].</span>")
-
-/obj/structure/ladder/unbreakable/rune/use(mob/user, is_ghost=FALSE)
-	if(is_ghost || !(user.mind in SSticker.mode.wizards))
-		..()

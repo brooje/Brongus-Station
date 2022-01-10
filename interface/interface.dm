@@ -1,15 +1,15 @@
 //Please use mob or src (not usr) in these procs. This way they can be called in the same fashion as procs.
-/client/verb/wiki(query as text)
+/client/verb/wiki()
 	set name = "wiki"
-	set desc = "Type what you want to know about.  This will open the wiki in your web browser. Type nothing to go to the main page."
+	set desc = "Type what you want to know about.  This will open the wiki in your web browser."
 	set hidden = 1
-	var/wikiurl = CONFIG_GET(string/wikiurl)
-	if(wikiurl)
-		if(query)
-			var/output = wikiurl + "/index.php?title=Special%3ASearch&profile=default&search=" + query
+	if(GLOB.configuration.url.wiki_url)
+		var/query = stripped_input(src, "Enter Search:", "Wiki Search", "Homepage")
+		if(query == "Homepage")
+			src << link(GLOB.configuration.url.wiki_url)
+		else if(query)
+			var/output = "[GLOB.configuration.url.wiki_url]/index.php?title=Special%3ASearch&profile=default&search=[query]"
 			src << link(output)
-		else if (query != null)
-			src << link(wikiurl)
 	else
 		to_chat(src, "<span class='danger'>The wiki URL is not set in the server configuration.</span>")
 	return
@@ -18,117 +18,111 @@
 	set name = "forum"
 	set desc = "Visit the forum."
 	set hidden = 1
-	var/forumurl = CONFIG_GET(string/forumurl)
-	if(forumurl)
-		if(alert("This will open the forum in your browser. Are you sure?",,"Yes","No")!="Yes")
-			return
-		src << link(forumurl)
+	if(GLOB.configuration.url.forum_url)
+		if(alert("Open the forum in your browser?", null, "Yes", "No") == "Yes")
+			if(GLOB.configuration.url.forum_link_url && prefs && !prefs.fuid)
+				link_forum_account()
+			src << link(GLOB.configuration.url.forum_url)
 	else
 		to_chat(src, "<span class='danger'>The forum URL is not set in the server configuration.</span>")
-	return
 
 /client/verb/rules()
-	set name = "rules"
-	set desc = "Show Server Rules."
+	set name = "Rules"
+	set desc = "View the server rules."
 	set hidden = 1
-	var/rulesurl = CONFIG_GET(string/rulesurl)
-	if(rulesurl)
-		if(alert("This will open the rules in your browser. Are you sure?",,"Yes","No")!="Yes")
+	if(GLOB.configuration.url.rules_url)
+		if(alert("This will open the rules in your browser. Are you sure?", null, "Yes", "No") == "No")
 			return
-		src << link(rulesurl)
+		src << link(GLOB.configuration.url.rules_url)
 	else
 		to_chat(src, "<span class='danger'>The rules URL is not set in the server configuration.</span>")
-	return
 
 /client/verb/github()
-	set name = "github"
-	set desc = "Visit Github"
+	set name = "GitHub"
+	set desc = "Visit the GitHub page."
 	set hidden = 1
-	var/githuburl = CONFIG_GET(string/githuburl)
-	if(githuburl)
-		if(alert("This will open the Github repository in your browser. Are you sure?",,"Yes","No")!="Yes")
+	if(GLOB.configuration.url.github_url)
+		if(alert("This will open our GitHub repository in your browser. Are you sure?", null, "Yes", "No") == "No")
 			return
-		src << link(githuburl)
+		src << link(GLOB.configuration.url.github_url)
 	else
-		to_chat(src, "<span class='danger'>The Github URL is not set in the server configuration.</span>")
-	return
+		to_chat(src, "<span class='danger'>The GitHub URL is not set in the server configuration.</span>")
 
-/client/verb/reportissue()
-	set name = "report-issue"
-	set desc = "Report an issue"
+/client/verb/discord()
+	set name = "Discord"
+	set desc = "Join our Discord server."
 	set hidden = 1
-	var/githuburl = CONFIG_GET(string/githuburl)
-	if(githuburl)
-		var/message = "This will open the Github issue reporter in your browser. Are you sure?"
-		if(GLOB.revdata.testmerge.len)
-			message += "<br>The following experimental changes are active and are probably the cause of any new or sudden issues you may experience. If possible, please try to find a specific thread for your issue instead of posting to the general issue tracker:<br>"
-			message += GLOB.revdata.GetTestMergeInfo(FALSE)
-		if(tgalert(src, message, "Report Issue","Yes","No")!="Yes")
+
+	var/durl
+	// Use normal URL
+	if(GLOB.configuration.url.discord_url)
+		durl = GLOB.configuration.url.discord_url
+
+	// Use forums URL if set
+	if(GLOB.configuration.url.forum_link_url && GLOB.configuration?.url.discord_forum_url && prefs?.fuid)
+		durl = GLOB.configuration.url.discord_forum_url
+
+	if(!durl)
+		to_chat(src, "<span class='danger'>The Discord URL is not set in the server configuration.</span>")
+		return
+	if(alert("This will invite you to our Discord server. Are you sure?", null, "Yes", "No") == "No")
+		return
+	src << link(durl)
+
+/client/verb/donate()
+	set name = "Donate"
+	set desc = "Donate to help with hosting costs."
+	set hidden = 1
+	if(GLOB.configuration.url.donations_url)
+		if(alert("This will open the donation page in your browser. Are you sure?", null, "Yes", "No") == "No")
 			return
-		var/static/issue_template = rustg_file_read(".github/ISSUE_TEMPLATE.md")
-		var/servername = CONFIG_GET(string/servername)
-		var/url_params = "Reporting client version: [byond_version].[byond_build]\n\n[issue_template]"
-		if(GLOB.round_id || servername)
-			url_params = "Issue reported from [GLOB.round_id ? " Round ID: [GLOB.round_id][servername ? " ([servername])" : ""]" : servername]\n\n[url_params]"
-		var/issue_label = CONFIG_GET(string/issue_label)
-		DIRECT_OUTPUT(src, link("[githuburl]/issues/new?body=[rustg_url_encode(url_params)][issue_label ? "&labels=[rustg_url_encode(issue_label)]" : ""]"))
+		src << link(GLOB.configuration.url.donations_url)
 	else
-		to_chat(src, "<span class='danger'>The Github URL is not set in the server configuration.</span>")
-	return
+		to_chat(src, "<span class='danger'>The rules URL is not set in the server configuration.</span>")
 
 /client/verb/hotkeys_help()
-	set name = "hotkeys-help"
+	set name = "Hotkey Help"
 	set category = "OOC"
 
 	var/adminhotkeys = {"<font color='purple'>
 Admin:
-\tF3 = asay
-\tF5 = Aghost (admin-ghost)
-\tF6 = player-panel
-\tF7 = Buildmode
-\tF8 = Invisimin
-\tCtrl+F8 = Stealthmin
+\tF5 = Asay
+\tF6 = Admin Ghost
+\tF7 = Player Panel
+\tF8 = Admin PM
+\tF9 = Invisimin
+
+Admin ghost:
+\tCtrl+Click = Player Panel
+\tCtrl+Shift+Click = View Variables
+\tShift+Middle Click = Mob Info
 </font>"}
 
 	mob.hotkey_help()
 
-	if(holder)
+	if(check_rights(R_MOD|R_ADMIN,0))
 		to_chat(src, adminhotkeys)
-
-/client/verb/changelog()
-	set name = "Changelog"
-	set category = "OOC"
-	var/datum/asset/simple/namespaced/changelog = get_asset_datum(/datum/asset/simple/namespaced/changelog)
-	changelog.send(src)
-	src << browse(changelog.get_htmlloader("changelog.html"), "window=changes;size=675x650")
-	if(prefs.lastchangelog != GLOB.changelog_hash)
-		prefs.lastchangelog = GLOB.changelog_hash
-		prefs.save_preferences()
-		winset(src, "infowindow.changelog", "font-style=;")
-
 
 /mob/proc/hotkey_help()
 	var/hotkey_mode = {"<font color='purple'>
 Hotkey-Mode: (hotkey-mode must be on)
 \tTAB = toggle hotkey-mode
-\ta = left
-\ts = down
-\td = right
-\tw = up
-\tq = drop
-\te = equip
-\tr = throw
-\tm = me
-\tt = say
-\to = OOC
-\tb = resist
-\t<B></B>h = stop pulling
-\tx = swap-hand
-\tz = activate held object (or y)
-\tShift+e = Put held item into belt(or belt slot) or take out most recent item added.
-\tShift+b = Put held item into backpack(or back slot) or take out most recent item added.
-\tf = cycle-intents-left
-\tg = cycle-intents-right
+\tA = left
+\tS = down
+\tD = right
+\tW = up
+\tQ = drop
+\tE = equip
+\tR = throw
+\tM = me
+\tT = say
+\tO = OOC
+\tB = resist
+\tH = Holster/unholster gun if you have a holster
+\tX = swap-hand
+\tZ = activate held object (or y)
+\tF = cycle-intents-left
+\tG = cycle-intents-right
 \t1 = help-intent
 \t2 = disarm-intent
 \t3 = grab-intent
@@ -139,26 +133,24 @@ Hotkey-Mode: (hotkey-mode must be on)
 
 	var/other = {"<font color='purple'>
 Any-Mode: (hotkey doesn't need to be on)
-\tCtrl+a = left
-\tCtrl+s = down
-\tCtrl+d = right
-\tCtrl+w = up
-\tCtrl+q = drop
-\tCtrl+e = equip
-\tCtrl+r = throw
-\tCtrl+b = resist
-\tCtrl+h = stop pulling
-\tCtrl+o = OOC
-\tCtrl+x = swap-hand
-\tCtrl+z = activate held object (or Ctrl+y)
-\tCtrl+f = cycle-intents-left
-\tCtrl+g = cycle-intents-right
+\tCtrl+A = left
+\tCtrl+S = down
+\tCtrl+D = right
+\tCtrl+W = up
+\tCtrl+Q = drop
+\tCtrl+E = equip
+\tCtrl+R = throw
+\tCtrl+B = resist
+\tCtrl+H = stop pulling
+\tCtrl+O = OOC
+\tCtrl+X = swap-hand
+\tCtrl+Z = activate held object (or Ctrl+y)
+\tCtrl+F = cycle-intents-left
+\tCtrl+G = cycle-intents-right
 \tCtrl+1 = help-intent
 \tCtrl+2 = disarm-intent
 \tCtrl+3 = grab-intent
 \tCtrl+4 = harm-intent
-\tCtrl+'+/-' OR
-\tShift+Mousewheel = Ghost zoom in/out
 \tDEL = stop pulling
 \tINS = cycle-intents-right
 \tHOME = drop
@@ -172,101 +164,53 @@ Any-Mode: (hotkey doesn't need to be on)
 	to_chat(src, other)
 
 /mob/living/silicon/robot/hotkey_help()
-	//h = talk-wheel has a nonsense tag in it because \th is an escape sequence in BYOND.
 	var/hotkey_mode = {"<font color='purple'>
 Hotkey-Mode: (hotkey-mode must be on)
-\tTAB = toggle hotkey-mode
-\ta = left
-\ts = down
-\td = right
-\tw = up
-\tq = unequip active module
-\t<B></B>h = stop pulling
-\tm = me
-\tt = say
-\to = OOC
-\tx = cycle active modules
-\tb = resist
-\tz = activate held object (or y)
-\tf = cycle-intents-left
-\tg = cycle-intents-right
-\t1 = activate module 1
-\t2 = activate module 2
-\t3 = activate module 3
-\t4 = toggle intents
+\tTAB = Toggle Hotkey Mode
+\tA = Move Left
+\tS = Move Down
+\tD = Move Right
+\tW = Move Up
+\tQ = Unequip Active Module
+\tM = Me
+\tT = Say
+\tO = OOC
+\tX = Cycle Active Modules
+\tB = Resist
+\tZ or Y = Activate Held Object
+\tF = Cycle Intents Left
+\tG = Cycle Intents Right
+\t1 = Activate Module 1
+\t2 = Activate Module 2
+\t3 = Activate Module 3
+\t4 = Toggle Intents
 </font>"}
 
 	var/other = {"<font color='purple'>
 Any-Mode: (hotkey doesn't need to be on)
-\tCtrl+a = left
-\tCtrl+s = down
-\tCtrl+d = right
-\tCtrl+w = up
-\tCtrl+q = unequip active module
-\tCtrl+x = cycle active modules
-\tCtrl+b = resist
-\tCtrl+h = stop pulling
-\tCtrl+o = OOC
-\tCtrl+z = activate held object (or Ctrl+y)
-\tCtrl+f = cycle-intents-left
-\tCtrl+g = cycle-intents-right
-\tCtrl+1 = activate module 1
-\tCtrl+2 = activate module 2
-\tCtrl+3 = activate module 3
-\tCtrl+4 = toggle intents
-\tDEL = stop pulling
-\tINS = toggle intents
-\tPGUP = cycle active modules
-\tPGDN = activate held object
+\tCtrl+A = Move Left
+\tCtrl+S = Move Down
+\tCtrl+D = Move Right
+\tCtrl+W = Move Up
+\tCtrl+Q = Unequip Active Module
+\tCtrl+X = Cycle Active Modules
+\tCtrl+B = Resist
+\tCtrl+O = OOC
+\tCtrl+Z or Ctrl+Y = Activate Held Object
+\tCtrl+F = Cycle Intents Left
+\tCtrl+G = Cycle Intents Right
+\tCtrl+1 = Activate Module 1
+\tCtrl+2 = Activate Module 2
+\tCtrl+3 = Activate Module 3
+\tCtrl+4 = Toggle Intents
+\tDEL = Pull
+\tINS = Toggle Intents
+\tPGUP = Cycle Active Modules
+\tPGDN = Activate Held Object
+\tF2 = OOC
+\tF3 = Say
+\tF4 = Me
 </font>"}
 
 	to_chat(src, hotkey_mode)
 	to_chat(src, other)
-
-
-
-
-/client/verb/donate()
-	set name = "donate"
-	set desc = "Donate to the server"
-	set hidden = 1
-	var/donateurl = CONFIG_GET(string/donateurl)
-	if(donateurl)
-		if(alert("This will open the Donation page in your browser. Are you sure?",,"Yes","No")!="Yes")
-			return
-		src << link(donateurl)
-	else
-		to_chat(src, "<span class='danger'>The Donation URL is not set in the server configuration.</span>")
-	return
-
-/client/verb/discord()
-	set name = "discord"
-	set desc = "Join the Discord"
-	set hidden = 1
-	var/discordurl = CONFIG_GET(string/discordurl)
-	if(discordurl)
-		if(alert("This will open the Discord invite in your browser. Are you sure?",,"Yes","No")!="Yes")
-			return
-		src << link(discordurl)
-	else
-		to_chat(src, "<span class='danger'>The Discord invite is not set in the server configuration.</span>")
-	return
-
-/client/verb/map() // i couldn't be fucked to config-ize this
-	set name = "map"
-	set desc = "View the current map in the webviewer"
-	set hidden = 1
-	var/map_in_url
-	switch(SSmapping.config?.map_name)
-		if("Box Station")			map_in_url = "box"
-		if("Delta Station")			map_in_url = "delta"
-		if("Donutstation")			map_in_url = "donut"
-		if("MetaStation")			map_in_url = "meta"
-		if("Kilo Station")          map_in_url = "kilo"
-		if("PubbyStation")          map_in_url = "pubby"
-	if(map_in_url)
-		if(alert("This will open the current map in your browser. Are you sure?",,"Yes","No")!="Yes")
-			return
-		src << link("http://beestation13.com/map/[map_in_url]")
-	else
-		to_chat(src, "<span class='danger'>The current map is either invalid or unavailable.</span>")

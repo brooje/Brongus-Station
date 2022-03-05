@@ -10,10 +10,10 @@ GLOBAL_LIST_EMPTY(total_extraction_beacons)
 	var/list/beacon_networks = list("station")
 	var/uses_left = 3
 	var/can_use_indoors
-	var/safe_for_living_creatures = 1
+	var/safe_for_living_creatures = TRUE
 	var/max_force_fulton = MOVE_FORCE_STRONG
 
-/obj/item/extraction_pack/examine()
+/obj/item/extraction_pack/examine(mob/user)
 	. = ..()
 	. += "It has [uses_left] use\s remaining."
 
@@ -31,7 +31,7 @@ GLOBAL_LIST_EMPTY(total_extraction_beacons)
 	else
 		var/A
 
-		A = input("Select a beacon to connect to", "Balloon Extraction Pack", A) as null|anything in sortNames(possible_beacons)
+		A = input("Select a beacon to connect to", "Balloon Extraction Pack", A) as null|anything in possible_beacons
 
 		if(!A)
 			return
@@ -41,12 +41,12 @@ GLOBAL_LIST_EMPTY(total_extraction_beacons)
 /obj/item/extraction_pack/afterattack(atom/movable/A, mob/living/carbon/human/user, flag, params)
 	. = ..()
 	if(!beacon)
-		to_chat(user, "[src] is not linked to a beacon, and cannot be used.")
+		to_chat(user, "<span class='warning'>[src] is not linked to a beacon, and cannot be used!</span>")
 		return
 	if(!can_use_indoors)
 		var/area/area = get_area(A)
 		if(!area.outdoors)
-			to_chat(user, "[src] can only be used on things that are outdoors!")
+			to_chat(user, "<span class='warning'>[src] can only be used on things that are outdoors!</span>")
 			return
 	if(!flag)
 		return
@@ -54,28 +54,30 @@ GLOBAL_LIST_EMPTY(total_extraction_beacons)
 		return
 	else
 		if(!safe_for_living_creatures && check_for_living_mobs(A))
-			to_chat(user, "[src] is not safe for use with living creatures, they wouldn't survive the trip back!")
+			to_chat(user, "<span class='warning'>[src] is not safe for use with living creatures, they wouldn't survive the trip back!</span>")
 			return
 		if(!isturf(A.loc)) // no extracting stuff inside other stuff
 			return
 		if(A.anchored || (A.move_resist > max_force_fulton))
 			return
 		to_chat(user, "<span class='notice'>You start attaching the pack to [A]...</span>")
-		if(do_after(user,50,target=A))
+		if(do_after(user, 50, target = A))
 			to_chat(user, "<span class='notice'>You attach the pack to [A] and activate it.</span>")
 			if(loc == user && istype(user.back, /obj/item/storage/backpack))
 				var/obj/item/storage/backpack/B = user.back
-				SEND_SIGNAL(B, COMSIG_TRY_STORAGE_INSERT, src, user, FALSE, FALSE)
+				if(B.can_be_inserted(src, stop_messages = TRUE))
+					B.handle_item_insertion(src)
 			uses_left--
 			if(uses_left <= 0)
-				user.transferItemToLoc(src, A, TRUE)
+				user.drop_item(src)
+				forceMove(A)
 			var/mutable_appearance/balloon
 			var/mutable_appearance/balloon2
 			var/mutable_appearance/balloon3
 			if(isliving(A))
 				var/mob/living/M = A
-				M.Paralyze(320) // Keep them from moving during the duration of the extraction
-				M.buckled?.unbuckle_mob(M, TRUE) // Unbuckle them to prevent anchoring problems
+				M.Weaken(16) // Keep them from moving during the duration of the extraction
+				M.buckled = 0 // Unbuckle them to prevent anchoring problems
 			else
 				A.anchored = TRUE
 				A.density = FALSE
@@ -107,14 +109,16 @@ GLOBAL_LIST_EMPTY(total_extraction_beacons)
 			animate(holder_obj, pixel_z = 1000, time = 30)
 			if(ishuman(A))
 				var/mob/living/carbon/human/L = A
-				L.SetUnconscious(0)
+				L.SetParalysis(0)
 				L.drowsyness = 0
 				L.SetSleeping(0)
 			sleep(30)
 			var/list/flooring_near_beacon = list()
-			for(var/turf/open/floor in (RANGE_TURFS(1, beacon)-get_turf(beacon)))
+			for(var/turf/floor in orange(1, beacon))
+				if(floor.density)
+					continue
 				flooring_near_beacon += floor
-			do_teleport(holder_obj, pick(flooring_near_beacon), no_effects = TRUE, channel = TELEPORT_CHANNEL_FREE)
+			holder_obj.forceMove(pick(flooring_near_beacon))
 			animate(holder_obj, pixel_z = 10, time = 50)
 			sleep(50)
 			animate(holder_obj, pixel_z = 15, time = 10)
@@ -145,7 +149,7 @@ GLOBAL_LIST_EMPTY(total_extraction_beacons)
 	icon_state = "subspace_amplifier"
 
 /obj/item/fulton_core/attack_self(mob/user)
-	if(do_after(user,15,target = user) && !QDELETED(src))
+	if(do_after(user, 15, target = user) && !QDELETED(src))
 		new /obj/structure/extraction_point(get_turf(user))
 		qdel(src)
 
@@ -158,33 +162,33 @@ GLOBAL_LIST_EMPTY(total_extraction_beacons)
 	density = FALSE
 	var/beacon_network = "station"
 
-/obj/structure/extraction_point/Initialize()
+/obj/structure/extraction_point/Initialize(mapload)
 	. = ..()
-	name += " ([rand(100,999)]) ([get_area_name(src, TRUE)])"
+	name += " ([rand(100,999)]) ([get_location_name(src)])"
 	GLOB.total_extraction_beacons += src
 
 /obj/structure/extraction_point/Destroy()
 	GLOB.total_extraction_beacons -= src
-	..()
+	return ..()
 
 /obj/effect/extraction_holder
 	name = "extraction holder"
-	desc = "you shouldn't see this"
+	desc = "you shouldnt see this"
 	var/atom/movable/stored_obj
 
 /obj/item/extraction_pack/proc/check_for_living_mobs(atom/A)
 	if(isliving(A))
 		var/mob/living/L = A
 		if(L.stat != DEAD)
-			return 1
+			return TRUE
 	for(var/thing in A.GetAllContents())
 		if(isliving(A))
 			var/mob/living/L = A
 			if(L.stat != DEAD)
-				return 1
-	return 0
+				return TRUE
+	return FALSE
 
-/obj/effect/extraction_holder/singularity_pull()
+/obj/effect/extraction_holder/singularity_act()
 	return
 
 /obj/effect/extraction_holder/singularity_pull()

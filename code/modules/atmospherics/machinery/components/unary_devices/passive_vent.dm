@@ -1,56 +1,69 @@
-/obj/machinery/atmospherics/components/unary/passive_vent
-	icon_state = "passive_vent_map-2"
-
-	name = "passive vent"
-	desc = "It is an open vent."
-	can_unwrench = TRUE
-
-	level = 1
+/obj/machinery/atmospherics/unary/passive_vent
+	icon = 'icons/atmos/vent_pump.dmi'
+	icon_state = "map_vent"
+	plane = FLOOR_PLANE
 	layer = GAS_SCRUBBER_LAYER
+	name = "passive vent"
+	desc = "A large air vent"
 
-	pipe_state = "pvent"
+	can_unwrench = 1
 
-/obj/machinery/atmospherics/components/unary/passive_vent/update_icon_nopipes()
-	cut_overlays()
-	if(showpipe)
-		var/image/cap = getpipeimage(icon, "vent_cap", initialize_directions, piping_layer = piping_layer)
-		add_overlay(cap)
-	icon_state = "passive_vent"
+	var/volume = 250
 
-/obj/machinery/atmospherics/components/unary/passive_vent/process_atmos()
+/obj/machinery/atmospherics/unary/passive_vent/high_volume
+	name = "large passive vent"
+	volume = 1000
+
+/obj/machinery/atmospherics/unary/passive_vent/New()
+	..()
+	air_contents.volume = volume
+
+/obj/machinery/atmospherics/unary/passive_vent/process_atmos()
 	..()
 
-	if(!isopenturf(loc))
+	if(!node)
+		return 0
+
+	var/turf/T = loc
+	if(T.density) //No, you should not be able to get free air from walls
 		return
 
 	var/datum/gas_mixture/environment = loc.return_air()
-	var/environment_pressure = environment.return_pressure()
-	var/pressure_delta = abs(environment_pressure - airs[1].return_pressure())
 
-	if((environment.return_temperature() || airs[1].return_temperature()) && pressure_delta > 0.5)
-		if(environment_pressure < airs[1].return_pressure())
-			var/air_temperature = (environment.return_temperature() > 0) ? environment.return_temperature() : airs[1].return_temperature()
-			var/transfer_moles = (pressure_delta * environment.return_volume()) / (air_temperature * R_IDEAL_GAS_EQUATION)
-			var/datum/gas_mixture/removed = airs[1].remove(transfer_moles)
+	var/pressure_delta = air_contents.return_pressure() - environment.return_pressure()
+
+	// based on pressure_pump to equalize pressure
+	// already equalized
+	if(abs(pressure_delta) < 0.01)
+		return 1
+
+	if(pressure_delta > 0)
+		// transfer from pipe air to environment
+		if((air_contents.total_moles() > 0) && (air_contents.temperature > 0))
+			var/transfer_moles = pressure_delta * environment.volume / (air_contents.temperature * R_IDEAL_GAS_EQUATION)
+			transfer_moles = min(transfer_moles, volume)
+
+			var/datum/gas_mixture/removed = air_contents.remove(transfer_moles)
 			loc.assume_air(removed)
 			air_update_turf()
-		else
-			var/air_temperature = (airs[1].return_temperature() > 0) ? airs[1].return_temperature() : environment.return_temperature()
-			var/output_volume = airs[1].return_volume()
-			var/transfer_moles = (pressure_delta * output_volume) / (air_temperature * R_IDEAL_GAS_EQUATION)
-			transfer_moles = min(transfer_moles, environment.total_moles()*airs[1].return_volume()/environment.return_volume())
+	else
+		// transfer from environment to pipe air
+		pressure_delta = -pressure_delta
+		if((environment.total_moles() > 0) && (environment.temperature > 0))
+			var/transfer_moles = pressure_delta * air_contents.volume / (environment.temperature * R_IDEAL_GAS_EQUATION)
+			transfer_moles = min(transfer_moles, volume)
+
 			var/datum/gas_mixture/removed = loc.remove_air(transfer_moles)
-			airs[1].merge(removed)
+			air_contents.merge(removed)
 			air_update_turf()
-	update_parents()
 
-/obj/machinery/atmospherics/components/unary/passive_vent/can_crawl_through()
-	return TRUE
+	parent.update = 1
+	return 1
 
-/obj/machinery/atmospherics/components/unary/passive_vent/layer1
-	piping_layer = 1
-	icon_state = "passive_vent_map-1"
-
-/obj/machinery/atmospherics/components/unary/passive_vent/layer3
-	piping_layer = 3
-	icon_state = "passive_vent_map-3"
+/obj/machinery/atmospherics/unary/passive_vent/update_underlays()
+	if(..())
+		underlays.Cut()
+		var/turf/T = get_turf(src)
+		if(!istype(T))
+			return
+		add_underlay(T, node, dir)

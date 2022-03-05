@@ -1,10 +1,5 @@
-/**
- * @file
- * @copyright 2020 Aleksej Komarov
- * @license MIT
- */
-
 import { classes, pureComponentHooks } from 'common/react';
+import { IS_IE8 } from '../byond';
 import { Box, unit } from './Box';
 
 export const computeFlexProps = props => {
@@ -13,28 +8,32 @@ export const computeFlexProps = props => {
     direction,
     wrap,
     align,
+    alignContent,
     justify,
     inline,
     spacing = 0,
+    spacingPrecise = 0,
     ...rest
   } = props;
   return {
     className: classes([
       'Flex',
-      Byond.IS_LTE_IE10 && (
+      IS_IE8 && (
         direction === 'column'
-          ? 'Flex--iefix--column'
-          : 'Flex--iefix'
+          ? 'Flex--ie8--column'
+          : 'Flex--ie8'
       ),
       inline && 'Flex--inline',
       spacing > 0 && 'Flex--spacing--' + spacing,
+      spacingPrecise > 0 && 'Flex--spacingPrecise--' + spacingPrecise,
       className,
     ]),
     style: {
       ...rest.style,
       'flex-direction': direction,
-      'flex-wrap': wrap === true ? 'wrap' : wrap,
+      'flex-wrap': wrap,
       'align-items': align,
+      'align-content': alignContent,
       'justify-content': justify,
     },
     ...rest,
@@ -50,7 +49,6 @@ Flex.defaultHooks = pureComponentHooks;
 export const computeFlexItemProps = props => {
   const {
     className,
-    style,
     grow,
     order,
     shrink,
@@ -63,12 +61,11 @@ export const computeFlexItemProps = props => {
   return {
     className: classes([
       'Flex__item',
-      Byond.IS_LTE_IE10 && 'Flex__item--iefix',
-      Byond.IS_LTE_IE10 && grow > 0 && 'Flex__item--iefix--grow',
+      IS_IE8 && 'Flex__item--ie8',
       className,
     ]),
     style: {
-      ...style,
+      ...rest.style,
       'flex-grow': grow,
       'flex-shrink': shrink,
       'flex-basis': unit(basis),

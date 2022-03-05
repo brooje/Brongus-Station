@@ -1,94 +1,103 @@
+
 //////Kitchen Spike
-#define VIABLE_MOB_CHECK(X) (isliving(X) && !issilicon(X) && !isbot(X))
 
 /obj/structure/kitchenspike_frame
 	name = "meatspike frame"
 	icon = 'icons/obj/kitchen.dmi'
 	icon_state = "spikeframe"
 	desc = "The frame of a meat spike."
-	density = TRUE
-	anchored = FALSE
+	density = 1
+	anchored = 0
 	max_integrity = 200
 
 /obj/structure/kitchenspike_frame/attackby(obj/item/I, mob/user, params)
 	add_fingerprint(user)
-	if(default_unfasten_wrench(user, I))
-		return
+	if(istype(I, /obj/item/wrench))
+		if(anchored)
+			to_chat(user, "<span class='notice'>You unwrench [src] from the floor.</span>")
+			anchored = 0
+		else
+			to_chat(user, "<span class='notice'>You wrench [src] into place.</span>")
+			anchored = 1
 	else if(istype(I, /obj/item/stack/rods))
 		var/obj/item/stack/rods/R = I
 		if(R.get_amount() >= 4)
 			R.use(4)
 			to_chat(user, "<span class='notice'>You add spikes to the frame.</span>")
-			var/obj/F = new /obj/structure/kitchenspike(src.loc)
-			transfer_fingerprints_to(F)
-			qdel(src)
-	else if(I.tool_behaviour == TOOL_WELDER)
-		if(!I.tool_start_check(user, amount=0))
-			return
-		to_chat(user, "<span class='notice'>You begin cutting \the [src] apart...</span>")
-		if(I.use_tool(src, user, 50, volume=50))
-			visible_message("<span class='notice'>[user] slices apart \the [src].</span>",
-				"<span class='notice'>You cut \the [src] apart with \the [I].</span>",
-				"<span class='italics'>You hear welding.</span>")
-			new /obj/item/stack/sheet/iron(src.loc, 4)
+			new /obj/structure/kitchenspike(loc)
+			add_fingerprint(user)
 			qdel(src)
 		return
 	else
 		return ..()
+
 
 /obj/structure/kitchenspike
 	name = "meat spike"
 	icon = 'icons/obj/kitchen.dmi'
 	icon_state = "spike"
 	desc = "A spike for collecting meat from animals."
-	density = TRUE
-	anchored = TRUE
-	buckle_lying = 0
-	can_buckle = 1
+	density = 1
+	anchored = 1
+	buckle_lying = FALSE
+	can_buckle = TRUE
 	max_integrity = 250
-
-/obj/structure/kitchenspike/attack_paw(mob/user)
-	return attack_hand(user)
-
-/obj/structure/kitchenspike/crowbar_act(mob/living/user, obj/item/I)
-	if(has_buckled_mobs())
-		to_chat(user, "<span class='notice'>You can't do that while something's on the spike!</span>")
-		return TRUE
-
-	if(I.use_tool(src, user, 20, volume=100))
-		to_chat(user, "<span class='notice'>You pry the spikes out of the frame.</span>")
-		deconstruct(TRUE)
-	return TRUE
 
 //ATTACK HAND IGNORING PARENT RETURN VALUE
 /obj/structure/kitchenspike/attack_hand(mob/user)
-	if(VIABLE_MOB_CHECK(user.pulling) && user.a_intent == INTENT_GRAB && !has_buckled_mobs())
-		var/mob/living/L = user.pulling
-		if(do_mob(user, src, 120))
-			if(has_buckled_mobs()) //to prevent spam/queing up attacks
-				return
-			if(L.buckled)
-				return
-			if(user.pulling != L)
-				return
-			playsound(src.loc, 'sound/effects/splat.ogg', 25, 1)
-			L.visible_message("<span class='danger'>[user] slams [L] onto the meat spike!</span>", "<span class='userdanger'>[user] slams you onto the meat spike!</span>", "<span class='italics'>You hear a squishy wet noise.</span>")
-			L.forceMove(drop_location())
-			L.emote("scream")
-			L.add_splatter_floor()
-			L.adjustBruteLoss(30)
-			L.setDir(2)
-			buckle_mob(L, force=1)
-			var/matrix/m180 = matrix(L.transform)
-			m180.Turn(180)
-			animate(L, transform = m180, time = 3)
-			L.pixel_y = L.get_standard_pixel_y_offset(180)
-	else if (has_buckled_mobs())
+	if(has_buckled_mobs())
 		for(var/mob/living/L in buckled_mobs)
 			user_unbuckle_mob(L, user)
 	else
 		..()
 
+/obj/structure/kitchenspike/attackby(obj/item/grab/G, mob/user)
+	if(istype(G, /obj/item/crowbar))
+		if(!has_buckled_mobs())
+			playsound(loc, G.usesound, 100, 1)
+			if(do_after(user, 20 * G.toolspeed, target = src))
+				to_chat(user, "<span class='notice'>You pry the spikes out of the frame.</span>")
+				deconstruct(TRUE)
+		else
+			to_chat(user, "<span class='notice'>You can't do that while something's on the spike!</span>")
+		return
+	if(!istype(G, /obj/item/grab) || !G.affecting)
+		return
+	if(has_buckled_mobs())
+		to_chat(user, "<span class = 'danger'>The spike already has something on it, finish collecting its meat first!</span>")
+		return
+	if(isliving(G.affecting))
+		if(!has_buckled_mobs())
+			if(do_mob(user, src, 120))
+				var/mob/living/affected = G.affecting
+				if(spike(affected))
+					affected.visible_message("<span class='danger'>[user] slams [affected] onto the meat spike!</span>", "<span class='userdanger'>[user] slams you onto the meat spike!</span>", "<span class='italics'>You hear a squishy wet noise.</span>")
+		return
+	return ..()
+
+/obj/structure/kitchenspike/proc/spike(mob/living/victim)
+
+	if(!istype(victim))
+		return FALSE
+
+	if(has_buckled_mobs()) //to prevent spam/queing up attacks
+		return FALSE
+	if(victim.buckled)
+		return FALSE
+	playsound(loc, 'sound/effects/splat.ogg', 25, 1)
+	victim.forceMove(drop_location())
+	victim.emote("scream")
+	if(ishuman(victim))
+		var/mob/living/carbon/human/H = victim
+		H.add_splatter_floor()
+	victim.adjustBruteLoss(30)
+	victim.setDir(2)
+	buckle_mob(victim, force = TRUE)
+	var/matrix/m180 = matrix(victim.transform)
+	m180.Turn(180)
+	animate(victim, transform = m180, time = 3)
+	victim.pixel_y = victim.get_standard_pixel_y_offset(180)
+	return TRUE
 
 
 /obj/structure/kitchenspike/user_buckle_mob(mob/living/M, mob/living/user) //Don't want them getting put on the rack other than by spiking
@@ -98,20 +107,17 @@
 	if(buckled_mob)
 		var/mob/living/M = buckled_mob
 		if(M != user)
-			M.visible_message(\
-				"[user] tries to pull [M] free of [src]!",\
+			M.visible_message("<span class='notice'>[user] tries to pull [M] free of [src]!</span>",\
 				"<span class='notice'>[user] is trying to pull you off [src], opening up fresh wounds!</span>",\
 				"<span class='italics'>You hear a squishy wet noise.</span>")
 			if(!do_after(user, 300, target = src))
-				if(M?.buckled)
-					M.visible_message(\
-					"[user] fails to free [M]!",\
+				if(M && M.buckled)
+					M.visible_message("<span class='notice'>[user] fails to free [M]!</span>",\
 					"<span class='notice'>[user] fails to pull you off of [src].</span>")
 				return
 
 		else
-			M.visible_message(\
-			"<span class='warning'>[M] struggles to break free from [src]!</span>",\
+			M.visible_message("<span class='warning'>[M] struggles to break free from [src]!</span>",\
 			"<span class='notice'>You struggle to break free from [src], exacerbating your wounds! (Stay still for two minutes.)</span>",\
 			"<span class='italics'>You hear a wet squishing noise..</span>")
 			M.adjustBruteLoss(30)
@@ -124,15 +130,17 @@
 		release_mob(M)
 
 /obj/structure/kitchenspike/proc/release_mob(mob/living/M)
+	M.adjustBruteLoss(30)
+	src.visible_message(text("<span class='danger'>[M] falls free of [src]!</span>"))
+	unbuckle_mob(M, force = TRUE)
+	M.emote("scream")
+	M.AdjustWeakened(10)
+
+/obj/structure/kitchenspike/post_unbuckle_mob(mob/living/M)
+	M.pixel_y = M.get_standard_pixel_y_offset(0)
 	var/matrix/m180 = matrix(M.transform)
 	m180.Turn(180)
 	animate(M, transform = m180, time = 3)
-	M.pixel_y = M.get_standard_pixel_y_offset(180)
-	M.adjustBruteLoss(30)
-	src.visible_message(text("<span class='danger'>[M] falls free of [src]!</span>"))
-	unbuckle_mob(M,force=1)
-	M.emote("scream")
-	M.AdjustParalyzed(20)
 
 /obj/structure/kitchenspike/Destroy()
 	if(has_buckled_mobs())
@@ -142,11 +150,9 @@
 
 /obj/structure/kitchenspike/deconstruct(disassembled = TRUE)
 	if(disassembled)
-		var/obj/F = new /obj/structure/kitchenspike_frame(src.loc)
+		var/obj/F = new /obj/structure/kitchenspike_frame(loc)
 		transfer_fingerprints_to(F)
 	else
-		new /obj/item/stack/sheet/iron(src.loc, 4)
+		new /obj/item/stack/sheet/metal(loc, 4)
 	new /obj/item/stack/rods(loc, 4)
 	qdel(src)
-
-#undef VIABLE_MOB_CHECK

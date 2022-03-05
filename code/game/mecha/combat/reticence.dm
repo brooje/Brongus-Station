@@ -1,28 +1,28 @@
 /obj/mecha/combat/reticence
 	desc = "A silent, fast, and nigh-invisible miming exosuit. Popular among mimes and mime assassins."
-	name = "\improper reticence"
-	icon_state = "reticence"
+	name = "\improper Reticence"
+	icon_state = "mime"
+	initial_icon = "mime"
 	step_in = 2
 	dir_in = 1 //Facing North.
-	max_integrity = 100
-	deflect_chance = 3
-	armor = list("melee" = 25, "bullet" = 20, "laser" = 30, "energy" = 15, "bomb" = 0, "bio" = 0, "rad" = 0, "fire" = 100, "acid" = 100, "stamina" = 0)
+	max_integrity = 150
+	deflect_chance = 30
+	armor = list(MELEE = 25, BULLET = 20, LASER = 30, ENERGY = 15, BOMB = 0, BIO = 0, RAD = 0, FIRE = 100, ACID = 100)
 	max_temperature = 15000
 	wreckage = /obj/structure/mecha_wreckage/reticence
-	operation_req_access = list(ACCESS_THEATRE)
-	internals_req_access = list(ACCESS_MECH_SCIENCE, ACCESS_THEATRE)
+	operation_req_access = list(ACCESS_MIME)
 	add_req_access = 0
-	internal_damage_threshold = 25
-	max_equip = 2
+	internal_damage_threshold = 60
+	max_equip = 3
 	step_energy_drain = 3
-	color = "#87878715"
+	normal_step_energy_drain = 3
 	stepsound = null
 	turnsound = null
-	opacity = 0
+	starting_voice = /obj/item/mecha_modkit/voice/silent
 
-/obj/mecha/combat/reticence/loaded/Initialize()
-	. = ..()
-	var/obj/item/mecha_parts/mecha_equipment/ME = new /obj/item/mecha_parts/mecha_equipment/weapon/ballistic/silenced
+/obj/mecha/combat/reticence/loaded/New()
+	..()
+	var/obj/item/mecha_parts/mecha_equipment/ME = new /obj/item/mecha_parts/mecha_equipment/weapon/ballistic/carbine/silenced
 	ME.attach(src)
-	ME = new /obj/item/mecha_parts/mecha_equipment/rcd //HAHA IT MAKES WALLS GET IT
+	ME = new /obj/item/mecha_parts/mecha_equipment/mimercd //HAHA IT MAKES WALLS GET IT
 	ME.attach(src)

@@ -1,94 +1,96 @@
+
 /obj/machinery/computer/station_alert
 	name = "station alert console"
 	desc = "Used to access the station's automated alert system."
+	icon_keyboard = "tech_key"
 	icon_screen = "alert:0"
-	icon_keyboard = "atmos_key"
-	circuit = /obj/item/circuitboard/computer/stationalert
-
-
-	var/alarms = list("Fire" = list(), "Atmosphere" = list(), "Power" = list())
-
 	light_color = LIGHT_COLOR_CYAN
+	circuit = /obj/item/circuitboard/stationalert_engineering
+	var/ui_x = 325
+	var/ui_y = 500
+	var/list/alarms_listend_for = list("Fire", "Atmosphere", "Power")
 
-/obj/machinery/computer/station_alert/Initialize()
+/obj/machinery/computer/station_alert/Initialize(mapload)
 	. = ..()
 	GLOB.alert_consoles += src
+	RegisterSignal(SSalarm, COMSIG_TRIGGERED_ALARM, .proc/alarm_triggered)
+	RegisterSignal(SSalarm, COMSIG_CANCELLED_ALARM, .proc/alarm_cancelled)
 
 /obj/machinery/computer/station_alert/Destroy()
 	GLOB.alert_consoles -= src
 	return ..()
 
+/obj/machinery/computer/station_alert/attack_ai(mob/user)
+	add_fingerprint(user)
+	if(stat & (BROKEN|NOPOWER))
+		return
+	ui_interact(user)
 
-/obj/machinery/computer/station_alert/ui_state(mob/user)
-	return GLOB.default_state
+/obj/machinery/computer/station_alert/attack_hand(mob/user)
+	add_fingerprint(user)
+	if(stat & (BROKEN|NOPOWER))
+		return
+	ui_interact(user)
 
-/obj/machinery/computer/station_alert/ui_interact(mob/user, datum/tgui/ui)
-	ui = SStgui.try_update_ui(user, src, ui)
+/obj/machinery/computer/station_alert/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
+	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
 	if(!ui)
-		ui = new(user, src, "StationAlertConsole")
+		ui = new(user, src, ui_key, "StationAlertConsole", name, ui_x, ui_y, master_ui, state)
 		ui.open()
 
 /obj/machinery/computer/station_alert/ui_data(mob/user)
 	var/list/data = list()
 
 	data["alarms"] = list()
-	for(var/class in alarms)
+	for(var/class in SSalarm.alarms)
+		if(!(class in alarms_listend_for))
+			continue
 		data["alarms"][class] = list()
-		for(var/area in alarms[class])
-			data["alarms"][class] += area
+		for(var/area in SSalarm.alarms[class])
+			for(var/thing in SSalarm.alarms[class][area][3])
+				var/atom/A = locateUID(thing)
+				if(atoms_share_level(A, src))
+					data["alarms"][class] += area
 
 	return data
 
-/obj/machinery/computer/station_alert/proc/triggerAlarm(class, area/A, O, obj/source)
-	if(source.z != z)
+/obj/machinery/computer/station_alert/proc/alarm_triggered(src, class, area/A, list/O, obj/alarmsource)
+	if(!(class in alarms_listend_for))
+		return
+	if(alarmsource.z != z)
 		return
 	if(stat & (BROKEN))
 		return
+	update_icon()
 
-	var/list/L = alarms[class]
-	for(var/I in L)
-		if (I == A.name)
-			var/list/alarm = L[I]
-			var/list/sources = alarm[3]
-			if (!(source in sources))
-				sources += source
-			return 1
-	var/obj/machinery/camera/C = null
-	var/list/CL = null
-	if(O && islist(O))
-		CL = O
-		if (CL.len == 1)
-			C = CL[1]
-	else if(O && istype(O, /obj/machinery/camera))
-		C = O
-	L[A.name] = list(A, (C ? C : O), list(source))
-	return 1
-
-
-/obj/machinery/computer/station_alert/proc/cancelAlarm(class, area/A, obj/origin)
+/obj/machinery/computer/station_alert/proc/alarm_cancelled(src, class, area/A, obj/origin, cleared)
+	if(!(class in alarms_listend_for))
+		return
+	if(origin.z != z)
+		return
 	if(stat & (BROKEN))
 		return
-	var/list/L = alarms[class]
-	var/cleared = 0
-	for (var/I in L)
-		if (I == A.name)
-			var/list/alarm = L[I]
-			var/list/srcs  = alarm[3]
-			if (origin in srcs)
-				srcs -= origin
-			if (srcs.len == 0)
-				cleared = 1
-				L -= I
-	return !cleared
+	update_icon()
 
 /obj/machinery/computer/station_alert/update_icon()
-	..()
-	if(stat & (NOPOWER|BROKEN))
-		return
 	var/active_alarms = FALSE
-	for(var/cat in alarms)
-		var/list/L = alarms[cat]
-		if(L.len)
+	var/list/list/temp_alarm_list = SSalarm.alarms.Copy()
+	for(var/cat in temp_alarm_list)
+		if(!(cat in alarms_listend_for))
+			continue
+		var/list/list/L = temp_alarm_list[cat].Copy()
+		for(var/alarm in L)
+			var/list/list/alm = L[alarm].Copy()
+			var/list/list/sources = alm[3].Copy()
+			for(var/thing in sources)
+				var/atom/A = locateUID(thing)
+				if(A && A.z != z)
+					L -= alarm
+		if(length(L))
 			active_alarms = TRUE
 	if(active_alarms)
-		add_overlay("alert:2")
+		icon_screen = "alert:2"
+	else
+		icon_screen = "alert:0"
+
+	..()

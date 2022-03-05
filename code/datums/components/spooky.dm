@@ -12,7 +12,7 @@
 			U.Jitter(35)
 			U.stuttering = 20
 			if(U.getStaminaLoss() > 95)
-				to_chat(U, "<font color ='red', size ='4'><B>Your ears weren't meant for this spectral sound.</B></font>")
+				to_chat(U, "<font color='red' size='4'><b>Your ears weren't meant for this spectral sound.</b></font>")
 				spectral_change(U)
 			return
 
@@ -20,12 +20,9 @@
 		var/mob/living/carbon/human/H = C
 		if(istype(H.dna.species, /datum/species/skeleton))
 			return //undeads are unaffected by the spook-pocalypse.
-		if(istype(H.dna.species, /datum/species/zombie))
-			H.adjustStaminaLoss(25)
-			H.Paralyze(15) //zombies can't resist the doot
 		C.Jitter(35)
 		C.stuttering = 20
-		if((!istype(H.dna.species, /datum/species/skeleton)) && (!istype(H.dna.species, /datum/species/golem)) && (!istype(H.dna.species, /datum/species/android)) && (!istype(H.dna.species, /datum/species/jelly)))
+		if(!istype(H.dna.species, /datum/species/diona) && !istype(H.dna.species, /datum/species/machine) && !istype(H.dna.species, /datum/species/slime) && !istype(H.dna.species, /datum/species/golem) && !istype(H.dna.species, /datum/species/plasmaman))
 			C.adjustStaminaLoss(25) //boneless humanoids don't lose the will to live
 		to_chat(C, "<font color='red' size='4'><B>DOOT</B></font>")
 		spectral_change(H)
@@ -35,8 +32,8 @@
 		C.stuttering = 20
 
 /datum/component/spooky/proc/spectral_change(mob/living/carbon/human/H, mob/user)
-	if((H.getStaminaLoss() > 95) && (!istype(H.dna.species, /datum/species/skeleton)) && (!istype(H.dna.species, /datum/species/golem)) && (!istype(H.dna.species, /datum/species/android)) && (!istype(H.dna.species, /datum/species/jelly)))
-		H.Paralyze(20)
+	if((H.getStaminaLoss() > 95) && (!istype(H.dna.species, /datum/species/diona) && !istype(H.dna.species, /datum/species/machine) && !istype(H.dna.species, /datum/species/slime) && !istype(H.dna.species, /datum/species/golem) && !istype(H.dna.species, /datum/species/plasmaman) && !istype(H.dna.species, /datum/species/skeleton)))
+		H.Stun(20)
 		H.set_species(/datum/species/skeleton)
 		H.visible_message("<span class='warning'>[H] has given up on life as a mortal.</span>")
 		var/T = get_turf(H)
@@ -48,13 +45,14 @@
 			else if(prob(30))
 				new/obj/item/instrument/trombone/spectral(T)
 			else
-				to_chat(H, "The spooky gods forgot to ship your instrument. Better luck next unlife.")
-		to_chat(H, "<B>You are the spooky skeleton!</B>")
-		to_chat(H, "A new life and identity has begun. Help your fellow skeletons into bringing out the spooky-pocalypse. You haven't forgotten your past life, and are still beholden to  past loyalties.")
+				to_chat(H, "<span class='boldwarning'>The spooky gods forgot to ship your instrument. Better luck next unlife.</span>")
+		to_chat(H, "<span class='boldnotice'>You are the spooky skeleton!</span>")
+		to_chat(H, "<span class='boldnotice'>A new life and identity has begun. Help your fellow skeletons into bringing out the spooky-pocalypse. You haven't forgotten your past life, and are still beholden to past loyalties.</span>")
 		change_name(H)	//time for a new name!
 
 /datum/component/spooky/proc/change_name(mob/living/carbon/human/H)
-	var/t = sanitize_name(stripped_input(H, "Enter your new skeleton name", H.real_name, null, MAX_NAME_LEN))
+	var/t = stripped_input(H, "Enter your new skeleton name", H.real_name, null, MAX_NAME_LEN)
 	if(!t)
 		t = "spooky skeleton"
-	H.fully_replace_character_name(null, t)
+	H.real_name = t
+	H.name = t

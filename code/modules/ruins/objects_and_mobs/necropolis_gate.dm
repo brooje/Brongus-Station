@@ -4,7 +4,7 @@
 	desc = "A massive stone gateway."
 	icon = 'icons/effects/96x96.dmi'
 	icon_state = "gate_full"
-	flags_1 = ON_BORDER_1
+	flags = ON_BORDER
 	appearance_flags = 0
 	layer = TABLE_LAYER
 	anchored = TRUE
@@ -182,12 +182,12 @@ GLOBAL_DATUM(necropolis_gate, /obj/structure/necropolis_gate/legion_gate)
 
 		var/sound/legion_sound = sound('sound/creatures/legion_spawn.ogg')
 		for(var/mob/M in GLOB.player_list)
-			if(M.z == z)
+			if(M.z == z && M.client)
 				to_chat(M, "<span class='userdanger'>Discordant whispers flood your mind in a thousand voices. Each one speaks your name, over and over. Something horrible has been released.</span>")
 				M.playsound_local(T, null, 100, FALSE, 0, FALSE, pressure_affected = FALSE, S = legion_sound)
-				flash_color(M, flash_color = "#FF0000", flash_time = 50)
+				M.flash_screen_color("#FF0000", 5 SECONDS)
 		var/mutable_appearance/release_overlay = mutable_appearance('icons/effects/effects.dmi', "legiondoor")
-		notify_ghosts("Legion has been released in the [get_area(src)]!", source = src, alert_overlay = release_overlay, action = NOTIFY_JUMP, flashwindow = FALSE)
+		notify_ghosts("Legion has been released in the [get_area(src)]!", source = src, alert_overlay = release_overlay, action = NOTIFY_JUMP)
 
 /obj/effect/temp_visual/necropolis
 	icon = 'icons/effects/96x96.dmi'
@@ -263,7 +263,7 @@ GLOBAL_DATUM(necropolis_gate, /obj/structure/necropolis_gate/legion_gate)
 /obj/structure/stone_tile/singularity_pull()
 	return
 
-/obj/structure/stone_tile/Crossed(atom/movable/AM)
+/obj/structure/stone_tile/Crossed(atom/movable/AM, oldloc)
 	if(falling || fallen)
 		return
 	var/turf/T = get_turf(src)
@@ -277,7 +277,7 @@ GLOBAL_DATUM(necropolis_gate, /obj/structure/necropolis_gate/legion_gate)
 		L = AM
 	switch(fall_on_cross)
 		if(COLLAPSE_ON_CROSS, DESTROY_ON_CROSS)
-			if((I && I.w_class >= WEIGHT_CLASS_BULKY) || (L && !(L.movement_type & FLYING) && L.mob_size >= MOB_SIZE_HUMAN)) //too heavy! too big! aaah!
+			if((I && I.w_class >= WEIGHT_CLASS_BULKY) || (L && !(L.flying) && L.mob_size >= MOB_SIZE_HUMAN)) //too heavy! too big! aaah!
 				collapse()
 		if(UNIQUE_EFFECT)
 			crossed_effect(AM)
@@ -307,7 +307,7 @@ GLOBAL_DATUM(necropolis_gate, /obj/structure/necropolis_gate/legion_gate)
 	falling = FALSE
 	fallen = FALSE
 
-/obj/structure/stone_tile/proc/crossed_effect(atom/movable/AM)
+/obj/structure/stone_tile/proc/crossed_effect(atom/movable/AM, oldloc)
 	return
 
 /obj/structure/stone_tile/block

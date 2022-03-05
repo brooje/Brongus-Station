@@ -1,182 +1,225 @@
-// Every cycle, the pump uses the air in air_in to try and make air_out the perfect pressure.
-//
-// node1, air1, network1 correspond to input
-// node2, air2, network2 correspond to output
-//
-// Thus, the two variables affect pump operation are set in New():
-//   air1.volume
-//     This is the volume of gas available to the pump that may be transfered to the output
-//   air2.volume
-//     Higher quantities of this cause more air to be perfected later
-//     but overall network volume is also increased as this increases...
+/*
+Every cycle, the pump uses the air in air_in to try and make air_out the perfect pressure.
 
-/obj/machinery/atmospherics/components/binary/pump
-	icon_state = "pump_map-2"
+node1, air1, network1 correspond to input
+node2, air2, network2 correspond to output
+
+Thus, the two variables affect pump operation are set in New():
+	air1.volume
+		This is the volume of gas available to the pump that may be transfered to the output
+	air2.volume
+		Higher quantities of this cause more air to be perfected later
+			but overall network volume is also increased as this increases...
+*/
+
+/obj/machinery/atmospherics/binary/pump
+	icon = 'icons/atmos/pump.dmi'
+	icon_state = "map_off"
+
 	name = "gas pump"
-	desc = "A pump that moves gas by pressure."
+	desc = "A pump"
 
-	can_unwrench = TRUE
-	shift_underlay_only = FALSE
+	can_unwrench = 1
 
-	var/target_pressure = ONE_ATMOSPHERE
+	target_pressure = ONE_ATMOSPHERE
 
-	var/frequency = 0
 	var/id = null
-	var/datum/radio_frequency/radio_connection
 
-	construction_type = /obj/item/pipe/directional
-	pipe_state = "pump"
+/obj/machinery/atmospherics/binary/pump/detailed_examine()
+	return "This moves gas from one pipe to another. A higher target pressure demands more energy. The side with the red end is the output."
 
+// So we can CtrlClick without triggering the anchored message.
+/obj/machinery/atmospherics/binary/pump/can_be_pulled(user, grab_state, force, show_message)
+	return FALSE
 
-
-
-/obj/machinery/atmospherics/components/binary/pump/CtrlClick(mob/user)
-	if(can_interact(user))
-		on = !on
-		update_icon()
+/obj/machinery/atmospherics/binary/pump/CtrlClick(mob/living/user)
+	if(can_use_shortcut(user))
+		toggle(user)
 	return ..()
 
-/obj/machinery/atmospherics/components/binary/pump/AltClick(mob/user)
-	if(can_interact(user))
-		target_pressure = MAX_OUTPUT_PRESSURE
-		update_icon()
-	return
+/obj/machinery/atmospherics/binary/pump/AICtrlClick(mob/living/silicon/user)
+	toggle(user)
 
-/obj/machinery/atmospherics/components/binary/pump/Destroy()
-	SSradio.remove_object(src,frequency)
-	if(radio_connection)
-		radio_connection = null
+/obj/machinery/atmospherics/binary/pump/AltClick(mob/living/user)
+	if(can_use_shortcut(user))
+		set_max(user)
+
+/obj/machinery/atmospherics/binary/pump/AIAltClick(mob/living/silicon/user)
+	set_max(user)
+
+/obj/machinery/atmospherics/binary/pump/Destroy()
+	if(SSradio)
+		SSradio.remove_object(src, frequency)
+	radio_connection = null
 	return ..()
 
-/obj/machinery/atmospherics/components/binary/pump/update_icon_nopipes()
-	icon_state = (on && is_operational()) ? "pump_on" : "pump_off"
+/obj/machinery/atmospherics/binary/pump/on
+	icon_state = "map_on"
+	on = 1
 
-/obj/machinery/atmospherics/components/binary/pump/process_atmos()
-//	..()
-	if(!on || !is_operational())
-		return
+/obj/machinery/atmospherics/binary/pump/update_icon()
+	..()
 
-	var/datum/gas_mixture/air1 = airs[1]
-	var/datum/gas_mixture/air2 = airs[2]
+	if(!powered())
+		icon_state = "off"
+	else
+		icon_state = "[on ? "on" : "off"]"
 
-	if(air1.pump_gas_to(air2, target_pressure))
-		update_parents()
+/obj/machinery/atmospherics/binary/pump/update_underlays()
+	if(..())
+		underlays.Cut()
+		var/turf/T = get_turf(src)
+		if(!istype(T))
+			return
+		add_underlay(T, node1, turn(dir, -180))
+		add_underlay(T, node2, dir)
 
-//Radio remote control
-/obj/machinery/atmospherics/components/binary/pump/proc/set_frequency(new_frequency)
-	SSradio.remove_object(src, frequency)
-	frequency = new_frequency
-	if(frequency)
-		radio_connection = SSradio.add_object(src, frequency, filter = RADIO_ATMOSIA)
+/obj/machinery/atmospherics/binary/pump/process_atmos()
+	..()
+	if((stat & (NOPOWER|BROKEN)) || !on)
+		return 0
 
-/obj/machinery/atmospherics/components/binary/pump/proc/broadcast_status()
+	var/output_starting_pressure = air2.return_pressure()
+
+	if( (target_pressure - output_starting_pressure) < 0.01)
+		//No need to pump gas if target is already reached!
+		return 1
+
+	//Calculate necessary moles to transfer using PV=nRT
+	if((air1.total_moles() > 0) && (air1.temperature>0))
+		var/pressure_delta = target_pressure - output_starting_pressure
+		var/transfer_moles = pressure_delta*air2.volume/(air1.temperature * R_IDEAL_GAS_EQUATION)
+
+		//Actually transfer the gas
+		var/datum/gas_mixture/removed = air1.remove(transfer_moles)
+		air2.merge(removed)
+
+		parent1.update = 1
+
+		parent2.update = 1
+	return 1
+
+/obj/machinery/atmospherics/binary/pump/proc/broadcast_status()
 	if(!radio_connection)
-		return
+		return 0
 
-	var/datum/signal/signal = new(list(
+	var/datum/signal/signal = new
+	signal.transmission_method = 1 //radio signal
+	signal.source = src
+
+	signal.data = list(
 		"tag" = id,
 		"device" = "AGP",
 		"power" = on,
 		"target_output" = target_pressure,
 		"sigtype" = "status"
-	))
+	)
+
 	radio_connection.post_signal(src, signal, filter = RADIO_ATMOSIA)
+	return 1
 
-
-/obj/machinery/atmospherics/components/binary/pump/ui_state(mob/user)
-	return GLOB.default_state
-
-/obj/machinery/atmospherics/components/binary/pump/ui_interact(mob/user, datum/tgui/ui)
-	ui = SStgui.try_update_ui(user, src, ui)
-	if(!ui)
-		ui = new(user, src, "AtmosPump")
-		ui.open()
-
-/obj/machinery/atmospherics/components/binary/pump/ui_data()
-	var/data = list()
-	data["on"] = on
-	data["pressure"] = round(target_pressure)
-	data["max_pressure"] = round(MAX_OUTPUT_PRESSURE)
-	return data
-
-/obj/machinery/atmospherics/components/binary/pump/ui_act(action, params)
-	if(..())
-		return
-	switch(action)
-		if("power")
-			on = !on
-			investigate_log("was turned [on ? "on" : "off"] by [key_name(usr)]", INVESTIGATE_ATMOS)
-			. = TRUE
-		if("pressure")
-			var/pressure = params["pressure"]
-			if(pressure == "max")
-				pressure = MAX_OUTPUT_PRESSURE
-				. = TRUE
-			else if(text2num(pressure) != null)
-				pressure = text2num(pressure)
-				. = TRUE
-			if(.)
-				target_pressure = clamp(pressure, 0, MAX_OUTPUT_PRESSURE)
-				investigate_log("was set to [target_pressure] kPa by [key_name(usr)]", INVESTIGATE_ATMOS)
-	update_icon()
-
-/obj/machinery/atmospherics/components/binary/pump/atmosinit()
+/obj/machinery/atmospherics/binary/pump/atmos_init()
 	..()
 	if(frequency)
 		set_frequency(frequency)
 
-/obj/machinery/atmospherics/components/binary/pump/receive_signal(datum/signal/signal)
+/obj/machinery/atmospherics/binary/pump/receive_signal(datum/signal/signal)
 	if(!signal.data["tag"] || (signal.data["tag"] != id) || (signal.data["sigtype"]!="command"))
-		return
+		return 0
 
 	var/old_on = on //for logging
 
-	if("power" in signal.data)
+	if(signal.data["power"])
 		on = text2num(signal.data["power"])
 
-	if("power_toggle" in signal.data)
+	if(signal.data["power_toggle"])
 		on = !on
 
-	if("set_output_pressure" in signal.data)
-		target_pressure = clamp(text2num(signal.data["set_output_pressure"]),0,ONE_ATMOSPHERE*50)
+	if(signal.data["set_output_pressure"])
+		target_pressure = clamp(
+			text2num(signal.data["set_output_pressure"]),
+			0,
+			ONE_ATMOSPHERE*50
+		)
 
 	if(on != old_on)
-		investigate_log("was turned [on ? "on" : "off"] by a remote signal", INVESTIGATE_ATMOS)
+		investigate_log("was turned [on ? "on" : "off"] by a remote signal", "atmos")
 
-	if("status" in signal.data)
+	if(signal.data["status"])
 		broadcast_status()
-		return
+		return //do not update_icon
 
 	broadcast_status()
 	update_icon()
+	return
 
-/obj/machinery/atmospherics/components/binary/pump/power_change()
+/obj/machinery/atmospherics/binary/pump/attack_hand(mob/user)
+	if(..())
+		return
+
+	if(!allowed(user))
+		to_chat(user, "<span class='alert'>Access denied.</span>")
+		return
+
+	add_fingerprint(user)
+	ui_interact(user)
+
+/obj/machinery/atmospherics/binary/pump/attack_ghost(mob/user)
+	ui_interact(user)
+
+/obj/machinery/atmospherics/binary/pump/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
+	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+	if(!ui)
+		ui = new(user, src, ui_key, "AtmosPump", name, 310, 110, master_ui, state)
+		ui.open()
+
+/obj/machinery/atmospherics/binary/pump/ui_data(mob/user)
+	var/list/data = list(
+		"on" = on,
+		"rate" = round(target_pressure),
+		"max_rate" = MAX_OUTPUT_PRESSURE,
+		"gas_unit" = "kPa",
+		"step" = 10 // This is for the TGUI <NumberInput> step. It's here since multiple pumps share the same UI, but need different values.
+	)
+	return data
+
+/obj/machinery/atmospherics/binary/pump/ui_act(action, list/params)
+	if(..())
+		return
+
+	switch(action)
+		if("power")
+			toggle()
+			investigate_log("was turned [on ? "on" : "off"] by [key_name(usr)]", "atmos")
+			return TRUE
+
+		if("max_rate")
+			target_pressure = MAX_OUTPUT_PRESSURE
+			. = TRUE
+
+		if("min_rate")
+			target_pressure = 0
+			. = TRUE
+
+		if("custom_rate")
+			target_pressure = clamp(text2num(params["rate"]), 0 , MAX_OUTPUT_PRESSURE)
+			. = TRUE
+	if(.)
+		investigate_log("was set to [target_pressure] kPa by [key_name(usr)]", "atmos")
+
+/obj/machinery/atmospherics/binary/pump/power_change()
+	var/old_stat = stat
 	..()
-	update_icon()
+	if(old_stat != stat)
+		update_icon()
 
-/obj/machinery/atmospherics/components/binary/pump/can_unwrench(mob/user)
-	. = ..()
-	if(. && on && is_operational())
-		to_chat(user, "<span class='warning'>You cannot unwrench [src], turn it off first!</span>")
-		return FALSE
-
-
-/obj/machinery/atmospherics/components/binary/pump/layer1
-	piping_layer = 1
-	icon_state= "pump_map-1"
-
-/obj/machinery/atmospherics/components/binary/pump/layer3
-	piping_layer = 3
-	icon_state= "pump_map-3"
-
-/obj/machinery/atmospherics/components/binary/pump/on
-	on = TRUE
-	icon_state = "pump_on_map-2"
-
-/obj/machinery/atmospherics/components/binary/pump/on/layer1
-	piping_layer = 1
-	icon_state= "pump_on_map-1"
-
-/obj/machinery/atmospherics/components/binary/pump/on/layer3
-	piping_layer = 3
-	icon_state= "pump_on_map-3"
+/obj/machinery/atmospherics/binary/pump/attackby(obj/item/W, mob/user, params)
+	if(istype(W, /obj/item/pen))
+		rename_interactive(user, W)
+		return
+	else if(!istype(W, /obj/item/wrench))
+		return ..()
+	if(!(stat & NOPOWER) && on)
+		to_chat(user, "<span class='alert'>You cannot unwrench this [src], turn it off first.</span>")
+		return 1
+	return ..()

@@ -3,40 +3,40 @@
 /area/awaymission/centcomAway
 	name = "XCC-P5831"
 	icon_state = "away"
-	requires_power = FALSE
+	report_alerts = FALSE
 
 /area/awaymission/centcomAway/general
 	name = "XCC-P5831"
-	ambient_effects = list('sound/ambience/ambigen3.ogg')
+	ambientsounds = list('sound/ambience/ambigen3.ogg')
 
 /area/awaymission/centcomAway/maint
 	name = "XCC-P5831 Maintenance"
 	icon_state = "away1"
-	ambient_effects = list('sound/ambience/ambisin1.ogg')
+	ambientsounds = list('sound/ambience/ambisin1.ogg')
 
 /area/awaymission/centcomAway/thunderdome
 	name = "XCC-P5831 Thunderdome"
 	icon_state = "away2"
-	ambient_effects = list('sound/ambience/ambisin2.ogg')
+	ambientsounds = list('sound/ambience/ambisin2.ogg')
 
 /area/awaymission/centcomAway/cafe
 	name = "XCC-P5831 Kitchen Arena"
 	icon_state = "away3"
-	ambient_effects = list('sound/ambience/ambisin3.ogg')
+	ambientsounds = list('sound/ambience/ambisin3.ogg')
 
 /area/awaymission/centcomAway/courtroom
 	name = "XCC-P5831 Courtroom"
 	icon_state = "away4"
-	ambient_effects = list('sound/ambience/ambisin4.ogg')
+	ambientsounds = list('sound/ambience/ambisin4.ogg')
 
 /area/awaymission/centcomAway/hangar
 	name = "XCC-P5831 Hangars"
 	icon_state = "away4"
-	ambient_effects = list('sound/ambience/ambigen5.ogg')
+	ambientsounds = list('sound/ambience/ambigen5.ogg')
 
 //centcomAway items
 
-/obj/item/paper/pamphlet/centcom/visitor_info
+/obj/item/paper/pamphlet/ccaInfo
 	name = "Visitor Info Pamphlet"
 	info = "<b> XCC-P5831 Visitor Information </b><br>\
 	Greetings, visitor, to  XCC-P5831! As you may know, this outpost was once \
@@ -48,7 +48,7 @@
 	and the thrilling pay-per-view broadcasts of <i>PLASTEEL CHEF</i> and <i>THUNDERDOME LIVE</i>.<br> \
 	We hope you enjoy your stay!"
 
-/obj/item/paper/fluff/awaymissions/centcom/gateway_memo
+/obj/item/paper/ccaMemo
 	name = "Memo to XCC-P5831 QM"
 	info = "<b>From: XCC-P5831 Management Office</b><br>\
 	<b>To: Rolf Ingram, XCC-P5831 Quartermaster</b><br>\

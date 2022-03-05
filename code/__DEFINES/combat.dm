@@ -1,8 +1,7 @@
-/*ALL DEFINES RELATED TO COMBAT GO HERE*/
-
-//Damage and status effect defines
-
-//Damage defines //TODO: merge these down to reduce on defines
+//Damage things	//TODO: merge these down to reduce on defines
+//Way to waste perfectly good damagetype names (BRUTE) on this... If you were really worried about case sensitivity, you could have just used lowertext(damagetype) in the proc...
+#define CUT 		"cut"
+#define BRUISE		"bruise"
 #define BRUTE		"brute"
 #define BURN		"fire"
 #define TOX			"tox"
@@ -11,72 +10,60 @@
 #define STAMINA 	"stamina"
 #define BRAIN		"brain"
 
-//bitflag damage defines used for suicide_act
-#define BRUTELOSS 	            	(1<<0)
-#define FIRELOSS 	            	(1<<1)
-#define TOXLOSS 	            	(1<<2)
-#define OXYLOSS 	            	(1<<3)
-#define SHAME 			            (1<<4)
-#define MANUAL_SUICIDE          	(1<<5)	//suicide_act will do the actual killing.
-#define MANUAL_SUICIDE_NONLETHAL	(1<<6)  //when the suicide is conditionally lethal
+//damage flags
+#define MELEE 		"melee"
+#define BULLET 		"bullet"
+#define LASER 		"laser"
+#define ENERGY 		"energy"
+#define BOMB 		"bomb"
+#define BIO 		"bio"
+#define RAD 		"rad"
+#define FIRE 		"fire"
+#define ACID 		"acid"
+#define MAGIC		"magic"
 
-#define EFFECT_STUN			"stun"
-#define EFFECT_KNOCKDOWN	"knockdown"
-#define EFFECT_UNCONSCIOUS	"unconscious"
-#define EFFECT_PARALYZE		"paralyze"
-#define EFFECT_IMMOBILIZE	"immobilize"
-#define EFFECT_IRRADIATE	"irradiate"
-#define EFFECT_STUTTER		"stutter"
-#define EFFECT_SLUR 		"slur"
-#define EFFECT_EYE_BLUR		"eye_blur"
-#define EFFECT_DROWSY		"drowsy"
-#define EFFECT_JITTER		"jitter"
+#define STUN		"stun"
+#define WEAKEN		"weaken"
+#define PARALYZE	"paralize"
+#define IRRADIATE	"irradiate"
+#define STUTTER		"stutter"
+#define SLUR		"slur"
+#define EYE_BLUR	"eye_blur"
+#define DROWSY		"drowsy"
+#define JITTER		"jitter"
+
+/// Jitter decays at a rate of 3 per life cycle, 15 if resting.
+#define SECONDS_TO_JITTER SECONDS_TO_LIFE_CYCLES*3
+
+//I hate adding defines like this but I'd much rather deal with bitflags than lists and string searches
+#define BRUTELOSS 1
+#define FIRELOSS 2
+#define TOXLOSS 4
+#define OXYLOSS 8
+#define SHAME 16
+#define OBLITERATION 32
 
 //Bitflags defining which status effects could be or are inflicted on a mob
-#define CANSTUN			(1<<0)
-#define CANKNOCKDOWN	(1<<1)
-#define CANUNCONSCIOUS	(1<<2)
-#define CANPUSH			(1<<3)
-#define GODMODE			(1<<4)
+#define CANSTUN			1
+#define CANWEAKEN		2
+#define CANPARALYSE		4
+#define CANPUSH			8
+#define PASSEMOTES		16 //Mob has a cortical borer or holders inside of it that need to see emotes.
+#define GODMODE			32
 
 //Health Defines
 #define HEALTH_THRESHOLD_CRIT 0
-#define HEALTH_THRESHOLD_FULLCRIT -40
 #define HEALTH_THRESHOLD_DEAD -100
 
-#define HEALTH_THRESHOLD_NEARDEATH -90 //Not used mechanically, but to determine if someone is so close to death they hear the other side
-
-//Actual combat defines
-
-//click cooldowns, in tenths of a second, used for various combat actions
-#define CLICK_CD_MELEE 8
-#define CLICK_CD_RANGE 4
-#define CLICK_CD_RAPID 2
-#define CLICK_CD_CLICK_ABILITY 6
-#define CLICK_CD_BREAKOUT 100
-#define CLICK_CD_HANDCUFFED 10
-#define CLICK_CD_RESIST 20
-#define CLICK_CD_GRABBING 10
-
-//Cuff resist speeds
-#define FAST_CUFFBREAK 1
-#define INSTANT_CUFFBREAK 2
-
 //Grab levels
-#define GRAB_PASSIVE				0
-#define GRAB_AGGRESSIVE				1
-#define GRAB_NECK					2
-#define GRAB_KILL					3
-
-//Grab breakout odds
-#define BASE_GRAB_RESIST_CHANCE 	30
-
-//slowdown when in softcrit. Note that crawling slowdown will also apply at the same time!
-#define SOFTCRIT_ADD_SLOWDOWN 2
-//slowdown when crawling
-#define CRAWLING_ADD_SLOWDOWN 4
+#define GRAB_PASSIVE  1
+#define GRAB_AGGRESSIVE  2
+#define GRAB_NECK    3
+#define GRAB_UPGRADING  4
+#define GRAB_KILL    5
 
 //Attack types for checking shields/hit reactions
+
 #define MELEE_ATTACK 1
 #define UNARMED_ATTACK 2
 #define PROJECTILE_ATTACK 3
@@ -88,111 +75,28 @@
 #define ATTACK_EFFECT_KICK		"kick"
 #define ATTACK_EFFECT_SMASH		"smash"
 #define ATTACK_EFFECT_CLAW		"claw"
-#define ATTACK_EFFECT_SLASH		"slash"
 #define ATTACK_EFFECT_DISARM	"disarm"
 #define ATTACK_EFFECT_BITE		"bite"
 #define ATTACK_EFFECT_MECHFIRE	"mech_fire"
 #define ATTACK_EFFECT_MECHTOXIN	"mech_toxin"
 #define ATTACK_EFFECT_BOOP		"boop" //Honk
-
-//intent defines
-#define INTENT_HELP   "help"
-#define INTENT_GRAB   "grab"
-#define INTENT_DISARM "disarm"
-#define INTENT_HARM   "harm"
 //NOTE: INTENT_HOTKEY_* defines are not actual intents!
 //they are here to support hotkeys
 #define INTENT_HOTKEY_LEFT  "left"
 #define INTENT_HOTKEY_RIGHT "right"
 
-//the define for visible message range in combat
-#define COMBAT_MESSAGE_RANGE 3
-#define DEFAULT_MESSAGE_RANGE 7
+//Embedded objects
+#define EMBEDDED_PAIN_CHANCE 					15	//Chance for embedded objects to cause pain (damage user)
+#define EMBEDDED_ITEM_FALLOUT 					5	//Chance for embedded object to fall out (causing pain but removing the object)
+#define EMBED_CHANCE							45	//Chance for an object to embed into somebody when thrown (if it's sharp)
+#define EMBEDDED_PAIN_MULTIPLIER				2	//Coefficient of multiplication for the damage the item does while embedded (this*item.w_class)
+#define EMBEDDED_FALL_PAIN_MULTIPLIER			5	//Coefficient of multiplication for the damage the item does when it falls out (this*item.w_class)
+#define EMBEDDED_IMPACT_PAIN_MULTIPLIER			4	//Coefficient of multiplication for the damage the item does when it first embeds (this*item.w_class)
+#define EMBED_THROWSPEED_THRESHOLD				4	//The minimum value of an item's throw_speed for it to embed (Unless it has embedded_ignore_throwspeed_threshold set to 1)
+#define EMBEDDED_UNSAFE_REMOVAL_PAIN_MULTIPLIER 8	//Coefficient of multiplication for the damage the item does when removed without a surgery (this*item.w_class)
+#define EMBEDDED_UNSAFE_REMOVAL_TIME			30	//A Time in ticks, total removal time = (this*item.w_class)
 
-//Shove knockdown lengths (deciseconds)
-#define SHOVE_KNOCKDOWN_SOLID 30
-#define SHOVE_KNOCKDOWN_HUMAN 30
-#define SHOVE_KNOCKDOWN_TABLE 30
-#define SHOVE_KNOCKDOWN_COLLATERAL 10
-#define SHOVE_CHAIN_PARALYZE 40
-//Shove slowdown
-#define SHOVE_SLOWDOWN_LENGTH 30
-#define SHOVE_SLOWDOWN_STRENGTH 0.85 //multiplier
-//Shove disarming item list
-GLOBAL_LIST_INIT(shove_disarming_types, typecacheof(list(
-	/obj/item/gun)))
-
-
-// Combat object defines
-
-//! ## Embedded objects
-#define EMBEDDED_PAIN_CHANCE 					15	//! Chance for embedded objects to cause pain (damage user)
-#define EMBEDDED_ITEM_FALLOUT 					5	//! Chance for embedded object to fall out (causing pain but removing the object)
-#define EMBED_CHANCE							45	//! Chance for an object to embed into somebody when thrown (if it's sharp)
-#define EMBEDDED_PAIN_MULTIPLIER				2	//! Coefficient of multiplication for the damage the item does while embedded `(this*item.w_class)`
-#define EMBEDDED_FALL_PAIN_MULTIPLIER			5	//! Coefficient of multiplication for the damage the item does when it falls out `(this*item.w_class)`
-#define EMBEDDED_IMPACT_PAIN_MULTIPLIER			4	//! Coefficient of multiplication for the damage the item does when it first embeds `(this*item.w_class)`
-#define EMBED_THROWSPEED_THRESHOLD				4	//! The minimum value of an item's throw_speed for it to embed (Unless it has embedded_ignore_throwspeed_threshold set to 1)
-#define EMBEDDED_UNSAFE_REMOVAL_PAIN_MULTIPLIER 8	//! Coefficient of multiplication for the damage the item does when removed without a surgery `(this*item.w_class)`
-#define EMBEDDED_UNSAFE_REMOVAL_TIME			30	//! A Time in ticks, total removal `time = (this*item.w_class)`
-
-// Gun weapon weight
-#define WEAPON_LIGHT 1
-#define WEAPON_MEDIUM 2
-#define WEAPON_HEAVY 3
-// Gun trigger guards
-#define TRIGGER_GUARD_ALLOW_ALL -1
-#define TRIGGER_GUARD_NONE 0
-#define TRIGGER_GUARD_NORMAL 1
-// Gun bolt types
-#define BOLT_TYPE_STANDARD 1
-#define BOLT_TYPE_OPEN 2
-#define BOLT_TYPE_NO_BOLT 3
-#define BOLT_TYPE_LOCKING 4
-#define BOLT_TYPE_PUMP 5	//Requires 2 hands to pump, but standard
-// Sawn off nerfs
-#define SAWN_OFF_ACC_PENALTY 25
-#define SAWN_OFF_RECOIL 1
-
-// Projectile Reflect
-#define REFLECT_NORMAL 				(1<<0)
-#define REFLECT_FAKEPROJECTILE		(1<<1)
-
-//blocking flags
-#define BLOCKING_ACTIVE				(1<<0) //does the item need to be in hand to block
-#define BLOCKING_PROJECTILE			(1<<1) //does the item block projectiles
-#define BLOCKING_NASTY				(1<<2) //if it parries a bare hand, will the attacker be hurt?
-#define BLOCKING_HUNTER				(1<<3) //is the item more suited to fighting fauna?
-
-// Object/Item sharpness
-#define IS_BLUNT			0
-#define IS_SHARP			1
-#define IS_SHARP_ACCURATE	2
-
-//! ### His Grace.
-#define HIS_GRACE_SATIATED 0 //! He hungers not. If bloodthirst is set to this, His Grace is asleep.
-#define HIS_GRACE_PECKISH 20 //! Slightly hungry.
-#define HIS_GRACE_HUNGRY 60 //! Getting closer. Increases damage up to a minimum of 20.
-#define HIS_GRACE_FAMISHED 100 //! Dangerous. Increases damage up to a minimum of 25 and cannot be dropped.
-#define HIS_GRACE_STARVING 120 //! Incredibly close to breaking loose. Increases damage up to a minimum of 30.
-#define HIS_GRACE_CONSUME_OWNER 140 //! His Grace consumes His owner at this point and becomes aggressive.
-#define HIS_GRACE_FALL_ASLEEP 160 //! If it reaches this point, He falls asleep and resets.
-
-#define HIS_GRACE_FORCE_BONUS 4 //! How much force is gained per kill.
-
-#define EXPLODE_NONE 0				//Don't even ask me why we need this.
-#define EXPLODE_DEVASTATE 1
-#define EXPLODE_HEAVY 2
-#define EXPLODE_LIGHT 3
-#define EXPLODE_GIB_THRESHOLD 50	//ex_act() with EXPLODE_DEVASTATE severity will gib mobs with less than this much bomb armor
-
-#define EMP_HEAVY 1
-#define EMP_LIGHT 2
-
-#define GRENADE_CLUMSY_FUMBLE 1
-#define GRENADE_NONCLUMSY_FUMBLE 2
-#define GRENADE_NO_FUMBLE 3
-
+// Body Parts
 #define BODY_ZONE_HEAD		"head"
 #define BODY_ZONE_CHEST		"chest"
 #define BODY_ZONE_L_ARM		"l_arm"
@@ -211,8 +115,30 @@ GLOBAL_LIST_INIT(shove_disarming_types, typecacheof(list(
 //We will round to this value in damage calculations.
 #define DAMAGE_PRECISION 0.1
 
-//! ## `bullet_act()` return values
-#define BULLET_ACT_HIT				"HIT"		//! It's a successful hit, whatever that means in the context of the thing it's hitting.
-#define BULLET_ACT_BLOCK			"BLOCK"		//! It's a blocked hit, whatever that means in the context of the thing it's hitting.
-#define BULLET_ACT_FORCE_PIERCE		"PIERCE"	//! It pierces through the object regardless of the bullet being piercing by default.
-#define BULLET_ACT_TURF				"TURF"		//! It hit us but it should hit something on the same turf too. Usually used for turfs.
+//Gun Stuff
+#define SAWN_INTACT  0
+#define SAWN_OFF     1
+
+#define WEAPON_DUAL_WIELD 0
+#define WEAPON_LIGHT 1
+#define WEAPON_MEDIUM 2
+#define WEAPON_HEAVY 3
+
+//His Grace.
+#define HIS_GRACE_SATIATED 0 //He hungers not. If bloodthirst is set to this, His Grace is asleep.
+#define HIS_GRACE_PECKISH 20 //Slightly hungry.
+#define HIS_GRACE_HUNGRY 60 //Getting closer. Increases damage up to a minimum of 20.
+#define HIS_GRACE_FAMISHED 100 //Dangerous. Increases damage up to a minimum of 25 and cannot be dropped.
+#define HIS_GRACE_STARVING 120 //Incredibly close to breaking loose. Increases damage up to a minimum of 30.
+#define HIS_GRACE_CONSUME_OWNER 140 //His Grace consumes His owner at this point and becomes aggressive.
+#define HIS_GRACE_FALL_ASLEEP 160 //If it reaches this point, He falls asleep and resets.
+
+#define HIS_GRACE_FORCE_BONUS 4 //How much force is gained per kill.
+
+#define EXPLODE_NONE 0				//Don't even ask me why we need this.
+#define EXPLODE_DEVASTATE 1
+#define EXPLODE_HEAVY 2
+#define EXPLODE_LIGHT 3
+
+#define EMP_HEAVY 1
+#define EMP_LIGHT 2

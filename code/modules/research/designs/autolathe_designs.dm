@@ -5,44 +5,24 @@
 /datum/design/bucket
 	name = "Bucket"
 	id = "bucket"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 200)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 200)
 	build_path = /obj/item/reagent_containers/glass/bucket
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_SERVICE
-
-/datum/design/mop
-	name = "Mop"
-	id = "mop"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 1000)
-	build_path = /obj/item/mop
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_SERVICE
-
-/datum/design/broom
-	name="Push Broom"
-	id="pushbroom"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 2000)
-	build_path = /obj/item/twohanded/pushbroom
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_SERVICE
+	category = list("initial","Tools")
 
 /datum/design/crowbar
 	name = "Pocket Crowbar"
 	id = "crowbar"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 50)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 50)
 	build_path = /obj/item/crowbar
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING | DEPARTMENTAL_FLAG_SCIENCE
+	category = list("initial","Tools")
 
 /datum/design/flashlight
 	name = "Flashlight"
 	id = "flashlight"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 50, /datum/material/glass = 20)
+	materials = list(MAT_METAL = 50, MAT_GLASS = 20)
 	build_path = /obj/item/flashlight
 	category = list("initial","Tools")
 
@@ -50,261 +30,168 @@
 	name = "Fire Extinguisher"
 	id = "extinguisher"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 90)
+	materials = list(MAT_METAL = 90)
 	build_path = /obj/item/extinguisher
-	category = list("initial","Tools")
-
-/datum/design/pocketfireextinguisher
-	name = "Pocket Fire Extinguisher"
-	id = "pocketfireextinguisher"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 50, /datum/material/glass = 40)
-	build_path = /obj/item/extinguisher/mini
 	category = list("initial","Tools")
 
 /datum/design/multitool
 	name = "Multitool"
 	id = "multitool"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 50, /datum/material/glass = 20)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 50, MAT_GLASS = 20)
 	build_path = /obj/item/multitool
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING | DEPARTMENTAL_FLAG_SCIENCE
+	category = list("initial","Tools")
 
 /datum/design/analyzer
 	name = "Analyzer"
 	id = "analyzer"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 30, /datum/material/glass = 20)
+	materials = list(MAT_METAL = 30, MAT_GLASS = 20)
 	build_path = /obj/item/analyzer
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING
+	category = list("initial","Tools")
 
 /datum/design/tscanner
-	name = "T-Ray Scanner"
+	name = "T-ray Scanner"
 	id = "tscanner"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 150)
+	materials = list(MAT_METAL = 150)
 	build_path = /obj/item/t_scanner
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING
+	category = list("initial","Tools")
 
 /datum/design/weldingtool
 	name = "Welding Tool"
 	id = "welding_tool"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 70, /datum/material/glass = 20)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 70, MAT_GLASS = 20)
 	build_path = /obj/item/weldingtool
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING | DEPARTMENTAL_FLAG_SCIENCE
+	category = list("initial","Tools")
 
 /datum/design/mini_weldingtool
-	name = "Emergency Welding Tool"
+	name = "Emergency welding tool"
 	id = "mini_welding_tool"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 30, /datum/material/glass = 10)
+	materials = list(MAT_METAL = 30, MAT_GLASS = 10)
 	build_path = /obj/item/weldingtool/mini
 	category = list("initial","Tools")
 
 /datum/design/screwdriver
 	name = "Screwdriver"
 	id = "screwdriver"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 75)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 75)
 	build_path = /obj/item/screwdriver
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING | DEPARTMENTAL_FLAG_SCIENCE
+	category = list("initial","Tools")
 
 /datum/design/wirecutters
 	name = "Wirecutters"
 	id = "wirecutters"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 80)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 80)
 	build_path = /obj/item/wirecutters
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING | DEPARTMENTAL_FLAG_SCIENCE
+	category = list("initial","Tools")
 
 /datum/design/wrench
 	name = "Wrench"
 	id = "wrench"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 150)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 150)
 	build_path = /obj/item/wrench
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING | DEPARTMENTAL_FLAG_SCIENCE
-
-/datum/design/plunger
-	name = "Plunger"
-	id = "plunger"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 150)
-	build_path = /obj/item/plunger
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING | DEPARTMENTAL_FLAG_MEDICAL
+	category = list("initial","Tools")
 
 /datum/design/welding_helmet
 	name = "Welding Helmet"
 	id = "welding_helmet"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 1750, /datum/material/glass = 400)
+	materials = list(MAT_METAL = 1750, MAT_GLASS = 400)
 	build_path = /obj/item/clothing/head/welding
 	category = list("initial","Tools")
 
 /datum/design/cable_coil
-	name = "Cable Coil"
+	name = "Cable coil"
 	id = "cable_coil"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 10, /datum/material/glass = 5)
+	materials = list(MAT_METAL = 10, MAT_GLASS = 5)
 	build_path = /obj/item/stack/cable_coil
-	category = list("initial","Tools","Tool Designs")
-	maxstack = MAXCOIL
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING | DEPARTMENTAL_FLAG_SCIENCE
+	category = list("initial","Tools")
+	maxstack = 30
 
 /datum/design/toolbox
 	name = "Toolbox"
 	id = "tool_box"
 	build_type = AUTOLATHE
-	materials = list(MAT_CATEGORY_RIGID = 500)
+	materials = list(MAT_METAL = 500)
 	build_path = /obj/item/storage/toolbox
 	category = list("initial","Tools")
 
 /datum/design/apc_board
-	name = "APC Module"
+	name = "APC module"
 	id = "power control"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 100, /datum/material/glass = 100)
-	build_path = /obj/item/electronics/apc
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 100, MAT_GLASS = 100)
+	build_path = /obj/item/apc_electronics
 	category = list("initial", "Electronics")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING
 
 /datum/design/airlock_board
 	name = "Airlock Electronics"
 	id = "airlock_board"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 50, /datum/material/glass = 50)
-	build_path = /obj/item/electronics/airlock
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 50, MAT_GLASS = 50)
+	build_path = /obj/item/airlock_electronics
 	category = list("initial", "Electronics")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING
 
 /datum/design/firelock_board
-	name = "Firelock Circuitry"
+	name = "Firelock Electronics"
 	id = "firelock_board"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 50, /datum/material/glass = 50)
-	build_path = /obj/item/electronics/firelock
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 50, MAT_GLASS = 50)
+	build_path = /obj/item/firelock_electronics
 	category = list("initial", "Electronics")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING
 
 /datum/design/airalarm_electronics
 	name = "Air Alarm Electronics"
 	id = "airalarm_electronics"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 50, /datum/material/glass = 50)
-	build_path = /obj/item/electronics/airalarm
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 50, MAT_GLASS = 50)
+	build_path = /obj/item/airalarm_electronics
 	category = list("initial", "Electronics")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING
-
-/datum/design/aac_electronics
-	name = "Airlock Controller Electronics"
-	id = "aac_electronics"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 50, /datum/material/glass = 50)
-	build_path = /obj/item/electronics/advanced_airlock_controller
-	category = list("initial", "Electronics")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING
 
 /datum/design/firealarm_electronics
 	name = "Fire Alarm Electronics"
 	id = "firealarm_electronics"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 50, /datum/material/glass = 50)
-	build_path = /obj/item/electronics/firealarm
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 50, MAT_GLASS = 50)
+	build_path = /obj/item/firealarm_electronics
 	category = list("initial", "Electronics")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING
 
-/datum/design/camera
-	name = "Camera"
-	id = "camera"
+/datum/design/intercom_electronics
+	name = "Intercom Electronics"
+	id = "intercom_electronics"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 50, /datum/material/glass = 100)
-	build_path = /obj/item/camera
-	category = list("initial", "Misc")
-
-/datum/design/camera_film
-	name = "Camera Film Cartridge"
-	id = "camera_film"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 10, /datum/material/glass = 10)
-	build_path = /obj/item/camera_film
-	category = list("initial", "Misc")
+	materials = list(MAT_METAL = 50, MAT_GLASS = 50)
+	build_path = /obj/item/intercom_electronics
+	category = list("initial", "Electronics")
 
 /datum/design/earmuffs
 	name = "Earmuffs"
 	id = "earmuffs"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 500, /datum/material/glass = 500)
+	materials = list(MAT_METAL = 500, MAT_GLASS = 500)
 	build_path = /obj/item/clothing/ears/earmuffs
-	category = list("initial", "Misc")
-
-/datum/design/pipe_painter
-	name = "Pipe Painter"
-	id = "pipe_painter"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 5000, /datum/material/glass = 2000)
-	build_path = /obj/item/pipe_painter
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING
-
-/datum/design/airlock_painter
-	name = "Airlock Painter"
-	id = "airlock_painter"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 50, /datum/material/glass = 50)
-	build_path = /obj/item/airlock_painter
-	category = list("initial","Tools","Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING
-
-/datum/design/emergency_oxygen
-	name = "Emergency Oxygen Tank"
-	id = "emergency_oxygen"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 500)
-	build_path = /obj/item/tank/internals/emergency_oxygen/empty
-	category = list("initial","Misc","Equipment")
-
-/datum/design/emergency_oxygen_engi
-	name = "Extended-Capacity Emergency Oxygen Tank"
-	id = "emergency_oxygen_engi"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 750)
-	build_path = /obj/item/tank/internals/emergency_oxygen/engi/empty
-	category = list("hacked","Misc","Equipment")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING | DEPARTMENTAL_FLAG_CARGO
-
-/datum/design/plasmaman_tank
-	name = "Extended-Capacity Plasmaman Tank"
-	id = "plasmaman_tank"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 3200)
-	build_path = /obj/item/tank/internals/plasmaman/empty
-	category = list("hacked","Misc","Equipment")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING | DEPARTMENTAL_FLAG_CARGO
-
-/datum/design/plasmaman_tank_belt
-	name = "Plasmaman Belt Tank"
-	id = "plasmaman_tank_belt"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 800)
-	build_path = /obj/item/tank/internals/plasmaman/belt/empty
-	category = list("hacked","Misc","Equipment")
-	departmental_flags = DEPARTMENTAL_FLAG_ENGINEERING | DEPARTMENTAL_FLAG_CARGO
-
-/datum/design/iron
-	name = "Iron"
-	id = "iron"
+	category = list("initial", "Miscellaneous")
+/datum/design/painter
+	name = "Modular Painter"
+	id = "mod_painter"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = MINERAL_MATERIAL_AMOUNT)
-	build_path = /obj/item/stack/sheet/iron
+	materials = list(MAT_METAL = 5000, MAT_GLASS = 2000)
+	build_path = /obj/item/painter
+	category = list("initial", "Miscellaneous")
+
+/datum/design/metal
+	name = "Metal"
+	id = "metal"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = MINERAL_MATERIAL_AMOUNT)
+	build_path = /obj/item/stack/sheet/metal
 	category = list("initial","Construction")
 	maxstack = 50
 
@@ -312,7 +199,7 @@
 	name = "Glass"
 	id = "glass"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/glass = MINERAL_MATERIAL_AMOUNT)
+	materials = list(MAT_GLASS = MINERAL_MATERIAL_AMOUNT)
 	build_path = /obj/item/stack/sheet/glass
 	category = list("initial","Construction")
 	maxstack = 50
@@ -320,17 +207,17 @@
 /datum/design/rglass
 	name = "Reinforced Glass"
 	id = "rglass"
-	build_type = AUTOLATHE | SMELTER | PROTOLATHE
-	materials = list(/datum/material/iron = 1000, /datum/material/glass = MINERAL_MATERIAL_AMOUNT)
+	build_type = AUTOLATHE | SMELTER
+	materials = list(MAT_METAL = 1000, MAT_GLASS = MINERAL_MATERIAL_AMOUNT)
 	build_path = /obj/item/stack/sheet/rglass
-	category = list("initial","Construction","Stock Parts")
+	category = list("initial","Construction")
 	maxstack = 50
 
 /datum/design/rods
-	name = "Iron Rod"
+	name = "Metal Rod"
 	id = "rods"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 1000)
+	materials = list(MAT_METAL = 1000)
 	build_path = /obj/item/stack/rods
 	category = list("initial","Construction")
 	maxstack = 50
@@ -339,7 +226,7 @@
 	name = "Compressed Matter Cartridge"
 	id = "rcd_ammo"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 12000, /datum/material/glass = 8000)
+	materials = list(MAT_METAL = 16000, MAT_GLASS=8000)
 	build_path = /obj/item/rcd_ammo
 	category = list("initial","Construction")
 
@@ -347,7 +234,7 @@
 	name = "Kitchen Knife"
 	id = "kitchen_knife"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 12000)
+	materials = list(MAT_METAL = 12000)
 	build_path = /obj/item/kitchen/knife
 	category = list("initial","Dinnerware")
 
@@ -355,39 +242,47 @@
 	name = "Fork"
 	id = "fork"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 80)
-	build_path = /obj/item/kitchen/fork
+	materials = list(MAT_METAL = 80)
+	build_path = /obj/item/kitchen/utensil/fork
+	category = list("initial","Dinnerware")
+
+/datum/design/spoon
+	name = "Spoon"
+	id = "spoon"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 80)
+	build_path = /obj/item/kitchen/utensil/spoon
+	category = list("initial","Dinnerware")
+
+/datum/design/spork
+	name = "Spork"
+	id = "spork"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 80)
+	build_path = /obj/item/kitchen/utensil/spork
 	category = list("initial","Dinnerware")
 
 /datum/design/tray
 	name = "Tray"
 	id = "tray"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 3000)
+	materials = list(MAT_METAL = 3000)
 	build_path = /obj/item/storage/bag/tray
 	category = list("initial","Dinnerware")
 
-/datum/design/bowl
-	name = "Bowl"
-	id = "bowl"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/glass = 500)
-	build_path = /obj/item/reagent_containers/glass/bowl
-	category = list("initial","Dinnerware")
-
 /datum/design/drinking_glass
-	name = "Drinking Glass"
+	name = "Drinking glass"
 	id = "drinking_glass"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/glass = 500)
+	materials = list(MAT_GLASS = 500)
 	build_path = /obj/item/reagent_containers/food/drinks/drinkingglass
 	category = list("initial","Dinnerware")
 
 /datum/design/shot_glass
-	name = "Shot Glass"
+	name = "Shot glass"
 	id = "shot_glass"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/glass = 100)
+	materials = list(MAT_GLASS = 100)
 	build_path = /obj/item/reagent_containers/food/drinks/drinkingglass/shotglass
 	category = list("initial","Dinnerware")
 
@@ -395,175 +290,167 @@
 	name = "Shaker"
 	id = "shaker"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 1500)
+	materials = list(MAT_METAL = 1500)
 	build_path = /obj/item/reagent_containers/food/drinks/shaker
 	category = list("initial","Dinnerware")
 
 /datum/design/cultivator
 	name = "Cultivator"
 	id = "cultivator"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron=50)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL=50)
 	build_path = /obj/item/cultivator
-	category = list("initial","Misc", "Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_SERVICE
+	category = list("initial","Miscellaneous")
 
 /datum/design/plant_analyzer
 	name = "Plant Analyzer"
 	id = "plant_analyzer"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 30, /datum/material/glass = 20)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 30, MAT_GLASS = 20)
 	build_path = /obj/item/plant_analyzer
-	category = list("initial","Misc", "Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_SERVICE
+	category = list("initial","Miscellaneous")
 
 /datum/design/shovel
 	name = "Shovel"
 	id = "shovel"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 50)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 50)
 	build_path = /obj/item/shovel
-	category = list("initial","Misc", "Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_SERVICE
+	category = list("initial","Miscellaneous")
 
 /datum/design/spade
 	name = "Spade"
 	id = "spade"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 50)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 50)
 	build_path = /obj/item/shovel/spade
-	category = list("initial","Misc", "Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_SERVICE
+	category = list("initial","Miscellaneous")
 
 /datum/design/hatchet
 	name = "Hatchet"
 	id = "hatchet"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 15000)
-	build_path = /obj/item/hatchet
-	category = list("initial","Misc", "Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_SERVICE
-
-/datum/design/foilhat
-	name = "Tinfoil Hat"
-	id = "tinfoil_hat"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 5500)
-	build_path = /obj/item/clothing/head/foilhat
-	category = list("hacked", "Misc")
-
-/datum/design/blood_filter
-	name = "Blood Filter"
-	id = "blood_filter"
-	build_type = PROTOLATHE
-	materials = list(/datum/material/iron = 4000, /datum/material/glass = 1500, /datum/material/silver = 500)
-	build_path = /obj/item/blood_filter
-	category = list("initial", "Medical", "Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL | DEPARTMENTAL_FLAG_SCIENCE
+	materials = list(MAT_METAL = 15000)
+	build_path = /obj/item/hatchet
+	category = list("initial","Miscellaneous")
 
 /datum/design/scalpel
 	name = "Scalpel"
 	id = "scalpel"
-	build_type = PROTOLATHE
-	materials = list(/datum/material/iron = 4000, /datum/material/glass = 1000)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 4000, MAT_GLASS = 1000)
 	build_path = /obj/item/scalpel
-	category = list("initial", "Medical", "Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL | DEPARTMENTAL_FLAG_SCIENCE
+	category = list("initial", "Medical")
 
 /datum/design/circular_saw
 	name = "Circular Saw"
 	id = "circular_saw"
-	build_type = PROTOLATHE
-	materials = list(/datum/material/iron = 10000, /datum/material/glass = 6000)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 10000, MAT_GLASS = 6000)
 	build_path = /obj/item/circular_saw
-	category = list("initial", "Medical", "Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL | DEPARTMENTAL_FLAG_SCIENCE
+	category = list("initial", "Medical")
 
 /datum/design/surgicaldrill
 	name = "Surgical Drill"
 	id = "surgicaldrill"
-	build_type = PROTOLATHE
-	materials = list(/datum/material/iron = 10000, /datum/material/glass = 6000)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 10000, MAT_GLASS = 6000)
 	build_path = /obj/item/surgicaldrill
-	category = list("initial", "Medical", "Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL | DEPARTMENTAL_FLAG_SCIENCE
+	category = list("initial", "Medical")
 
 /datum/design/retractor
 	name = "Retractor"
 	id = "retractor"
-	build_type = PROTOLATHE
-	materials = list(/datum/material/iron = 6000, /datum/material/glass = 3000)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 6000, MAT_GLASS = 3000)
 	build_path = /obj/item/retractor
-	category = list("initial", "Medical", "Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL | DEPARTMENTAL_FLAG_SCIENCE
+	category = list("initial", "Medical")
 
 /datum/design/cautery
 	name = "Cautery"
 	id = "cautery"
-	build_type = PROTOLATHE
-	materials = list(/datum/material/iron = 2500, /datum/material/glass = 750)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 2500, MAT_GLASS = 750)
 	build_path = /obj/item/cautery
-	category = list("initial", "Medical", "Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL | DEPARTMENTAL_FLAG_SCIENCE
+	category = list("initial", "Medical")
 
 /datum/design/hemostat
 	name = "Hemostat"
 	id = "hemostat"
-	build_type = PROTOLATHE
-	materials = list(/datum/material/iron = 5000, /datum/material/glass = 2500)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 5000, MAT_GLASS = 2500)
 	build_path = /obj/item/hemostat
-	category = list("initial", "Medical", "Tool Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL | DEPARTMENTAL_FLAG_SCIENCE
+	category = list("initial", "Medical")
+
+/datum/design/bonesetter
+	name = "Bone Setter"
+	id = "bonesetter"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 4000)
+	build_path = /obj/item/bonesetter
+	category = list("initial", "Medical")
+
+/datum/design/fixovein
+	name = "FixOVein"
+	id = "fixovein"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 5000, MAT_GLASS = 3000)
+	build_path = /obj/item/FixOVein
+	category = list("initial", "Medical")
+
+/datum/design/bonegel
+	name = "Bone Gel"
+	id = "bonegel"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 1000, MAT_GLASS = 6000)
+	build_path = /obj/item/bonegel
+	category = list("initial", "Medical")
 
 /datum/design/beaker
 	name = "Beaker"
 	id = "beaker"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/glass = 500)
+	build_type = AUTOLATHE
+	materials = list(MAT_GLASS = 500)
 	build_path = /obj/item/reagent_containers/glass/beaker
-	category = list("initial", "Medical", "Medical Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL | DEPARTMENTAL_FLAG_SERVICE
+	category = list("initial", "Medical")
 
 /datum/design/large_beaker
 	name = "Large Beaker"
 	id = "large_beaker"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/glass = 2500)
+	build_type = AUTOLATHE
+	materials = list(MAT_GLASS = 2500)
 	build_path = /obj/item/reagent_containers/glass/beaker/large
-	category = list("initial", "Medical", "Medical Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL | DEPARTMENTAL_FLAG_SERVICE
+	category = list("initial", "Medical")
 
 /datum/design/healthanalyzer
 	name = "Health Analyzer"
 	id = "healthanalyzer"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 500, /datum/material/glass = 50)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 500, MAT_GLASS = 50)
 	build_path = /obj/item/healthanalyzer
-	category = list("initial", "Medical", "Medical Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL
+	category = list("initial", "Medical")
 
 /datum/design/pillbottle
 	name = "Pill Bottle"
 	id = "pillbottle"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 20, /datum/material/glass = 100)
+	materials = list(MAT_METAL = 80, MAT_GLASS = 20)
 	build_path = /obj/item/storage/pill_bottle
-	category = list("initial", "Medical", "Medical Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL
+	category = list("initial", "Medical")
 
 /datum/design/beanbag_slug
 	name = "Beanbag Slug"
 	id = "beanbag_slug"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 2000)
+	materials = list(MAT_METAL = 250)
 	build_path = /obj/item/ammo_casing/shotgun/beanbag
 	category = list("initial", "Security")
 
 /datum/design/rubbershot
-	name = "Rubber Shot"
+	name = "Rubber shot"
 	id = "rubber_shot"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 4000)
+	materials = list(MAT_METAL = 4000)
 	build_path = /obj/item/ammo_casing/shotgun/rubbershot
 	category = list("initial", "Security")
 
@@ -571,7 +458,7 @@
 	name = "Speed Loader (.38)"
 	id = "c38"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 20000)
+	materials = list(MAT_METAL = 30000)
 	build_path = /obj/item/ammo_box/c38
 	category = list("initial", "Security")
 
@@ -579,95 +466,103 @@
 	name = "Universal Recorder"
 	id = "recorder"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 60, /datum/material/glass = 30)
+	materials = list(MAT_METAL = 60, MAT_GLASS = 30)
 	build_path = /obj/item/taperecorder/empty
-	category = list("initial", "Misc")
+	category = list("initial", "Miscellaneous")
 
 /datum/design/tape
 	name = "Tape"
 	id = "tape"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 20, /datum/material/glass = 5)
+	materials = list(MAT_METAL = 20, MAT_GLASS = 5)
 	build_path = /obj/item/tape/random
-	category = list("initial", "Misc")
+	category = list("initial", "Miscellaneous")
 
 /datum/design/igniter
 	name = "Igniter"
 	id = "igniter"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 500, /datum/material/glass = 50)
+	materials = list(MAT_METAL = 500, MAT_GLASS = 50)
 	build_path = /obj/item/assembly/igniter
-	category = list("initial", "Misc")
+	category = list("initial", "Miscellaneous")
 
 /datum/design/signaler
 	name = "Remote Signaling Device"
 	id = "signaler"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 400, /datum/material/glass = 120)
+	materials = list(MAT_METAL = 400, MAT_GLASS = 120)
 	build_path = /obj/item/assembly/signaler
-	category = list("initial", "T-Comm")
+	category = list("initial", "Communication")
 
 /datum/design/radio_headset
 	name = "Radio Headset"
 	id = "radio_headset"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 75)
+	materials = list(MAT_METAL = 75)
 	build_path = /obj/item/radio/headset
-	category = list("initial", "T-Comm")
+	category = list("initial", "Communication")
 
 /datum/design/bounced_radio
 	name = "Station Bounced Radio"
 	id = "bounced_radio"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 75, /datum/material/glass = 25)
+	materials = list(MAT_METAL = 75, MAT_GLASS = 25)
 	build_path = /obj/item/radio/off
-	category = list("initial", "T-Comm")
-
-/datum/design/intercom_frame
-	name = "Intercom Frame"
-	id = "intercom_frame"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 75, /datum/material/glass = 25)
-	build_path = /obj/item/wallframe/intercom
-	category = list("initial", "T-Comm")
+	category = list("initial", "Communication")
 
 /datum/design/infrared_emitter
 	name = "Infrared Emitter"
 	id = "infrared_emitter"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 1000, /datum/material/glass = 500)
+	materials = list(MAT_METAL = 1000, MAT_GLASS = 500)
 	build_path = /obj/item/assembly/infra
-	category = list("initial", "Misc")
+	category = list("initial", "Miscellaneous")
 
 /datum/design/health_sensor
-	name = "Health Sensor"
+	name = "Health sensor"
 	id = "health_sensor"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 800, /datum/material/glass = 200)
+	materials = list(MAT_METAL = 800, MAT_GLASS = 200)
 	build_path = /obj/item/assembly/health
+	category = list("initial", "Medical")
+
+/datum/design/stethoscope
+	name = "Stethoscope"
+	id = "stethoscope"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 500)
+	build_path = /obj/item/clothing/accessory/stethoscope
 	category = list("initial", "Medical")
 
 /datum/design/timer
 	name = "Timer"
 	id = "timer"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 500, /datum/material/glass = 50)
+	materials = list(MAT_METAL = 500, MAT_GLASS = 50)
 	build_path = /obj/item/assembly/timer
-	category = list("initial", "Misc")
+	category = list("initial", "Miscellaneous")
 
-/datum/design/voice_analyser
-	name = "Voice Analyser"
-	id = "voice_analyser"
+/datum/design/voice_analyzer
+	name = "Voice Analyzer"
+	id = "voice_analyzer"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 500, /datum/material/glass = 50)
+	materials = list(MAT_METAL = 500, MAT_GLASS = 50)
 	build_path = /obj/item/assembly/voice
-	category = list("initial", "Misc")
+	category = list("initial", "Miscellaneous")
+
+/datum/design/noise_analyser
+	name = "Noise Analyser"
+	id = "Noise_analyser"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 100, MAT_GLASS = 10)
+	build_path = /obj/item/assembly/voice/noise
+	category = list("initial", "Miscellaneous")
 
 /datum/design/light_tube
 	name = "Light Tube"
 	id = "light_tube"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/glass = 100)
+	materials = list(MAT_GLASS = 100)
 	build_path = /obj/item/light/tube
 	category = list("initial", "Construction")
 
@@ -675,7 +570,7 @@
 	name = "Light Bulb"
 	id = "light_bulb"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/glass = 100)
+	materials = list(MAT_GLASS = 100)
 	build_path = /obj/item/light/bulb
 	category = list("initial", "Construction")
 
@@ -683,74 +578,112 @@
 	name = "Camera Assembly"
 	id = "camera_assembly"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 400, /datum/material/glass = 250)
-	build_path = /obj/item/wallframe/camera
+	materials = list(MAT_METAL = 400, MAT_GLASS = 250)
+	build_path = /obj/item/camera_assembly
 	category = list("initial", "Construction")
 
 /datum/design/newscaster_frame
 	name = "Newscaster Frame"
 	id = "newscaster_frame"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 14000, /datum/material/glass = 8000)
-	build_path = /obj/item/wallframe/newscaster
+	materials = list(MAT_METAL = 14000, MAT_GLASS = 8000)
+	build_path = /obj/item/mounted/frame/newscaster_frame
 	category = list("initial", "Construction")
 
 /datum/design/syringe
 	name = "Syringe"
 	id = "syringe"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 10, /datum/material/glass = 20)
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 10, MAT_GLASS = 20)
 	build_path = /obj/item/reagent_containers/syringe
-	category = list("initial", "Medical", "Medical Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL
+	category = list("initial", "Medical")
 
-/datum/design/dropper
-	name = "Dropper"
-	id = "dropper"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 10, /datum/material/glass = 30)
-	build_path = /obj/item/reagent_containers/dropper
-	category = list("initial", "Medical", "Medical Designs")
-	departmental_flags = DEPARTMENTAL_FLAG_MEDICAL
+/datum/design/safety_hypo
+	name = "Medical Hypospray"
+	id = "safetyhypo"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 500, MAT_GLASS = 500)
+	build_path = /obj/item/reagent_containers/hypospray/safety
+	category = list("initial", "Medical")
+
+/datum/design/automender
+	name = "Auto-mender"
+	id = "automender"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 1000, MAT_GLASS = 1000)
+	build_path = /obj/item/reagent_containers/applicator
+	category = list("initial", "Medical")
 
 /datum/design/prox_sensor
 	name = "Proximity Sensor"
 	id = "prox_sensor"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 800, /datum/material/glass = 200)
+	materials = list(MAT_METAL = 800, MAT_GLASS = 200)
 	build_path = /obj/item/assembly/prox_sensor
-	category = list("initial", "Misc")
+	category = list("initial", "Miscellaneous")
 
 /datum/design/foam_dart
 	name = "Box of Foam Darts"
 	id = "foam_dart"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 500)
+	materials = list(MAT_METAL = 500)
 	build_path = /obj/item/ammo_box/foambox
-	category = list("initial", "Misc")
+	category = list("initial", "Miscellaneous")
+
+/datum/design/foam_dart_sniper
+	name = "Box of Sniper Foam Darts"
+	id = "foam_dart_sniper"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 900)
+	build_path = /obj/item/ammo_box/foambox/sniper
+	category = list("initial", "Miscellaneous")
 
 //hacked autolathe recipes
 /datum/design/flamethrower
 	name = "Flamethrower"
 	id = "flamethrower"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 500)
+	materials = list(MAT_METAL = 500)
 	build_path = /obj/item/flamethrower/full
 	category = list("hacked", "Security")
+
+/datum/design/rcd
+	name = "Rapid Construction Device (RCD)"
+	id = "rcd"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 30000)
+	build_path = /obj/item/rcd
+	category = list("hacked", "Construction")
+
+/datum/design/rpd
+	name = "Rapid Pipe Dispenser (RPD)"
+	id = "rpd"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 75000, MAT_GLASS = 37500)
+	build_path = /obj/item/rpd
+	category = list("hacked", "Construction")
+
+/datum/design/rcl
+	name = "Rapid Cable Layer"
+	id = "rcl"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 5000)
+	build_path = /obj/item/twohanded/rcl
+	category = list("hacked", "Construction")
 
 /datum/design/electropack
 	name = "Electropack"
 	id = "electropack"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 10000, /datum/material/glass = 2500)
-	build_path = /obj/item/electropack
+	materials = list(MAT_METAL = 10000, MAT_GLASS = 2500)
+	build_path = /obj/item/radio/electropack
 	category = list("hacked", "Tools")
 
 /datum/design/large_welding_tool
 	name = "Industrial Welding Tool"
 	id = "large_welding_tool"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 70, /datum/material/glass = 60)
+	materials = list(MAT_METAL = 70, MAT_GLASS = 60)
 	build_path = /obj/item/weldingtool/largetank
 	category = list("hacked", "Tools")
 
@@ -758,7 +691,7 @@
 	name = "Handcuffs"
 	id = "handcuffs"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 500)
+	materials = list(MAT_METAL = 500)
 	build_path = /obj/item/restraints/handcuffs
 	category = list("hacked", "Security")
 
@@ -766,31 +699,15 @@
 	name = "Modular Receiver"
 	id = "receiver"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 15000)
+	materials = list(MAT_METAL = 15000)
 	build_path = /obj/item/weaponcrafting/receiver
-	category = list("hacked", "Security")
-
-/datum/design/shotgun_slug
-	name = "Shotgun Slug"
-	id = "shotgun_slug"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 4000)
-	build_path = /obj/item/ammo_casing/shotgun
-	category = list("hacked", "Security")
-
-/datum/design/buckshot_shell
-	name = "Buckshot Shell"
-	id = "buckshot_shell"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 4000)
-	build_path = /obj/item/ammo_casing/shotgun/buckshot
 	category = list("hacked", "Security")
 
 /datum/design/shotgun_dart
 	name = "Shotgun Dart"
 	id = "shotgun_dart"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 4000)
+	materials = list(MAT_METAL = 4000)
 	build_path = /obj/item/ammo_casing/shotgun/dart
 	category = list("hacked", "Security")
 
@@ -798,39 +715,55 @@
 	name = "Incendiary Slug"
 	id = "incendiary_slug"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 4000)
+	materials = list(MAT_METAL = 4000)
 	build_path = /obj/item/ammo_casing/shotgun/incendiary
 	category = list("hacked", "Security")
 
 /datum/design/riot_dart
-	name = "Foam Riot Dart"
+	name = "Foam riot dart"
 	id = "riot_dart"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 1000) //Discount for making individually - no box = less metal!
+	materials = list(MAT_METAL = 1000) //Discount for making individually - no box = less metal!
 	build_path = /obj/item/ammo_casing/caseless/foam_dart/riot
 	category = list("hacked", "Security")
 
+/datum/design/riot_dart_sniper
+	name = "Foam riot sniper dart"
+	id = "riot_dart_sniper"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 1800) //Discount for making individually - no box = less metal!
+	build_path = /obj/item/ammo_casing/caseless/foam_dart/sniper/riot
+	category = list("hacked", "Security")
+
 /datum/design/riot_darts
-	name = "Foam Riot Dart Box"
+	name = "Foam riot dart box"
 	id = "riot_darts"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 50000) //Comes with 40 darts
+	materials = list(MAT_METAL = 50000) //Comes with 40 darts
 	build_path = /obj/item/ammo_box/foambox/riot
 	category = list("hacked", "Security")
 
+/datum/design/riot_darts_sniper
+	name = "Foam riot sniper dart box"
+	id = "riot_darts_sniper"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 90000) //Comes with 40 darts
+	build_path = /obj/item/ammo_box/foambox/sniper/riot
+	category = list("hacked", "Security")
+
 /datum/design/a357
-	name = ".357 Casing"
+	name = "Ammo Box (.357)"
 	id = "a357"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 4000)
-	build_path = /obj/item/ammo_casing/a357
+	materials = list(MAT_METAL = 30000)
+	build_path = /obj/item/ammo_box/a357
 	category = list("hacked", "Security")
 
 /datum/design/c10mm
 	name = "Ammo Box (10mm)"
 	id = "c10mm"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 30000)
+	materials = list(MAT_METAL = 30000)
 	build_path = /obj/item/ammo_box/c10mm
 	category = list("hacked", "Security")
 
@@ -838,7 +771,7 @@
 	name = "Ammo Box (.45)"
 	id = "c45"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 30000)
+	materials = list(MAT_METAL = 30000)
 	build_path = /obj/item/ammo_box/c45
 	category = list("hacked", "Security")
 
@@ -846,15 +779,15 @@
 	name = "Ammo Box (9mm)"
 	id = "c9mm"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 30000)
+	materials = list(MAT_METAL = 30000)
 	build_path = /obj/item/ammo_box/c9mm
 	category = list("hacked", "Security")
 
 /datum/design/cleaver
-	name = "Butcher's Cleaver"
+	name = "Butcher's cleaver"
 	id = "cleaver"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 18000)
+	materials = list(MAT_METAL = 18000)
 	build_path = /obj/item/kitchen/knife/butcher
 	category = list("hacked", "Dinnerware")
 
@@ -862,180 +795,97 @@
 	name = "Spraycan"
 	id = "spraycan"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 100, /datum/material/glass = 100)
+	materials = list(MAT_METAL = 100, MAT_GLASS = 100)
 	build_path = /obj/item/toy/crayon/spraycan
 	category = list("initial", "Tools")
-
-/datum/design/desttagger
-	name = "Destination Tagger"
-	id = "desttagger"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 250, /datum/material/glass = 125)
-	build_path = /obj/item/destTagger
-	category = list("initial", "Electronics")
-
-/datum/design/handlabeler
-	name = "Hand Labeler"
-	id = "handlabel"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 150, /datum/material/glass = 125)
-	build_path = /obj/item/hand_labeler
-	category = list("initial", "Electronics")
 
 /datum/design/geiger
 	name = "Geiger Counter"
 	id = "geigercounter"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 150, /datum/material/glass = 150)
+	materials = list(MAT_METAL = 150, MAT_GLASS = 150)
 	build_path = /obj/item/geiger_counter
 	category = list("initial", "Tools")
 
-/datum/design/turret_control_frame
-	name = "Turret Control Frame"
-	id = "turret_control"
+/datum/design/desttagger
+	name = "Destination tagger"
+	id = "desttagger"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 12000)
-	build_path = /obj/item/wallframe/turret_control
-	category = list("initial", "Construction")
+	materials = list(MAT_METAL = 250, MAT_GLASS = 125)
+	build_path = /obj/item/destTagger
+	category = list("initial", "Electronics")
+
+/datum/design/handlabeler
+	name = "Hand labeler"
+	id = "handlabel"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 150, MAT_GLASS = 125)
+	build_path = /obj/item/hand_labeler
+	category = list("initial", "Electronics")
 
 /datum/design/conveyor_belt
-	name = "Conveyor Belt"
+	name = "Conveyor belt"
 	id = "conveyor_belt"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 3000)
-	build_path = /obj/item/stack/conveyor
+	materials = list(MAT_METAL = 5000)
+	build_path = /obj/item/conveyor_construct
 	category = list("initial", "Construction")
-	maxstack = 30
 
 /datum/design/conveyor_switch
-	name = "Conveyor Belt Switch"
+	name = "Conveyor belt switch"
 	id = "conveyor_switch"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 450, /datum/material/glass = 190)
+	materials = list(MAT_METAL = 450, MAT_GLASS = 190)
 	build_path = /obj/item/conveyor_switch_construct
 	category = list("initial", "Construction")
 
-/datum/design/laptop
-	name = "Laptop Frame"
-	id = "laptop"
+/datum/design/conveyor_belt_placer
+	name = "Conveyor Belt Placer"
+	id = "conveyor_belt_placer"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 10000, /datum/material/glass = 1000)
-	build_path = /obj/item/modular_computer/laptop/buildable
-	category = list("initial","Misc")
+	materials = list(MAT_METAL = 5000, MAT_GLASS = 1000) //This thing doesn't need to be very resource-intensive as the belts are already expensive
+	build_path = /obj/item/storage/conveyor
+	category = list("initial", "Construction")
 
-/datum/design/tablet
-	name = "Tablet Frame"
-	id = "tablet"
+/datum/design/mousetrap
+	name = "Mousetrap"
+	id = "mousetrap"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 2000, /datum/material/glass = 1000)
-	build_path = /obj/item/modular_computer/tablet
-	category = list("initial","Misc")
+	materials = list(MAT_METAL = 800, MAT_GLASS = 200)
+	build_path = /obj/item/assembly/mousetrap
+	category = list("initial", "Miscellaneous")
 
-/datum/design/slime_scanner
-	name = "Slime Scanner"
-	id = "slime_scanner"
+/datum/design/vendor
+	name = "Machine Board (Vendor)"
+	desc = "The circuit board for a Vendor."
+	id = "vendor"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 300, /datum/material/glass = 200)
-	build_path = /obj/item/slime_scanner
-	category = list("initial", "Misc")
-
-/datum/design/pet_carrier
-	name = "Pet Carrier"
-	id = "pet_carrier"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 7500, /datum/material/glass = 100)
-	build_path = /obj/item/pet_carrier
-	category = list("initial", "Misc")
-
-/datum/design/miniature_power_cell
-	name = "Light Fixture Battery"
-	id = "miniature_power_cell"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/glass = 20)
-	build_path = /obj/item/stock_parts/cell/emergency_light
+	materials = list(MAT_GLASS = 750, MAT_METAL = 250)
+	build_path = /obj/item/circuitboard/vendor
 	category = list("initial", "Electronics")
 
-/datum/design/packageWrap
-	name = "Package Wrapping"
-	id = "packagewrap"
-	build_type = AUTOLATHE | PROTOLATHE
-	materials = list(/datum/material/iron = 200, /datum/material/glass = 200)
-	build_path = /obj/item/stack/packageWrap
-	category = list("initial", "Misc", "Equipment")
-	maxstack = 30
-
-/datum/design/holodisk
-	name = "Holodisk"
-	id = "holodisk"
+/datum/design/mirror
+	name = "mirror"
+	desc = "A mountable mirror."
+	id = "mirror"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 100, /datum/material/glass = 100)
-	build_path = /obj/item/disk/holodisk
-	category = list("initial", "Misc")
+	materials = list(MAT_GLASS = 2500)	//1.25 glass sheets, broken mirrors will return a shard (1 sheet)
+	build_path = /obj/item/mounted/mirror
+	category = list("initial", "Miscellaneous")
 
-/datum/design/circuit
-	name = "Blue Circuit Tile"
-	id = "circuit"
+/datum/design/safe_internals
+	name = "Safe Internals"
+	id = "safe"
 	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 500, /datum/material/glass = 500)
-	build_path = /obj/item/stack/tile/circuit
-	category = list("initial", "Misc")
-	maxstack = 50
-
-/datum/design/circuitgreen
-	name = "Green Circuit Tile"
-	id = "circuitgreen"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 500, /datum/material/glass = 500)
-	build_path = /obj/item/stack/tile/circuit/green
-	category = list("initial", "Misc")
-	maxstack = 50
-
-/datum/design/circuitred
-	name = "Red Circuit Tile"
-	id = "circuitred"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 500, /datum/material/glass = 500)
-	build_path = /obj/item/stack/tile/circuit/red
-	category = list("initial", "Misc")
-	maxstack = 50
-
-/datum/design/price_tagger
-	name = "Price Tagger"
-	id = "price_tagger"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 1500, /datum/material/glass = 500)
-	build_path = /obj/item/price_tagger
-	category = list("initial", "Misc")
-
-/datum/design/custom_vendor_refill
-	name = "Custom Vendor Refill"
-	id = "custom_vendor_refill"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 5000, /datum/material/glass = 2000)
-	build_path = /obj/item/vending_refill/custom
-	category = list("initial", "Misc")
-
-/datum/design/toygun
-	name = "Cap Gun"
-	id = "toygun"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 100, /datum/material/glass = 50)
-	build_path = /obj/item/toy/gun
-	category = list("hacked", "Misc")
-
-/datum/design/capbox
-	name = "Box of Cap Gun Shots"
-	id = "capbox"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 20, /datum/material/glass = 5)
-	build_path = /obj/item/toy/ammo/gun
-	category = list("hacked", "Misc")
-
-/datum/design/ducts
-	name = "Fluid Ducts"
-	id = "fluid_ducts"
-	build_type = AUTOLATHE
-	materials = list(/datum/material/iron = 500)
-	build_path = /obj/item/stack/ducts
+	materials = list(MAT_METAL = 1000)
+	build_path = /obj/item/safe_internals
 	category = list("initial", "Construction")
-	maxstack = 50
+
+/datum/design/golem_shell
+	name = "Golem Shell Construction"
+	desc = "Allows for the construction of a Golem Shell."
+	id = "golem"
+	build_type = AUTOLATHE
+	materials = list(MAT_METAL = 40000)
+	build_path = /obj/item/golem_shell
+	category = list("Imported")

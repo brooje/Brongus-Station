@@ -1,15 +1,11 @@
-//This file is just for the necessary /world definition
-//Try looking in game/world.dm
+// This file is just for the necessary /world definition
+// Try looking in game/world.dm
 
 /world
-	mob = /mob/dead/new_player
-	turf = /turf/open/space/basic
+	mob = /mob/new_player
+	turf = /turf/space
 	area = /area/space
-	view = "17x15"
-	hub = "Exadv1.spacestation13"
-	hub_password = "kMZy3U5jJHSiBQjr"
-	name = "BeeStation 13"
-	fps = 20
-#ifdef FIND_REF_NO_CHECK_TICK
-	loop_checks = FALSE
-#endif
+	view = "15x15"
+	cache_lifespan = 0	//stops player uploaded stuff from being kept in the rsc past the current session
+	fps = 20 // If this isnt hard-defined, anything relying on this variable before world load will cry a lot
+	name = "Paradise Station 13"

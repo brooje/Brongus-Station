@@ -1,76 +1,91 @@
-
 //Preference toggles
-#define SOUND_ADMINHELP			(1<<0)
-#define SOUND_MIDI				(1<<1)
-#define SOUND_AMBIENCE			(1<<2)
-#define SOUND_LOBBY				(1<<3)
-#define MEMBER_PUBLIC			(1<<4)
-#define INTENT_STYLE			(1<<5)
-#define MIDROUND_ANTAG			(1<<6)
-#define SOUND_INSTRUMENTS		(1<<7)
-#define SOUND_SHIP_AMBIENCE		(1<<8)
-#define SOUND_PRAYERS			(1<<9)
-#define ANNOUNCE_LOGIN			(1<<10)
-#define SOUND_ANNOUNCEMENTS		(1<<11)
-#define DISABLE_DEATHRATTLE		(1<<12)
-#define DISABLE_ARRIVALRATTLE	(1<<13)
-#define COMBOHUD_LIGHTING		(1<<14)
+#define SOUND_ADMINHELP		1
+#define SOUND_MIDI			2
+#define SOUND_AMBIENCE		4
+#define SOUND_LOBBY			8
+#define SOUND_HEARTBEAT		32
+#define SOUND_BUZZ			64
+#define SOUND_INSTRUMENTS	128
+#define SOUND_MENTORHELP	256
+#define SOUND_DISCO         512
+#define SOUND_AI_VOICE      1024
+#define SOUND_PRAYERNOTIFY      2048
 
-#define DEADMIN_ALWAYS			(1<<15)
-#define DEADMIN_ANTAGONIST		(1<<16)
-#define DEADMIN_POSITION_HEAD	(1<<17)
-#define DEADMIN_POSITION_SECURITY	(1<<18)
-#define DEADMIN_POSITION_SILICON	(1<<19)
+#define SOUND_DEFAULT (SOUND_ADMINHELP|SOUND_MIDI|SOUND_AMBIENCE|SOUND_LOBBY|SOUND_HEARTBEAT|SOUND_BUZZ|SOUND_INSTRUMENTS|SOUND_MENTORHELP|SOUND_DISCO|SOUND_AI_VOICE|SOUND_PRAYERNOTIFY)
 
-#define TOGGLES_DEFAULT (SOUND_ADMINHELP|SOUND_MIDI|SOUND_AMBIENCE|SOUND_LOBBY|MEMBER_PUBLIC|INTENT_STYLE|MIDROUND_ANTAG|SOUND_INSTRUMENTS|SOUND_SHIP_AMBIENCE|SOUND_PRAYERS|SOUND_ANNOUNCEMENTS)
+#define PREFTOGGLE_CHAT_OOC					1
+#define PREFTOGGLE_CHAT_DEAD				2
+#define PREFTOGGLE_CHAT_GHOSTEARS			4
+#define PREFTOGGLE_CHAT_GHOSTSIGHT			8
+#define PREFTOGGLE_CHAT_PRAYER				16
+#define PREFTOGGLE_CHAT_RADIO				32
+#define PREFTOGGLE_AZERTY					64
+#define PREFTOGGLE_CHAT_DEBUGLOGS 			128
+#define PREFTOGGLE_CHAT_LOOC 				256
+#define PREFTOGGLE_CHAT_GHOSTRADIO 			512
+#define PREFTOGGLE_SHOW_TYPING 				1024
+#define PREFTOGGLE_DISABLE_SCOREBOARD 		2048
+#define PREFTOGGLE_DISABLE_KARMA_REMINDER	4096
+#define PREFTOGGLE_MEMBER_PUBLIC			8192
+#define PREFTOGGLE_CHAT_NO_ADMINLOGS 		16384
+#define PREFTOGGLE_DONATOR_PUBLIC			32768
+#define PREFTOGGLE_CHAT_NO_TICKETLOGS 		65536
+#define PREFTOGGLE_UI_DARKMODE 				131072
+#define PREFTOGGLE_DISABLE_KARMA 			262144
+#define PREFTOGGLE_CHAT_NO_MENTORTICKETLOGS 524288
+#define PREFTOGGLE_TYPING_ONCE 				1048576
+#define PREFTOGGLE_AMBIENT_OCCLUSION 		2097152
+#define PREFTOGGLE_CHAT_GHOSTPDA 			4194304
+#define PREFTOGGLE_NUMPAD_TARGET 			8388608
 
-//Chat toggles
-#define CHAT_OOC			(1<<0)
-#define CHAT_DEAD			(1<<1)
-#define CHAT_GHOSTEARS		(1<<2)
-#define CHAT_GHOSTSIGHT		(1<<3)
-#define CHAT_PRAYER			(1<<4)
-#define CHAT_RADIO			(1<<5)
-#define CHAT_PULLR			(1<<6)
-#define CHAT_GHOSTWHISPER	(1<<7)
-#define CHAT_GHOSTPDA		(1<<8)
-#define CHAT_GHOSTRADIO 	(1<<9)
-#define CHAT_BANKCARD  (1<<10)
-#define CHAT_GHOSTLAWS	(1<<11)
+#define TOGGLES_TOTAL 						16777215 // If you add or remove a preference toggle above, make sure you update this define with the total value of the toggles combined.
 
-#define TOGGLES_DEFAULT_CHAT (CHAT_OOC|CHAT_DEAD|CHAT_GHOSTEARS|CHAT_GHOSTSIGHT|CHAT_PRAYER|CHAT_RADIO|CHAT_PULLR|CHAT_GHOSTWHISPER|CHAT_GHOSTPDA|CHAT_GHOSTRADIO|CHAT_BANKCARD|CHAT_GHOSTLAWS)
+#define TOGGLES_DEFAULT (PREFTOGGLE_CHAT_OOC|PREFTOGGLE_CHAT_DEAD|PREFTOGGLE_CHAT_GHOSTEARS|PREFTOGGLE_CHAT_GHOSTSIGHT|PREFTOGGLE_CHAT_PRAYER|PREFTOGGLE_CHAT_RADIO|PREFTOGGLE_CHAT_LOOC|PREFTOGGLE_MEMBER_PUBLIC|PREFTOGGLE_DONATOR_PUBLIC|PREFTOGGLE_AMBIENT_OCCLUSION|PREFTOGGLE_CHAT_GHOSTPDA|PREFTOGGLE_NUMPAD_TARGET)
 
-#define PARALLAX_INSANE -1 //for show offs
-#define PARALLAX_HIGH    0 //default.
-#define PARALLAX_MED     1
-#define PARALLAX_LOW     2
-#define PARALLAX_DISABLE 3 //this option must be the highest number
+// toggles_2 variables. These MUST be prefixed with PREFTOGGLE_2
+#define PREFTOGGLE_2_RANDOMSLOT		1
+#define PREFTOGGLE_2_FANCYUI		2
+#define PREFTOGGLE_2_ITEMATTACK		4
+#define PREFTOGGLE_2_WINDOWFLASHING	8
+#define PREFTOGGLE_2_ANONDCHAT		16
+#define PREFTOGGLE_2_AFKWATCH		32
+#define PREFTOGGLE_2_RUNECHAT		64
+#define PREFTOGGLE_2_DEATHMESSAGE	128
+#define PREFTOGGLE_2_EMOTE_BUBBLE	256
+// Yes I know this being an "enable to disable" is misleading, but it avoids having to tweak all existing pref entries
+#define PREFTOGGLE_2_REVERB_DISABLE	512
+#define PREFTOGGLE_2_FORCE_WHITE_RUNECHAT	1024
+#define PREFTOGGLE_2_SIMPLE_STAT_PANEL	2048
+#define PREFTOGGLE_2_SEE_ITEM_OUTLINES 	4096
 
-#define PIXEL_SCALING_AUTO 0
-#define PIXEL_SCALING_1X 1
-#define PIXEL_SCALING_1_2X 1.5
-#define PIXEL_SCALING_2X 2
-#define PIXEL_SCALING_3X 3
-#define PIXEL_SCALING_4X 4
+#define TOGGLES_2_TOTAL 			8191 // If you add or remove a preference toggle above, make sure you update this define with the total value of the toggles combined.
 
-#define SCALING_METHOD_NORMAL "normal"
-#define SCALING_METHOD_DISTORT "distort"
-#define SCALING_METHOD_BLUR "blur"
+#define TOGGLES_2_DEFAULT (PREFTOGGLE_2_FANCYUI|PREFTOGGLE_2_ITEMATTACK|PREFTOGGLE_2_WINDOWFLASHING|PREFTOGGLE_2_RUNECHAT|PREFTOGGLE_2_DEATHMESSAGE|PREFTOGGLE_2_EMOTE_BUBBLE|PREFTOGGLE_2_SEE_ITEM_OUTLINES)
 
-#define PARALLAX_DELAY_DEFAULT world.tick_lag
-#define PARALLAX_DELAY_MED     1
-#define PARALLAX_DELAY_LOW     2
+// Sanity checks
+#if TOGGLES_TOTAL > 16777215
+#error toggles bitflag over 16777215. Please use toggles_2.
+#endif
 
-#define SEC_DEPT_NONE "None"
-#define SEC_DEPT_RANDOM "Random"
-#define SEC_DEPT_ENGINEERING "Engineering"
-#define SEC_DEPT_MEDICAL "Medical"
-#define SEC_DEPT_SCIENCE "Science"
-#define SEC_DEPT_SUPPLY "Supply"
+#if TOGGLES_2_TOTAL > 16777215
+#error toggles_2 bitflag over 16777215. Please make an issue report and postpone the feature you are working on.
+#endif
+
+
+
+// Admin attack logs filter system, see /proc/add_attack_logs and /proc/msg_admin_attack
+#define ATKLOG_ALL	0
+#define ATKLOG_ALMOSTALL	1
+#define ATKLOG_MOST	2
+#define ATKLOG_FEW	3
+#define ATKLOG_NONE	4
 
 // Playtime tracking system, see jobs_exp.dm
 #define EXP_TYPE_LIVING			"Living"
 #define EXP_TYPE_CREW			"Crew"
+#define EXP_TYPE_SPECIAL		"Special"
+#define EXP_TYPE_GHOST			"Ghost"
+#define EXP_TYPE_EXEMPT			"Exempt"
 #define EXP_TYPE_COMMAND		"Command"
 #define EXP_TYPE_ENGINEERING	"Engineering"
 #define EXP_TYPE_MEDICAL		"Medical"
@@ -79,19 +94,32 @@
 #define EXP_TYPE_SECURITY		"Security"
 #define EXP_TYPE_SILICON		"Silicon"
 #define EXP_TYPE_SERVICE		"Service"
-#define EXP_TYPE_GIMMICK		"Gimmick"
-#define EXP_TYPE_ANTAG			"Antag"
-#define EXP_TYPE_SPECIAL		"Special"
-#define EXP_TYPE_GHOST			"Ghost"
-#define EXP_TYPE_ADMIN			"Admin"
+#define EXP_TYPE_WHITELIST		"Whitelist"
 
-//Flags in the players table in the db
-#define DB_FLAG_EXEMPT 1
+#define EXP_DEPT_TYPE_LIST		list(EXP_TYPE_SUPPLY, EXP_TYPE_SERVICE, EXP_TYPE_MEDICAL, EXP_TYPE_ENGINEERING, EXP_TYPE_SCIENCE, EXP_TYPE_SECURITY, EXP_TYPE_COMMAND, EXP_TYPE_SILICON, EXP_TYPE_SPECIAL, EXP_TYPE_GHOST)
 
-#define DEFAULT_CYBORG_NAME "Default Cyborg Name"
+// Defines just for parallax because its levels make storing it in the regular prefs a pain in the ass
+// These dont need to be bitflags because there isnt going to be more than one at a time of these active
+// But its gonna piss off my OCD if it isnt bitflags, so deal with it, -affected
+#define PARALLAX_DISABLE		1
+#define PARALLAX_LOW			2
+#define PARALLAX_MED			4
+#define PARALLAX_HIGH			8
+#define PARALLAX_INSANE			16
+
+// 2FA Defines. These are the same as the schema DB enums //
+
+/// Client has 2FA disabled
+#define _2FA_DISABLED "DISABLED"
+/// Client will be prompted for 2FA on IP changes
+#define _2FA_ENABLED_IP "ENABLED_IP"
+/// Client will be prompted for 2FA always
+#define _2FA_ENABLED_ALWAYS "ENABLED_ALWAYS"
 
 
-//Job preferences levels
-#define JP_LOW 1
-#define JP_MEDIUM 2
-#define JP_HIGH 3
+#define MAX_SAVE_SLOTS 30 // Save slots for regular players
+#define MAX_SAVE_SLOTS_MEMBER 30 // Save slots for BYOND members
+
+#define TAB_CHAR 0
+#define TAB_GAME 1
+#define TAB_GEAR 2

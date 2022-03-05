@@ -1,26 +1,21 @@
 /obj/mecha/working/ripley
-	desc = "Autonomous Power Loader Unit MK-I. Designed primarily around heavy lifting, the Ripley can be outfitted with utility equipment to fill a number of roles."
-	name = "\improper APLU MK-I \"Ripley\""
+	desc = "Autonomous Power Loader Unit. This newer model is refitted with powerful armour against the dangers of the EVA mining process."
+	name = "APLU \"Ripley\""
 	icon_state = "ripley"
-	silicon_icon_state = "ripley-empty"
-	step_in = 1.5 //Move speed, lower is faster.
-	var/fast_pressure_step_in = 1.5 //step_in while in low pressure conditions
-	var/slow_pressure_step_in = 2.0 //step_in while in normal pressure conditions
+	initial_icon = "ripley"
+	step_in = 4 //Move speed, lower is faster.
+	var/fast_pressure_step_in = 2 //step_in while in normal pressure conditions
+	var/slow_pressure_step_in = 4 //step_in while in better pressure conditions
 	max_temperature = 20000
 	max_integrity = 200
 	lights_power = 7
 	deflect_chance = 15
-	armor = list("melee" = 40, "bullet" = 20, "laser" = 10, "energy" = 20, "bomb" = 40, "bio" = 0, "rad" = 20, "fire" = 100, "acid" = 100, "stamina" = 0)
+	armor = list(MELEE = 40, BULLET = 20, LASER = 10, ENERGY = 20, BOMB = 40, BIO = 0, RAD = 0, FIRE = 100, ACID = 100)
 	max_equip = 6
 	wreckage = /obj/structure/mecha_wreckage/ripley
-	internals_req_access = list(ACCESS_MECH_ENGINE, ACCESS_MECH_SCIENCE, ACCESS_MECH_MINING)
 	var/list/cargo = new
 	var/cargo_capacity = 15
 	var/hides = 0
-	enclosed = FALSE //Normal ripley has an open cockpit design
-	enter_delay = 10 //can enter in a quarter of the time of other mechs
-	exit_delay = 10
-	opacity = FALSE //Ripley has a window
 
 /obj/mecha/working/ripley/Move()
 	. = ..()
@@ -37,8 +32,10 @@
 					ore.forceMove(ore_box)
 
 /obj/mecha/working/ripley/Destroy()
+	for(var/i=1, i <= hides, i++)
+		new /obj/item/stack/sheet/animalhide/goliath_hide(loc) //If a goliath-plated ripley gets killed, all the plates drop
 	for(var/atom/movable/A in cargo)
-		A.forceMove(drop_location())
+		A.forceMove(loc)
 		step_rand(A)
 	cargo.Cut()
 	return ..()
@@ -51,104 +48,64 @@
 	..()
 	update_icon()
 
+/obj/mecha/working/ripley/mmi_moved_inside(obj/item/mmi/mmi_as_oc, mob/user)
+	..()
+	update_icon()
+
 /obj/mecha/working/ripley/update_icon()
 	..()
-	var/datum/component/armor_plate/C = GetComponent(/datum/component/armor_plate)
-	if (C.amount)
+	if(hides)
 		cut_overlays()
-		if(C.amount < 3)
+		if(hides < 3)
 			add_overlay(occupant ? "ripley-g" : "ripley-g-open")
 		else
 			add_overlay(occupant ? "ripley-g-full" : "ripley-g-full-open")
 
-/obj/mecha/working/ripley/check_for_internal_damage(list/possible_int_damage,ignore_threshold=null)
-	if (!enclosed)
-		possible_int_damage -= (MECHA_INT_TEMP_CONTROL + MECHA_INT_TANK_BREACH) //if we don't even have an air tank, these two doesn't make a ton of sense.
-	. = ..()
-
-
-/obj/mecha/working/ripley/Initialize()
-	. = ..()
-	AddComponent(/datum/component/armor_plate,3,/obj/item/stack/sheet/animalhide/goliath_hide,list("melee" = 10, "bullet" = 5, "laser" = 5))
-
-
-/obj/mecha/working/ripley/mkii
-	desc = "Autonomous Power Loader Unit MK-II. This prototype Ripley is refitted with a pressurized cabin, trading its prior speed for atmospheric protection"
-	name = "\improper APLU MK-II \"Ripley\""
-	icon_state = "ripleymkii"
-	fast_pressure_step_in = 2 //step_in while in low pressure conditions
-	slow_pressure_step_in = 4 //step_in while in normal pressure conditions
-	step_in = 4
-	armor = list("melee" = 40, "bullet" = 20, "laser" = 10, "energy" = 20, "bomb" = 40, "bio" = 0, "rad" = 0, "fire" = 100, "acid" = 100, "stamina" = 0)
-	wreckage = /obj/structure/mecha_wreckage/ripley/mkii
-	enclosed = TRUE
-	enter_delay = 40
-	silicon_icon_state = null
-	opacity = TRUE
-
 /obj/mecha/working/ripley/firefighter
-	desc = "Autonomous Power Loader Unit MK-III. This model is refitted with a pressurized cabin and additional thermal protection."
-	name = "\improper APLU MK-III \"Firefighter\""
+	desc = "A standard APLU chassis that was refitted with additional thermal protection and a cistern."
+	name = "APLU \"Firefighter\""
 	icon_state = "firefighter"
+	initial_icon = "firefighter"
 	max_temperature = 65000
 	max_integrity = 250
-	fast_pressure_step_in = 2 //step_in while in low pressure conditions
-	slow_pressure_step_in = 4 //step_in while in normal pressure conditions
-	step_in = 4
 	resistance_flags = LAVA_PROOF | FIRE_PROOF | ACID_PROOF
 	lights_power = 7
-	armor = list("melee" = 40, "bullet" = 30, "laser" = 30, "energy" = 30, "bomb" = 60, "bio" = 0, "rad" = 70, "fire" = 100, "acid" = 100, "stamina" = 0)
+	armor = list(MELEE = 40, BULLET = 30, LASER = 30, ENERGY = 30, BOMB = 60, BIO = 0, RAD = 70, FIRE = 100, ACID = 100)
 	max_equip = 5 // More armor, less tools
 	wreckage = /obj/structure/mecha_wreckage/ripley/firefighter
-	enclosed = TRUE
-	enter_delay = 40
-	silicon_icon_state = null
-	opacity = TRUE
-
 
 /obj/mecha/working/ripley/deathripley
 	desc = "OH SHIT IT'S THE DEATHSQUAD WE'RE ALL GONNA DIE"
-	name = "\improper DEATH-RIPLEY"
+	name = "DEATH-RIPLEY"
 	icon_state = "deathripley"
-	fast_pressure_step_in = 2 //step_in while in low pressure conditions
-	slow_pressure_step_in = 4 //step_in while in normal pressure conditions
-	step_in = 4
+	initial_icon = "deathripley"
+	step_in = 3
 	slow_pressure_step_in = 3
 	opacity=0
+	max_temperature = 65000
+	max_integrity = 300
 	lights_power = 7
+	armor = list(MELEE = 40, BULLET = 40, LASER = 40, ENERGY = 0, BOMB = 70, BIO = 0, RAD = 0, FIRE = 100, ACID = 100)
 	wreckage = /obj/structure/mecha_wreckage/ripley/deathripley
 	step_energy_drain = 0
-	enclosed = TRUE
-	enter_delay = 40
-	silicon_icon_state = null
-	opacity = TRUE
+	normal_step_energy_drain = 0
 
-/obj/mecha/working/ripley/deathripley/Initialize()
-	. = ..()
+/obj/mecha/working/ripley/deathripley/New()
+	..()
 	var/obj/item/mecha_parts/mecha_equipment/ME = new /obj/item/mecha_parts/mecha_equipment/hydraulic_clamp/kill
 	ME.attach(src)
-
-/obj/mecha/working/ripley/deathripley/real
-	desc = "OH SHIT IT'S THE DEATHSQUAD WE'RE ALL GONNA DIE. FOR REAL"
-
-/obj/mecha/working/ripley/deathripley/real/Initialize()
-	. = ..()
-	for(var/obj/item/mecha_parts/mecha_equipment/E in equipment)
-		E.detach()
-		qdel(E)
-	equipment.Cut()
-	var/obj/item/mecha_parts/mecha_equipment/ME = new /obj/item/mecha_parts/mecha_equipment/hydraulic_clamp/kill/real
-	ME.attach(src)
+	return
 
 /obj/mecha/working/ripley/mining
-	desc = "An old, dusty mining Ripley."
-	name = "\improper APLU \"Miner\""
+	desc = "An old, dusty mining ripley."
+	name = "APLU \"Miner\""
 	obj_integrity = 75 //Low starting health
 
-/obj/mecha/working/ripley/mining/Initialize()
-	. = ..()
+/obj/mecha/working/ripley/mining/New()
+	..()
 	if(cell)
 		cell.charge = FLOOR(cell.charge * 0.25, 1) //Starts at very low charge
+	//Attach drill
 	if(prob(70)) //Maybe add a drill
 		if(prob(15)) //Possible diamond drill... Feeling lucky?
 			var/obj/item/mecha_parts/mecha_equipment/drill/diamonddrill/D = new
@@ -167,8 +124,7 @@
 	//Attach hydraulic clamp
 	var/obj/item/mecha_parts/mecha_equipment/hydraulic_clamp/HC = new
 	HC.attach(src)
-	for(var/obj/item/mecha_parts/mecha_tracking/B in trackers)//Deletes the beacon so it can't be found easily
-		qdel(B)
+	QDEL_LIST(trackers) //Deletes the beacon so it can't be found easily
 
 	var/obj/item/mecha_parts/mecha_equipment/mining_scanner/scanner = new
 	scanner.attach(src)
@@ -181,33 +137,52 @@
 /obj/mecha/working/ripley/Topic(href, href_list)
 	..()
 	if(href_list["drop_from_cargo"])
-		var/obj/O = locate(href_list["drop_from_cargo"]) in cargo
-		if(O)
+		var/obj/O = locate(href_list["drop_from_cargo"])
+		if(O && (O in cargo))
 			occupant_message("<span class='notice'>You unload [O].</span>")
-			O.forceMove(drop_location())
+			O.loc = get_turf(src)
 			cargo -= O
-			log_message("Unloaded [O]. Cargo compartment capacity: [cargo_capacity - src.cargo.len]", LOG_MECHA)
+			var/turf/T = get_turf(O)
+			if(T)
+				T.Entered(O)
+			log_message("Unloaded [O]. Cargo compartment capacity: [cargo_capacity - cargo.len]")
 	return
 
 
-/obj/mecha/working/ripley/contents_explosion(severity, target)
-	for(var/X in cargo)
-		var/obj/O = X
-		if(prob(30/severity))
-			cargo -= O
-			O.forceMove(drop_location())
-	. = ..()
 
 /obj/mecha/working/ripley/get_stats_part()
 	var/output = ..()
 	output += "<b>Cargo Compartment Contents:</b><div style=\"margin-left: 15px;\">"
 	if(cargo.len)
 		for(var/obj/O in cargo)
-			output += "<a href='?src=[REF(src)];drop_from_cargo=[REF(O)]'>Unload</a> : [O]<br>"
+			output += "<a href='?src=[UID()];drop_from_cargo=\ref[O]'>Unload</a> : [O]<br>"
 	else
 		output += "Nothing"
 	output += "</div>"
 	return output
+
+/obj/mecha/working/ripley/Destroy()
+	for(var/mob/M in src)
+		if(M == occupant)
+			continue
+		M.loc = get_turf(src)
+		M.loc.Entered(M)
+		step_rand(M)
+	for(var/atom/movable/A in cargo)
+		A.loc = get_turf(src)
+		var/turf/T = get_turf(A)
+		if(T)
+			T.Entered(A)
+		step_rand(A)
+	return ..()
+
+/obj/mecha/working/ripley/ex_act(severity)
+	..()
+	for(var/X in cargo)
+		var/obj/O = X
+		if(prob(30 / severity))
+			cargo -= O
+			O.forceMove(drop_location())
 
 /obj/mecha/working/ripley/proc/update_pressure()
 	var/turf/T = get_turf(loc)
@@ -221,14 +196,11 @@
 		for(var/obj/item/mecha_parts/mecha_equipment/drill/drill in equipment)
 			drill.equip_cooldown = initial(drill.equip_cooldown)
 
-/obj/mecha/working/ripley/relay_container_resist(mob/living/user, obj/O)
-	to_chat(user, "<span class='notice'>You lean on the back of [O] and start pushing so it falls out of [src].</span>")
-	if(do_after(user, 300, target = O))
-		if(!user || user.stat != CONSCIOUS || user.loc != src || O.loc != src )
-			return
-		to_chat(user, "<span class='notice'>You successfully pushed [O] out of [src]!</span>")
-		O.forceMove(drop_location())
-		cargo -= O
+/obj/mecha/working/ripley/emag_act(mob/user)
+	if(!emagged)
+		emagged = TRUE
+		to_chat(user, "<span class='notice'>You slide the card through [src]'s ID slot.</span>")
+		playsound(loc, "sparks", 100, TRUE, SHORT_RANGE_SOUND_EXTRARANGE)
+		desc += "</br><span class='danger'>The mech's equipment slots spark dangerously!</span>"
 	else
-		if(user.loc == src) //so we don't get the message if we resisted multiple times and succeeded.
-			to_chat(user, "<span class='warning'>You fail to push [O] out of [src]!</span>")
+		to_chat(user, "<span class='warning'>[src]'s ID slot rejects the card.</span>")

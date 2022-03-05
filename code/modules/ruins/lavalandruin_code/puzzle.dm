@@ -1,11 +1,11 @@
 /obj/effect/sliding_puzzle
 	name = "Sliding puzzle generator"
-	icon = 'icons/obj/items_and_weapons.dmi' //mapping
+	icon = 'icons/obj/items.dmi' //mapping
 	icon_state = "syndballoon"
 	invisibility = INVISIBILITY_ABSTRACT
 	anchored = TRUE
 	var/list/elements
-	var/floor_type = /turf/open/floor/vault
+	var/floor_type = /turf/simulated/floor/vault
 	var/finished = FALSE
 	var/reward_type = /obj/item/reagent_containers/food/snacks/cookie
 	var/element_type = /obj/structure/puzzle_element
@@ -48,7 +48,7 @@
 		var/turf/T = get_turf_for_id(id)
 		if(!T)
 			return FALSE
-		if(istype(T,/turf/closed/indestructible))
+		if(istype(T, /turf/simulated/wall/indestructible) || istype(T, /turf/simulated/floor/indestructible))
 			return FALSE
 	return TRUE
 
@@ -123,7 +123,7 @@
 	E1.forceMove(T2)
 	E2.forceMove(T1)
 
-/proc/cmp_xy_desc(atom/movable/A,atom/movable/B)
+/proc/cmp_xy_desc(atom/movable/A, atom/movable/B)
 	if(A.y > B.y)
 		return -1
 	if(A.y < B.y)
@@ -154,8 +154,6 @@
 	var/tile_count = width * height
 
 	//Generate per tile icons
-	var/icon/base_icon = get_base_icon()
-
 	for(var/id in 1 to tile_count)
 		var/y = width - round((id - 1) / width)
 		var/x = ((id - 1) % width) + 1
@@ -165,7 +163,7 @@
 		var/y_start = 1 + ((y - 1) * world.icon_size)
 		var/y_end = y_start + world.icon_size - 1
 
-		var/icon/T = new(base_icon)
+		var/icon/T = get_base_icon()
 		T.Crop(x_start,y_start,x_end,y_end)
 		puzzle_pieces["[id]"] = T
 		left_ids += id
@@ -173,7 +171,7 @@
 	//Setup random empty tile
 	empty_tile_id = pick_n_take(left_ids)
 	var/turf/empty_tile_turf = get_turf_for_id(empty_tile_id)
-	empty_tile_turf.PlaceOnTop(floor_type,null,CHANGETURF_INHERIT_AIR)
+	empty_tile_turf.ChangeTurf(floor_type, keep_icon = FALSE, ignore_air = FALSE)
 	var/mutable_appearance/MA = new(puzzle_pieces["[empty_tile_id]"])
 	MA.layer = empty_tile_turf.layer + 0.1
 	empty_tile_turf.add_overlay(MA)
@@ -182,7 +180,7 @@
 	var/list/empty_spots = left_ids.Copy()
 	for(var/spot_id in empty_spots)
 		var/turf/T = get_turf_for_id(spot_id)
-		T = T.PlaceOnTop(floor_type,null,CHANGETURF_INHERIT_AIR)
+		T = T.ChangeTurf(floor_type, keep_icon = FALSE, ignore_air = FALSE)
 		var/obj/structure/puzzle_element/E = new element_type(T)
 		elements += E
 		var/chosen_id = pick_n_take(left_ids)
@@ -196,7 +194,7 @@
 
 /obj/structure/puzzle_element
 	name = "mysterious pillar"
-	desc = "puzzling..."
+	desc = "Puzzling..."
 	icon = 'icons/obj/lavaland/artefacts.dmi'
 	icon_state = "puzzle_pillar"
 	anchored = FALSE
@@ -294,7 +292,7 @@
 
 //Some armor so it's harder to kill someone by mistake.
 /obj/structure/puzzle_element/prison
-	armor = list("melee" = 50, "bullet" = 50, "laser" = 50, "energy" = 50, "bomb" = 50, "bio" = 50, "rad" = 50, "fire" = 50, "acid" = 50, "stamina" = 0)
+	armor = list(MELEE = 50, BULLET = 50, LASER = 50, ENERGY = 50, BOMB = 50, BIO = 50, RAD = 50, FIRE = 50, ACID = 50)
 
 /obj/structure/puzzle_element/prison/relaymove(mob/user)
 	return

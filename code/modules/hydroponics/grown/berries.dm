@@ -15,7 +15,7 @@
 	icon_dead = "berry-dead" // Same for the dead icon
 	genes = list(/datum/plant_gene/trait/repeated_harvest)
 	mutatelist = list(/obj/item/seeds/berry/glow, /obj/item/seeds/berry/poison)
-	reagents_add = list(/datum/reagent/consumable/nutriment/vitamin = 0.04, /datum/reagent/consumable/nutriment = 0.1)
+	reagents_add = list("vitamin" = 0.04, "plantmatter" = 0.1)
 
 /obj/item/reagent_containers/food/snacks/grown/berries
 	seed = /obj/item/seeds/berry
@@ -25,10 +25,8 @@
 	gender = PLURAL
 	filling_color = "#FF00FF"
 	bitesize_mod = 2
-	foodtype = FRUIT
-	juice_results = list(/datum/reagent/consumable/berryjuice = 0)
 	tastes = list("berry" = 1)
-	distill_reagent = /datum/reagent/consumable/ethanol/gin
+	distill_reagent = "gin"
 
 // Poison Berries
 /obj/item/seeds/berry/poison
@@ -39,20 +37,18 @@
 	plantname = "Poison-Berry Bush"
 	product = /obj/item/reagent_containers/food/snacks/grown/berries/poison
 	mutatelist = list(/obj/item/seeds/berry/death)
-	reagents_add = list(/datum/reagent/toxin/cyanide = 0.15, /datum/reagent/toxin/staminatoxin = 0.2, /datum/reagent/consumable/nutriment/vitamin = 0.04, /datum/reagent/consumable/nutriment = 0.1)
+	reagents_add = list("cyanide" = 0.15, "tirizene" = 0.2, "vitamin" = 0.04, "plantmatter" = 0.1)
 	rarity = 10 // Mildly poisonous berries are common in reality
 
 /obj/item/reagent_containers/food/snacks/grown/berries/poison
 	seed = /obj/item/seeds/berry/poison
 	name = "bunch of poison-berries"
-	desc = "Taste so good, you might die!"
+	desc = "Taste so good, you could die!"
 	icon_state = "poisonberrypile"
 	filling_color = "#C71585"
-	foodtype = FRUIT | TOXIC
-	juice_results = list(/datum/reagent/consumable/poisonberryjuice = 0)
 	tastes = list("poison-berry" = 1)
 	distill_reagent = null
-	wine_power = 35
+	wine_power = 0.35
 
 // Death Berries
 /obj/item/seeds/berry/death
@@ -65,19 +61,18 @@
 	lifespan = 30
 	potency = 50
 	mutatelist = list()
-	reagents_add = list(/datum/reagent/toxin/coniine = 0.08, /datum/reagent/toxin/staminatoxin = 0.1, /datum/reagent/consumable/nutriment/vitamin = 0.04, /datum/reagent/consumable/nutriment = 0.1)
+	reagents_add = list("coniine" = 0.08, "tirizene" = 0.1, "vitamin" = 0.04, "plantmatter" = 0.1)
 	rarity = 30
 
 /obj/item/reagent_containers/food/snacks/grown/berries/death
 	seed = /obj/item/seeds/berry/death
 	name = "bunch of death-berries"
-	desc = "Taste so good, you will die!"
+	desc = "Taste so good, you could die!"
 	icon_state = "deathberrypile"
 	filling_color = "#708090"
-	foodtype = FRUIT | TOXIC
 	tastes = list("death-berry" = 1)
 	distill_reagent = null
-	wine_power = 50
+	wine_power = 0.5
 
 // Glow Berries
 /obj/item/seeds/berry/glow
@@ -90,8 +85,8 @@
 	lifespan = 30
 	endurance = 25
 	mutatelist = list()
-	genes = list(/datum/plant_gene/trait/glow/berry, /datum/plant_gene/trait/noreact, /datum/plant_gene/trait/repeated_harvest)
-	reagents_add = list(/datum/reagent/uranium = 0.25, /datum/reagent/iodine = 0.2, /datum/reagent/consumable/nutriment/vitamin = 0.04, /datum/reagent/consumable/nutriment = 0.1)
+	genes = list(/datum/plant_gene/trait/glow/berry, /datum/plant_gene/trait/repeated_harvest)
+	reagents_add = list("uranium" = 0.25, "iodine" = 0.2, "vitamin" = 0.04, "plantmatter" = 0.1)
 	rarity = 20
 
 /obj/item/reagent_containers/food/snacks/grown/berries/glow
@@ -100,10 +95,12 @@
 	desc = "Nutritious!"
 	icon_state = "glowberrypile"
 	filling_color = "#7CFC00"
-	foodtype = FRUIT
-	tastes = list("glow-berry" = 1)
+	origin_tech = "plasmatech=6"
+	light_color = "#006622"
 	distill_reagent = null
-	wine_power = 60
+	wine_power = 0.6
+	tastes = list("glow-berry" = 1)
+	wine_flavor = "warmth"
 
 // Cherries
 /obj/item/seeds/cherry
@@ -123,7 +120,7 @@
 	icon_dead = "cherry-dead"
 	genes = list(/datum/plant_gene/trait/repeated_harvest)
 	mutatelist = list(/obj/item/seeds/cherry/blue)
-	reagents_add = list(/datum/reagent/consumable/nutriment = 0.07, /datum/reagent/consumable/sugar = 0.07)
+	reagents_add = list("plantmatter" = 0.07, "sugar" = 0.07)
 
 /obj/item/reagent_containers/food/snacks/grown/cherries
 	seed = /obj/item/seeds/cherry
@@ -133,21 +130,19 @@
 	gender = PLURAL
 	filling_color = "#FF0000"
 	bitesize_mod = 2
-	foodtype = FRUIT
-	grind_results = list(/datum/reagent/consumable/cherryjelly = 0)
 	tastes = list("cherry" = 1)
-	wine_power = 30
+	wine_power = 0.3
 
 // Blue Cherries
 /obj/item/seeds/cherry/blue
 	name = "pack of blue cherry pits"
-	desc = "The blue kind of cherries."
+	desc = "The blue kind of cherries"
 	icon_state = "seed-bluecherry"
 	species = "bluecherry"
 	plantname = "Blue Cherry Tree"
 	product = /obj/item/reagent_containers/food/snacks/grown/bluecherries
 	mutatelist = list()
-	reagents_add = list(/datum/reagent/consumable/nutriment = 0.07, /datum/reagent/consumable/sugar = 0.07)
+	reagents_add = list("plantmatter" = 0.07, "sugar" = 0.07)
 	rarity = 10
 
 /obj/item/reagent_containers/food/snacks/grown/bluecherries
@@ -157,10 +152,8 @@
 	icon_state = "bluecherry"
 	filling_color = "#6495ED"
 	bitesize_mod = 2
-	foodtype = FRUIT
-	grind_results = list(/datum/reagent/consumable/bluecherryjelly = 0)
 	tastes = list("blue cherry" = 1)
-	wine_power = 50
+	wine_power = 0.5
 
 // Grapes
 /obj/item/seeds/grape
@@ -181,7 +174,7 @@
 	icon_dead = "grape-dead"
 	genes = list(/datum/plant_gene/trait/repeated_harvest)
 	mutatelist = list(/obj/item/seeds/grape/green)
-	reagents_add = list(/datum/reagent/consumable/nutriment/vitamin = 0.04, /datum/reagent/consumable/nutriment = 0.1, /datum/reagent/consumable/sugar = 0.1)
+	reagents_add = list("vitamin" = 0.04, "plantmatter" = 0.1, "sugar" = 0.1)
 
 /obj/item/reagent_containers/food/snacks/grown/grapes
 	seed = /obj/item/seeds/grape
@@ -191,10 +184,8 @@
 	dried_type = /obj/item/reagent_containers/food/snacks/no_raisin/healthy
 	filling_color = "#FF1493"
 	bitesize_mod = 2
-	foodtype = FRUIT
-	juice_results = list(/datum/reagent/consumable/grapejuice = 0)
-	tastes = list("grape" = 1)
-	distill_reagent = /datum/reagent/consumable/ethanol/wine
+	tastes = list("grapes" = 1)
+	distill_reagent = "wine"
 
 // Green Grapes
 /obj/item/seeds/grape/green
@@ -204,7 +195,7 @@
 	species = "greengrape"
 	plantname = "Green-Grape Vine"
 	product = /obj/item/reagent_containers/food/snacks/grown/grapes/green
-	reagents_add = list(/datum/reagent/medicine/kelotane = 0.2, /datum/reagent/consumable/nutriment/vitamin = 0.04, /datum/reagent/consumable/nutriment = 0.1, /datum/reagent/consumable/sugar = 0.1)
+	reagents_add = list("kelotane" = 0.2, "vitamin" = 0.04, "plantmatter" = 0.1, "sugar" = 0.1)
 	// No rarity: technically it's a beneficial mutant, but it's not exactly "new"...
 	mutatelist = list()
 
@@ -214,4 +205,4 @@
 	icon_state = "greengrapes"
 	filling_color = "#7FFF00"
 	tastes = list("green grape" = 1)
-	distill_reagent = /datum/reagent/consumable/ethanol/cognac
+	distill_reagent = "cognac"

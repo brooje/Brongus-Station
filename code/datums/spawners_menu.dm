@@ -6,13 +6,10 @@
 		qdel(src)
 	owner = new_owner
 
-/datum/spawners_menu/ui_state(mob/user)
-	return GLOB.observer_state
-
-/datum/spawners_menu/ui_interact(mob/user, datum/tgui/ui)
-	ui = SStgui.try_update_ui(user, src, ui)
+/datum/spawners_menu/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, datum/ui_state/state = GLOB.observer_state, datum/tgui/master_ui = null)
+	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
 	if(!ui)
-		ui = new(user, src, "SpawnersMenu")
+		ui = new(user, src, ui_key, "SpawnersMenu", "Spawners Menu", 700, 600, master_ui, state = state)
 		ui.open()
 
 /datum/spawners_menu/ui_data(mob/user)
@@ -21,50 +18,38 @@
 	for(var/spawner in GLOB.mob_spawners)
 		var/list/this = list()
 		this["name"] = spawner
-		this["short_desc"] = ""
-		this["flavor_text"] = ""
-		this["important_warning"] = ""
-		this["refs"] = list()
-		for(var/spawner_obj in GLOB.mob_spawners[spawner])
-			this["refs"] += "[REF(spawner_obj)]"
-			if(!this["desc"])
+		this["desc"] = ""
+		this["important_info"] = ""
+		this["fluff"] = ""
+		this["uids"] = list()
+		for(var/spawner_obj in GLOB.mob_spawners[spawner])//each spawner can contain multiple actual spawners, we use only one desc/info
+			this["uids"] += "\ref[spawner_obj]"
+			if(!this["desc"])	//haven't set descriptions yet
 				if(istype(spawner_obj, /obj/effect/mob_spawn))
 					var/obj/effect/mob_spawn/MS = spawner_obj
-					this["short_desc"] = MS.short_desc
-					this["flavor_text"] = MS.flavour_text
+					this["desc"] = MS.description
 					this["important_info"] = MS.important_info
+					this["fluff"] = MS.flavour_text
 				else
-					var/atom/movable/O = spawner_obj
-					if(isslime(O))
-						this["short_desc"] = O.get_spawner_desc()
-						this["flavor_text"] = O.get_spawner_flavour_text()
-					else
-						this["desc"] = O.desc
-
+					var/obj/O = spawner_obj
+					this["desc"] = O.desc
 		this["amount_left"] = LAZYLEN(GLOB.mob_spawners[spawner])
 		data["spawners"] += list(this)
-
 	return data
 
 /datum/spawners_menu/ui_act(action, params)
 	if(..())
 		return
-
-	var/group_name = params["name"]
-	if(!group_name || !(group_name in GLOB.mob_spawners))
-		return
-	var/list/spawnerlist = GLOB.mob_spawners[group_name]
-	if(!spawnerlist.len)
-		return
-	var/atom/movable/MS = pick(spawnerlist)
-	if(!istype(MS) || !(MS in GLOB.poi_list))
+	var/spawners = replacetext(params["ID"], ",", ";")
+	var/list/possible_spawners = params2list(spawners)
+	var/obj/effect/mob_spawn/MS = locate(pick(possible_spawners))
+	if(!MS || !istype(MS))
+		log_runtime(EXCEPTION("A ghost tried to interact with an invalid spawner, or the spawner didn't exist."))
 		return
 	switch(action)
 		if("jump")
-			if(MS)
-				owner.forceMove(get_turf(MS))
-				. = TRUE
+			owner.forceMove(get_turf(MS))
+			. = TRUE
 		if("spawn")
-			if(MS)
-				MS.attack_ghost(owner)
-				. = TRUE
+			MS.attack_ghost(owner)
+			. = TRUE

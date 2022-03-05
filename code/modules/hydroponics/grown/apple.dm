@@ -14,7 +14,7 @@
 	icon_dead = "apple-dead"
 	genes = list(/datum/plant_gene/trait/repeated_harvest)
 	mutatelist = list(/obj/item/seeds/apple/gold)
-	reagents_add = list(/datum/reagent/consumable/nutriment/vitamin = 0.04, /datum/reagent/consumable/nutriment = 0.1)
+	reagents_add = list("vitamin" = 0.04, "plantmatter" = 0.1)
 
 /obj/item/reagent_containers/food/snacks/grown/apple
 	seed = /obj/item/seeds/apple
@@ -23,10 +23,18 @@
 	icon_state = "apple"
 	filling_color = "#FF4500"
 	bitesize = 100 // Always eat the apple in one bite
-	foodtype = FRUIT
-	juice_results = list(/datum/reagent/consumable/applejuice = 0)
 	tastes = list("apple" = 1)
-	distill_reagent = /datum/reagent/consumable/ethanol/hcider
+	distill_reagent = "cider"
+
+// Posioned Apple
+/obj/item/seeds/apple/poisoned
+	product = /obj/item/reagent_containers/food/snacks/grown/apple/poisoned
+	mutatelist = list()
+	reagents_add = list("cyanide" = 0.5, "vitamin" = 0.04, "plantmatter" = 0.1)
+	rarity = 50 // Source of cyanide, and hard (almost impossible) to obtain normally.
+
+/obj/item/reagent_containers/food/snacks/grown/apple/poisoned
+	seed = /obj/item/seeds/apple/poisoned
 
 // Gold Apple
 /obj/item/seeds/apple/gold
@@ -39,7 +47,7 @@
 	maturation = 10
 	production = 10
 	mutatelist = list()
-	reagents_add = list(/datum/reagent/gold = 0.2, /datum/reagent/consumable/nutriment/vitamin = 0.04, /datum/reagent/consumable/nutriment = 0.1)
+	reagents_add = list("gold" = 0.2, "vitamin" = 0.04, "plantmatter" = 0.1)
 	rarity = 40 // Alchemy!
 
 /obj/item/reagent_containers/food/snacks/grown/apple/gold
@@ -48,5 +56,6 @@
 	desc = "Emblazoned upon the apple is the word 'Kallisti'."
 	icon_state = "goldapple"
 	filling_color = "#FFD700"
+	origin_tech = "biotech=4;materials=5"
 	distill_reagent = null
-	wine_power = 50
+	wine_power = 0.5

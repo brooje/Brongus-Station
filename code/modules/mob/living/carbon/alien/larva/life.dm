@@ -1,32 +1,28 @@
-
-
-/mob/living/carbon/alien/larva/Life()
+/mob/living/carbon/alien/larva/Life(seconds, times_fired)
 	set invisibility = 0
-	if (notransform)
+	if(notransform)
 		return
-	if(..() && !IsInStasis()) //not dead and not in stasis
+	if(..()) //not dead and not in stasis
 		// GROW!
 		if(amount_grown < max_grown)
 			amount_grown++
 			update_icons()
 
-
-/mob/living/carbon/alien/larva/update_stat()
+/mob/living/carbon/alien/larva/update_stat(reason = "None given")
 	if(status_flags & GODMODE)
 		return
 	if(stat != DEAD)
-		if(health<= -maxHealth || !getorgan(/obj/item/organ/brain))
+		if(health <= -maxHealth || !get_int_organ(/obj/item/organ/internal/brain))
 			death()
 			return
-		if(IsUnconscious() || IsSleeping() || getOxyLoss() > 50 || (HAS_TRAIT(src, TRAIT_DEATHCOMA)) || health <= crit_threshold)
+
+		if(paralysis || sleeping || getOxyLoss() > 50 || (health <= HEALTH_THRESHOLD_CRIT && check_death_method()))
 			if(stat == CONSCIOUS)
-				stat = UNCONSCIOUS
-				blind_eyes(1)
-				update_mobility()
+				KnockOut()
+				create_debug_log("fell unconscious, trigger reason: [reason]")
 		else
 			if(stat == UNCONSCIOUS)
-				stat = CONSCIOUS
-				set_resting(FALSE)
-				adjust_blindness(-1)
+				WakeUp()
+				create_debug_log("woke up, trigger reason: [reason]")
 	update_damage_hud()
 	update_health_hud()

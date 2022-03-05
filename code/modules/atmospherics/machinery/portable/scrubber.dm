@@ -1,160 +1,217 @@
+
+#define MAX_RATE 10 * ONE_ATMOSPHERE
+
 /obj/machinery/portable_atmospherics/scrubber
-	name = "portable air scrubber"
+	name = "Portable Air Scrubber"
+	icon = 'icons/obj/atmos.dmi'
 	icon_state = "pscrubber:0"
 	density = TRUE
-
-
-
+	volume = 750
+	/// Whether the scrubber is switched on or off.
 	var/on = FALSE
-	var/volume_rate = 1000
-	var/overpressure_m = 80
-	volume = 1000
+	/// The volume of gas that can be scrubbed every time `process_atmos()` is called (0.5 seconds).
+	var/volume_rate = 101.325
+	/// Is this scrubber acting on the 3x3 area around it.
+	var/widenet = FALSE
 
-	var/list/scrubbing = list(/datum/gas/plasma, /datum/gas/carbon_dioxide, /datum/gas/nitrous_oxide, /datum/gas/bz, /datum/gas/nitryl, /datum/gas/tritium, /datum/gas/hypernoblium, /datum/gas/water_vapor)
+/obj/machinery/portable_atmospherics/scrubber/detailed_examine()
+	return "Filters the air, placing harmful gases into the internal gas container. The container can be emptied by \
+			connecting it to a connector port. The pump can pump the air in (sucking) or out (blowing), at a specific target pressure. The powercell inside can be \
+			replaced by using a screwdriver, and then adding a new cell. A tank of gas can also be attached to the scrubber."
 
-/obj/machinery/portable_atmospherics/scrubber/Destroy()
-	var/turf/T = get_turf(src)
-	T.assume_air(air_contents)
-	air_update_turf()
-	return ..()
+/obj/machinery/portable_atmospherics/scrubber/emp_act(severity)
+	if(stat & (BROKEN|NOPOWER))
+		..(severity)
+		return
+
+	if(prob(50/severity))
+		on = !on
+		update_icon()
+
+	..(severity)
 
 /obj/machinery/portable_atmospherics/scrubber/update_icon()
-	icon_state = "pscrubber:[on]"
+	overlays = 0
 
-	cut_overlays()
+	if(on)
+		icon_state = "pscrubber:1"
+	else
+		icon_state = "pscrubber:0"
+
 	if(holding)
-		add_overlay("scrubber-open")
+		overlays += "scrubber-open"
+
 	if(connected_port)
-		add_overlay("scrubber-connector")
+		overlays += "scrubber-connector"
+
+	return
 
 /obj/machinery/portable_atmospherics/scrubber/process_atmos()
 	..()
+
 	if(!on)
 		return
+	scrub(loc)
+	if(widenet)
+		var/turf/T = loc
+		if(istype(T))
+			for(var/turf/simulated/tile in T.GetAtmosAdjacentTurfs(alldir=1))
+				scrub(tile)
 
+/obj/machinery/portable_atmospherics/scrubber/proc/scrub(turf/simulated/tile)
+	var/datum/gas_mixture/environment
 	if(holding)
-		scrub(holding.air_contents)
+		environment = holding.air_contents
 	else
-		var/turf/T = get_turf(src)
-		scrub(T.return_air())
+		environment = tile.return_air()
+	var/transfer_moles = min(1,volume_rate/environment.volume)*environment.total_moles()
 
-/obj/machinery/portable_atmospherics/scrubber/proc/scrub(var/datum/gas_mixture/mixture)
-	if(air_contents.return_pressure() >= overpressure_m * ONE_ATMOSPHERE)
-		return
+	//Take a gas sample
+	var/datum/gas_mixture/removed
+	if(holding)
+		removed = environment.remove(transfer_moles)
+	else
+		removed = loc.remove_air(transfer_moles)
 
-	var/transfer_moles = min(1, volume_rate / mixture.return_volume()) * mixture.total_moles()
+	//Filter it
+	if(removed)
+		var/datum/gas_mixture/filtered_out = new
 
-	var/datum/gas_mixture/filtering = mixture.remove(transfer_moles) // Remove part of the mixture to filter.
-	if(!filtering)
-		return
-
-	filtering.scrub_into(air_contents, scrubbing)
-
-	mixture.merge(filtering) // Returned the cleaned gas.
-	if(!holding)
-		air_update_turf()
-
-/obj/machinery/portable_atmospherics/scrubber/emp_act(severity)
-	. = ..()
-	if(. & EMP_PROTECT_SELF)
-		return
-	if(is_operational())
-		if(prob(50 / severity))
-			on = !on
-		update_icon()
+		filtered_out.temperature = removed.temperature
 
 
-/obj/machinery/portable_atmospherics/scrubber/ui_state(mob/user)
-	return GLOB.physical_state
+		filtered_out.toxins = removed.toxins
+		removed.toxins = 0
 
-/obj/machinery/portable_atmospherics/scrubber/ui_interact(mob/user, datum/tgui/ui)
-	ui = SStgui.try_update_ui(user, src, ui)
+		filtered_out.carbon_dioxide = removed.carbon_dioxide
+		removed.carbon_dioxide = 0
+
+		filtered_out.sleeping_agent = removed.sleeping_agent
+		removed.sleeping_agent = 0
+
+		filtered_out.agent_b = removed.agent_b
+		removed.agent_b = 0
+
+	//Remix the resulting gases
+		air_contents.merge(filtered_out)
+
+		if(holding)
+			environment.merge(removed)
+		else
+			tile.assume_air(removed)
+			tile.air_update_turf()
+
+/obj/machinery/portable_atmospherics/scrubber/return_air()
+	return air_contents
+
+/obj/machinery/portable_atmospherics/scrubber/attack_ai(mob/user)
+	add_hiddenprint(user)
+	return attack_hand(user)
+
+/obj/machinery/portable_atmospherics/scrubber/attack_ghost(mob/user)
+	return attack_hand(user)
+
+/obj/machinery/portable_atmospherics/scrubber/attack_hand(mob/user)
+	ui_interact(user)
+	return
+
+/obj/machinery/portable_atmospherics/scrubber/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
+	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
 	if(!ui)
-		ui = new(user, src, "PortableScrubber")
+		ui = new(user, src, ui_key, "PortableScrubber", "Portable Scrubber", 433, 346, master_ui, state)
 		ui.open()
+		ui.set_autoupdate(TRUE)
 
-/obj/machinery/portable_atmospherics/scrubber/ui_data()
-	var/data = list()
-	data["on"] = on
-	data["connected"] = connected_port ? 1 : 0
-	data["pressure"] = round(air_contents.return_pressure() ? air_contents.return_pressure() : 0)
-
-	data["id_tag"] = -1 //must be defined in order to reuse code between portable and vent scrubbers
-	data["filter_types"] = list()
-	for(var/path in GLOB.meta_gas_info)
-		var/list/gas = GLOB.meta_gas_info[path]
-		data["filter_types"] += list(list("gas_id" = gas[META_GAS_ID], "gas_name" = gas[META_GAS_NAME], "enabled" = (path in scrubbing)))
-
+/obj/machinery/portable_atmospherics/scrubber/ui_data(mob/user)
+	var/list/data = list(
+		"on" = on,
+		"port_connected" = connected_port ? TRUE : FALSE,
+		"max_rate" = MAX_RATE,
+		"rate" = round(volume_rate, 0.001),
+		"tank_pressure" = air_contents.return_pressure() > 0 ? round(air_contents.return_pressure(), 0.001) : 0
+	)
 	if(holding)
-		data["holding"] = list()
-		data["holding"]["name"] = holding.name
-		data["holding"]["pressure"] = round(holding.air_contents.return_pressure())
+		data["has_holding_tank"] = TRUE
+		data["holding_tank"] = list("name" = holding.name, "tank_pressure" = holding.air_contents.return_pressure() > 0 ? round(holding.air_contents.return_pressure(), 0.001) : 0)
 	else
-		data["holding"] = null
+		data["has_holding_tank"] = FALSE
+
 	return data
 
-/obj/machinery/portable_atmospherics/scrubber/replace_tank(mob/living/user, close_valve)
-	. = ..()
-	if(.)
-		if(close_valve)
-			if(on)
-				on = FALSE
-				update_icon()
-		else if(on && holding)
-			investigate_log("[key_name(user)] started a transfer into [holding].", INVESTIGATE_ATMOS)
-
-/obj/machinery/portable_atmospherics/scrubber/ui_act(action, params)
+/obj/machinery/portable_atmospherics/scrubber/ui_act(action, list/params)
 	if(..())
 		return
+
 	switch(action)
 		if("power")
 			on = !on
-			. = TRUE
-		if("eject")
+			update_icon()
+			return TRUE
+
+		if("remove_tank")
 			if(holding)
-				replace_tank(usr, FALSE)
-				. = TRUE
-		if("toggle_filter")
-			scrubbing ^= gas_id2path(params["val"])
-			. = TRUE
-	update_icon()
+				holding.forceMove(get_turf(src))
+				holding = null
+			update_icon()
+			return TRUE
+
+		if("set_rate")
+			volume_rate = clamp(text2num(params["rate"]), 0, MAX_RATE)
+			return TRUE
+
+	add_fingerprint(usr)
 
 /obj/machinery/portable_atmospherics/scrubber/huge
-	name = "huge air scrubber"
+	name = "Huge Air Scrubber"
 	icon_state = "scrubber:0"
-	anchored = TRUE
-	active_power_usage = 500
-	idle_power_usage = 10
-
-	overpressure_m = 200
-	volume_rate = 1500
+	anchored = 1
 	volume = 50000
+	volume_rate = 5000
+	widenet = 1
 
-	var/movable = FALSE
+	var/global/gid = 1
+	var/id = 0
+	var/stationary = 0
 
-/obj/machinery/portable_atmospherics/scrubber/huge/movable
-	movable = TRUE
+/obj/machinery/portable_atmospherics/scrubber/huge/New()
+	..()
+	id = gid
+	gid++
+
+	name = "[name] (ID [id])"
+
+/obj/machinery/portable_atmospherics/scrubber/huge/attack_hand(mob/user)
+	to_chat(usr, "<span class='warning'>You can't directly interact with this machine. Use the area atmos computer.</span>")
 
 /obj/machinery/portable_atmospherics/scrubber/huge/update_icon()
-	icon_state = "scrubber:[on]"
+	overlays = 0
 
-/obj/machinery/portable_atmospherics/scrubber/huge/process_atmos()
-	if((!anchored && !movable) || !is_operational())
-		on = FALSE
-		update_icon()
-	use_power = on ? ACTIVE_POWER_USE : IDLE_POWER_USE
-	if(!on)
-		return
-
-	..()
-	if(!holding)
-		var/turf/T = get_turf(src)
-		for(var/turf/AT in T.GetAtmosAdjacentTurfs(alldir = TRUE))
-			scrub(AT.return_air())
-
-/obj/machinery/portable_atmospherics/scrubber/huge/attackby(obj/item/W, mob/user)
-	if(default_unfasten_wrench(user, W))
-		if(!movable)
-			on = FALSE
+	if(on)
+		icon_state = "scrubber:1"
 	else
-		return ..()
+		icon_state = "scrubber:0"
+
+/obj/machinery/portable_atmospherics/scrubber/huge/attackby(obj/item/W, mob/user, params)
+	if((istype(W, /obj/item/analyzer)) && get_dist(user, src) <= 1)
+		atmosanalyzer_scan(air_contents, user)
+		return
+	return ..()
+
+/obj/machinery/portable_atmospherics/scrubber/huge/wrench_act(mob/user, obj/item/I)
+	. = TRUE
+	if(stationary)
+		to_chat(user, "<span class='warning'>The bolts are too tight for you to unscrew!</span>")
+		return
+	if(on)
+		to_chat(user, "<span class='warning'>Turn it off first!</span>")
+		return
+	if(!I.use_tool(src, user, 0, volume = I.tool_volume))
+		return
+	anchored = !anchored
+	to_chat(user, "<span class='notice'>You [anchored ? "wrench" : "unwrench"] [src].</span>")
+
+/obj/machinery/portable_atmospherics/scrubber/huge/stationary
+	name = "Stationary Air Scrubber"
+	stationary = 1
+
+#undef MAX_RATE

@@ -1,22 +1,25 @@
-import { toFixed } from 'common/math';
 import { useBackend } from '../backend';
 import { Box, Button, Grid, LabeledList, NumberInput, ProgressBar, Section } from '../components';
 import { Window } from '../layouts';
 
 export const SolarControl = (props, context) => {
   const { act, data } = useBackend(context);
+  const TRACKER_OFF = 0;
+  const TRACKER_TIMED = 1;
+  const TRACKER_AUTO = 2;
   const {
     generated,
-    angle,
+    generated_ratio,
     tracking_state,
     tracking_rate,
     connected_panels,
     connected_tracker,
+    cdir,
+    direction,
+    rotating_direction,
   } = data;
   return (
-    <Window
-      width={380}
-      height={230}>
+    <Window>
       <Window.Content>
         <Section
           title="Status"
@@ -41,19 +44,34 @@ export const SolarControl = (props, context) => {
                 </LabeledList.Item>
               </LabeledList>
             </Grid.Column>
-            <Grid.Column size={1.5}>
+            <Grid.Column size={2}>
               <LabeledList>
                 <LabeledList.Item label="Power output">
                   <ProgressBar
                     ranges={{
-                      good: [60000, Infinity],
-                      average: [30000, 60000],
-                      bad: [-Infinity, 30000],
+                      good: [0.66, Infinity],
+                      average: [0.33, 0.66],
+                      bad: [-Infinity, 0.33],
                     }}
                     minValue={0}
-                    maxValue={90000}
-                    value={generated}
-                    content={generated + ' W'} />
+                    maxValue={1}
+                    value={generated_ratio}>
+                    {generated + ' W'}
+                  </ProgressBar>
+                </LabeledList.Item>
+                <LabeledList.Item label="Panel orientation">
+                  {cdir}&deg; ({direction})
+                </LabeledList.Item>
+                <LabeledList.Item label="Tracker rotation">
+                  {(tracking_state === TRACKER_AUTO
+                  && <Box> Automated </Box>
+                  )}
+                  {(tracking_state === TRACKER_TIMED
+                  && <Box> {tracking_rate}&deg;/h ({rotating_direction}) </Box>
+                  )}
+                  {(tracking_state === TRACKER_OFF
+                  && <Box> Tracker offline </Box>
+                  )}
                 </LabeledList.Item>
               </LabeledList>
             </Grid.Column>
@@ -61,56 +79,59 @@ export const SolarControl = (props, context) => {
         </Section>
         <Section title="Controls">
           <LabeledList>
-            <LabeledList.Item label="Tracking">
+            <LabeledList.Item label="Panel orientation">
+              {tracking_state !== TRACKER_AUTO
+              && <NumberInput
+                unit="°"
+                step={1}
+                stepPixelSize={1}
+                minValue={0}
+                maxValue={359}
+                value={cdir}
+                onDrag={(e, cdir) => act('cdir', { cdir })}
+              />}
+              {(tracking_state === TRACKER_AUTO
+              && <Box lineHeight="19px"> Automated </Box>
+              )}
+            </LabeledList.Item>
+            <LabeledList.Item label="Tracker status">
               <Button
                 icon="times"
                 content="Off"
-                selected={tracking_state === 0}
-                onClick={() => act('tracking', { mode: 0 })} />
+                selected={tracking_state === TRACKER_OFF}
+                onClick={() => act('track', { track: TRACKER_OFF })} />
               <Button
                 icon="clock-o"
                 content="Timed"
-                selected={tracking_state === 1}
-                onClick={() => act('tracking', { mode: 1 })} />
+                selected={tracking_state === TRACKER_TIMED}
+                onClick={() => act('track', { track: TRACKER_TIMED })} />
               <Button
                 icon="sync"
                 content="Auto"
-                selected={tracking_state === 2}
+                selected={tracking_state === TRACKER_AUTO}
                 disabled={!connected_tracker}
-                onClick={() => act('tracking', { mode: 2 })} />
+                onClick={() => act('track', { track: TRACKER_AUTO })} />
             </LabeledList.Item>
-            <LabeledList.Item label="Angle">
-              {(tracking_state === 0 || tracking_state === 1) && (
-                <NumberInput
-                  width="52px"
-                  unit="°"
-                  step={1}
-                  stepPixelSize={2}
-                  minValue={-360}
-                  maxValue={+720}
-                  value={angle}
-                  format={angle => Math.round(360 + angle) % 360}
-                  onDrag={(e, value) => act('angle', { value })} />
-              )}
-              {tracking_state === 1 && (
-                <NumberInput
-                  width="80px"
+            <LabeledList.Item label="Tracker rotation">
+              {(tracking_state === TRACKER_TIMED
+                && <NumberInput
                   unit="°/h"
-                  step={5}
-                  stepPixelSize={2}
+                  step={1}
+                  stepPixelSize={1}
                   minValue={-7200}
                   maxValue={7200}
                   value={tracking_rate}
-                  format={rate => {
-                    const sign = Math.sign(rate) > 0 ? '+' : '-';
-                    return sign + toFixed(Math.abs(rate));
+                  format={tracking_rate => {
+                    const sign = Math.sign(tracking_rate) > 0 ? '+' : '-';
+                    return sign + Math.abs(tracking_rate);
                   }}
-                  onDrag={(e, value) => act('rate', { value })} />
+                  onDrag={(e, tdir) => act('tdir', { tdir })}
+                />)}
+              {(tracking_state === TRACKER_OFF
+              && <Box lineHeight="19px"> Tracker offline </Box>
               )}
-              {tracking_state === 2 && (
-                <Box inline color="label" mt="3px">
-                  {angle + ' °'} (auto)
-                </Box>
+              {(tracking_state === TRACKER_AUTO
+              && <Box lineHeight="19px"> Automated </Box>
               )}
             </LabeledList.Item>
           </LabeledList>

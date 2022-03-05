@@ -1,114 +1,148 @@
-#define TANK_DISPENSER_CAPACITY 10
+#define MAX_TANK_STORAGE	10
 
-/obj/structure/tank_dispenser
-	name = "tank dispenser"
-	desc = "A simple yet bulky storage device for gas tanks. Holds up to 10 oxygen tanks and 10 plasma tanks."
+/obj/structure/dispenser
+	name = "tank storage unit"
+	desc = "A simple yet bulky storage device for gas tanks. Has room for up to ten oxygen tanks, and ten plasma tanks."
 	icon = 'icons/obj/objects.dmi'
 	icon_state = "dispenser"
-	density = TRUE
-	anchored = TRUE
-	max_integrity = 300
-	var/oxygentanks = TANK_DISPENSER_CAPACITY
-	var/plasmatanks = TANK_DISPENSER_CAPACITY
+	density = 1
+	anchored = 1.0
+	var/starting_oxygen_tanks = MAX_TANK_STORAGE // The starting amount of oxygen tanks the dispenser gets when it's spawned
+	var/starting_plasma_tanks = MAX_TANK_STORAGE // Starting amount of plasma tanks
+	var/list/stored_oxygen_tanks = list() // List of currently stored oxygen tanks
+	var/list/stored_plasma_tanks = list() // And plasma tanks
 
-/obj/structure/tank_dispenser/oxygen
-	plasmatanks = 0
+/obj/structure/dispenser/oxygen
+	starting_plasma_tanks = 0
 
-/obj/structure/tank_dispenser/plasma
-	oxygentanks = 0
+/obj/structure/dispenser/plasma
+	starting_oxygen_tanks = 0
 
-/obj/structure/tank_dispenser/Initialize()
+/obj/structure/dispenser/Initialize(mapload)
 	. = ..()
-	for(var/i in 1 to oxygentanks)
-		new /obj/item/tank/internals/oxygen(src)
-	for(var/i in 1 to plasmatanks)
-		new /obj/item/tank/internals/plasma(src)
+	initialize_tanks()
 	update_icon()
 
-/obj/structure/tank_dispenser/update_icon()
+/obj/structure/dispenser/Destroy()
+	QDEL_LIST(stored_plasma_tanks)
+	QDEL_LIST(stored_oxygen_tanks)
+	return ..()
+
+/obj/structure/dispenser/proc/initialize_tanks()
+	for(var/I in 1 to starting_plasma_tanks)
+		var/obj/item/tank/internals/plasma/P = new(src)
+		stored_plasma_tanks.Add(P)
+
+	for(var/I in 1 to starting_oxygen_tanks)
+		var/obj/item/tank/internals/oxygen/O = new(src)
+		stored_oxygen_tanks.Add(O)
+
+/obj/structure/dispenser/update_icon()
 	cut_overlays()
-	switch(oxygentanks)
+	var/oxy_tank_amount = LAZYLEN(stored_oxygen_tanks)
+	switch(oxy_tank_amount)
 		if(1 to 3)
-			add_overlay("oxygen-[oxygentanks]")
-		if(4 to TANK_DISPENSER_CAPACITY)
-			add_overlay("oxygen-4")
-	switch(plasmatanks)
+			overlays += "oxygen-[oxy_tank_amount]"
+		if(4 to INFINITY)
+			overlays += "oxygen-4"
+
+	var/pla_tank_amount = LAZYLEN(stored_plasma_tanks)
+	switch(pla_tank_amount)
 		if(1 to 4)
-			add_overlay("plasma-[plasmatanks]")
-		if(5 to TANK_DISPENSER_CAPACITY)
-			add_overlay("plasma-5")
+			overlays += "plasma-[pla_tank_amount]"
+		if(5 to INFINITY)
+			overlays += "plasma-5"
 
-/obj/structure/tank_dispenser/attackby(obj/item/I, mob/user, params)
-	var/full
-	if(istype(I, /obj/item/tank/internals/plasma))
-		if(plasmatanks < TANK_DISPENSER_CAPACITY)
-			plasmatanks++
-		else
-			full = TRUE
-	else if(istype(I, /obj/item/tank/internals/oxygen))
-		if(oxygentanks < TANK_DISPENSER_CAPACITY)
-			oxygentanks++
-		else
-			full = TRUE
-	else if(I.tool_behaviour == TOOL_WRENCH)
-		default_unfasten_wrench(user, I, time = 20)
-		return
-	else if(user.a_intent != INTENT_HARM)
-		to_chat(user, "<span class='notice'>[I] does not fit into [src].</span>")
-		return
-	else
-		return ..()
-	if(full)
-		to_chat(user, "<span class='notice'>[src] can't hold any more of [I].</span>")
-		return
+/obj/structure/dispenser/attack_hand(mob/user)
+	if(..())
+		return 1
+	add_fingerprint(user)
+	ui_interact(user)
 
-	if(!user.transferItemToLoc(I, src))
-		return
-	to_chat(user, "<span class='notice'>You put [I] in [src].</span>")
-	update_icon()
+/obj/structure/dispenser/attack_ghost(mob/user)
+	ui_interact(user)
 
-
-/obj/structure/tank_dispenser/ui_state(mob/user)
-	return GLOB.physical_state
-
-/obj/structure/tank_dispenser/ui_interact(mob/user, datum/tgui/ui)
-	ui = SStgui.try_update_ui(user, src, ui)
+/obj/structure/dispenser/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
+	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
 	if(!ui)
-		ui = new(user, src, "TankDispenser")
+		ui = new(user, src, ui_key, "TankDispenser", name, 275, 100, master_ui, state)
 		ui.open()
 
-/obj/structure/tank_dispenser/ui_data(mob/user)
+/obj/structure/dispenser/ui_data(user)
 	var/list/data = list()
-	data["oxygen"] = oxygentanks
-	data["plasma"] = plasmatanks
-
+	data["o_tanks"] = LAZYLEN(stored_oxygen_tanks)
+	data["p_tanks"] = LAZYLEN(stored_plasma_tanks)
 	return data
 
-/obj/structure/tank_dispenser/ui_act(action, params)
+/obj/structure/dispenser/ui_act(action, list/params)
 	if(..())
 		return
+
 	switch(action)
-		if("plasma")
-			var/obj/item/tank/internals/plasma/tank = locate() in src
-			if(tank && Adjacent(usr) && isliving(usr))
-				usr.put_in_hands(tank)
-				plasmatanks--
-			. = TRUE
 		if("oxygen")
-			var/obj/item/tank/internals/oxygen/tank = locate() in src
-			if(tank && Adjacent(usr) && isliving(usr))
-				usr.put_in_hands(tank)
-				oxygentanks--
-			. = TRUE
+			try_remove_tank(usr, stored_oxygen_tanks)
+
+		if("plasma")
+			try_remove_tank(usr, stored_plasma_tanks)
+
+	add_fingerprint(usr)
+	return TRUE
+
+/obj/structure/dispenser/attackby(obj/item/I, mob/user, params)
+	if(istype(I, /obj/item/tank/internals/oxygen) || istype(I, /obj/item/tank/internals/air) || istype(I, /obj/item/tank/internals/anesthetic))
+		try_insert_tank(user, stored_oxygen_tanks, I)
+		return
+
+	if(istype(I, /obj/item/tank/internals/plasma))
+		try_insert_tank(user, stored_plasma_tanks, I)
+		return
+
+	if(istype(I, /obj/item/wrench))
+		if(anchored)
+			to_chat(user, "<span class='notice'>You lean down and unwrench [src].</span>")
+			anchored = 0
+		else
+			to_chat(user, "<span class='notice'>You wrench [src] into place.</span>")
+			anchored = 1
+		return
+	return ..()
+
+/// Called when the user clicks on the oxygen or plasma tank UI buttons, and tries to withdraw a tank.
+/obj/structure/dispenser/proc/try_remove_tank(mob/living/user, list/tank_list)
+	if(!LAZYLEN(tank_list))
+		return // There are no tanks left to withdraw.
+
+	var/obj/item/tank/internals/T = tank_list[1]
+	tank_list.Remove(T)
+
+	if(!user.put_in_hands(T))
+		T.forceMove(loc) // If the user's hands are full, place it on the tile of the dispenser.
+
+	to_chat(user, "<span class='notice'>You take [T] out of [src].</span>")
 	update_icon()
 
+/// Called when the user clicks on the dispenser with a tank. Tries to insert the tank into the dispenser, and updates the UI if successful.
+/obj/structure/dispenser/proc/try_insert_tank(mob/living/user, list/tank_list, obj/item/tank/T)
+	if(LAZYLEN(tank_list) >= MAX_TANK_STORAGE)
+		to_chat(user, "<span class='warning'>[src] is full.</span>")
+		return
+
+	if(!user.drop_item()) // Antidrop check
+		to_chat(user, "<span class='warning'>[T] is stuck to your hand!</span>")
+		return
+
+	T.forceMove(src)
+	tank_list.Add(T)
+	update_icon()
+	to_chat(user, "<span class='notice'>You put [T] in [src].</span>")
+	SStgui.update_uis(src)
 
 /obj/structure/tank_dispenser/deconstruct(disassembled = TRUE)
-	if(!(flags_1 & NODECONSTRUCT_1))
+	if(!(flags & NODECONSTRUCT))
 		for(var/X in src)
 			var/obj/item/I = X
 			I.forceMove(loc)
-		new /obj/item/stack/sheet/iron (loc, 2)
+		new /obj/item/stack/sheet/metal(loc, 2)
 	qdel(src)
 
-#undef TANK_DISPENSER_CAPACITY
+#undef MAX_TANK_STORAGE

@@ -1,7 +1,7 @@
 import { toFixed } from 'common/math';
 import { Fragment } from 'inferno';
 import { useBackend } from '../backend';
-import { AnimatedNumber, Box, Button, Icon, Knob, LabeledControls, LabeledList, Section, Tooltip } from '../components';
+import { AnimatedNumber, Box, Button, Dropdown, Icon, Knob, LabeledControls, LabeledList, Section, Tooltip } from '../components';
 import { formatSiUnit } from '../format';
 import { Window } from '../layouts';
 
@@ -15,35 +15,124 @@ export const Canister = (props, context) => {
     minReleasePressure,
     maxReleasePressure,
     valveOpen,
-    isPrototype,
+    name,
+    canLabel,
+    colorContainer,
+    color_index,
     hasHoldingTank,
     holdingTank,
-    restricted,
   } = data;
+
+
+  let preset_prim = "";
+  if (color_index["prim"]) {
+    preset_prim = colorContainer.prim.options[color_index["prim"]]["name"];
+  }
+  let preset_sec = "";
+  if (color_index["sec"]) {
+    preset_sec = colorContainer.sec.options[color_index["sec"]]["name"];
+  }
+  let preset_ter = "";
+  if (color_index["ter"]) {
+    preset_ter = colorContainer.ter.options[color_index["ter"]]["name"];
+  }
+  let preset_quart = "";
+  if (color_index["quart"]) {
+    preset_quart
+    = colorContainer.quart.options[color_index["quart"]]["name"];
+  }
+
+  let array_prim = [];
+  let array_sec = [];
+  let array_ter = [];
+  let array_quart = [];
+  let i = 0;
+
+  for (i = 0; i < colorContainer.prim.options.length; i++) {
+    array_prim.push(colorContainer.prim.options[i]["name"]);
+  }
+  for (i = 0; i < colorContainer.sec.options.length; i++) {
+    array_sec.push(colorContainer.sec.options[i]["name"]);
+  }
+  for (i = 0; i < colorContainer.ter.options.length; i++) {
+    array_ter.push(colorContainer.ter.options[i]["name"]);
+  }
+  for (i = 0; i < colorContainer.quart.options.length; i++) {
+    array_quart.push(colorContainer.quart.options[i]["name"]);
+  }
+  let paintSection = "";
+  if (canLabel) {
+    paintSection = (
+      <Section title="Paint">
+        <LabeledControls>
+          <LabeledControls.Item
+            minWidth="110px"
+            label={colorContainer.prim.name}>
+            <Dropdown
+              over
+              selected={preset_prim}
+              disabled={!canLabel}
+              options={array_prim}
+              width="110px"
+              onSelected={value => act('recolor',
+                { nc: array_prim.indexOf(value),
+                  ctype: "prim" })} />
+          </LabeledControls.Item>
+          <LabeledControls.Item
+            minWidth="110px"
+            label={colorContainer.sec.name}>
+            <Dropdown
+              over
+              selected={preset_sec}
+              disabled={!canLabel}
+              options={array_sec}
+              width="110px"
+              onSelected={value => act('recolor',
+                { nc: array_sec.indexOf(value),
+                  ctype: "sec" })} />
+          </LabeledControls.Item>
+          <LabeledControls.Item
+            minWidth="110px"
+            label={colorContainer.ter.name}>
+            <Dropdown
+              over
+              selected={preset_ter}
+              disabled={!canLabel}
+              options={array_ter}
+              width="110px"
+              onSelected={value => act('recolor',
+                { nc: array_ter.indexOf(value),
+                  ctype: "ter" })} />
+          </LabeledControls.Item>
+          <LabeledControls.Item
+            minWidth="110px"
+            label={colorContainer.quart.name}>
+            <Dropdown
+              over
+              selected={preset_quart}
+              disabled={!canLabel}
+              options={array_quart}
+              width="110px"
+              onSelected={value => act('recolor',
+                { nc: array_quart.indexOf(value),
+                  ctype: "quart" })} />
+          </LabeledControls.Item>
+        </LabeledControls>
+      </Section>
+    );
+  }
+
   return (
-    <Window
-      width={300}
-      height={232}>
+    <Window>
       <Window.Content>
         <Section
-          title="Canister"
+          title={name}
           buttons={(
-            <Fragment>
-              {!!isPrototype && (
-                <Button
-                  mr={1}
-                  icon={restricted ? 'lock' : 'unlock'}
-                  color="caution"
-                  content={restricted
-                    ? 'Engineering'
-                    : 'Public'}
-                  onClick={() => act('restricted')} />
-              )}
-              <Button
-                icon="pencil-alt"
-                content="Relabel"
-                onClick={() => act('relabel')} />
-            </Fragment>
+            <Button
+              icon="pencil-alt"
+              content="Relabel"
+              disabled={!canLabel}
+              onClick={() => act('relabel')} />
           )}>
           <LabeledControls>
             <LabeledControls.Item
@@ -81,6 +170,7 @@ export const Canister = (props, context) => {
                   right="-20px"
                   color="transparent"
                   icon="fast-forward"
+                  tooltip="Max Release Pressure"
                   onClick={() => act('pressure', {
                     pressure: maxReleasePressure,
                   })} />
@@ -91,6 +181,7 @@ export const Canister = (props, context) => {
                   right="-20px"
                   color="transparent"
                   icon="undo"
+                  tooltip="Reset Release Pressure"
                   onClick={() => act('pressure', {
                     pressure: defaultReleasePressure,
                   })} />
@@ -130,7 +221,6 @@ export const Canister = (props, context) => {
           buttons={!!hasHoldingTank && (
             <Button
               icon="eject"
-              color={valveOpen && 'danger'}
               content="Eject"
               onClick={() => act('eject')} />
           )}>
@@ -150,6 +240,7 @@ export const Canister = (props, context) => {
             </Box>
           )}
         </Section>
+        {paintSection}
       </Window.Content>
     </Window>
   );

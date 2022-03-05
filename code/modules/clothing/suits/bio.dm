@@ -2,13 +2,21 @@
 /obj/item/clothing/head/bio_hood
 	name = "bio hood"
 	icon_state = "bio"
-	desc = "A hood that protects the head and face from biological contaminants."
+	desc = "A hood that protects the head and face from biological comtaminants."
 	permeability_coefficient = 0.01
-	clothing_flags = THICKMATERIAL | BLOCK_GAS_SMOKE_EFFECT | SHOWEROKAY | SNUG_FIT
-	armor = list("melee" = 0, "bullet" = 0, "laser" = 0,"energy" = 0, "bomb" = 0, "bio" = 100, "rad" = 80, "fire" = 30, "acid" = 100, "stamina" = 0)
-	flags_inv = HIDEMASK|HIDEEARS|HIDEEYES|HIDEHAIR|HIDEFACIALHAIR|HIDEFACE
-	resistance_flags = ACID_PROOF
+	flags = BLOCKHAIR | THICKMATERIAL
 	flags_cover = HEADCOVERSEYES | HEADCOVERSMOUTH
+	armor = list(MELEE = 0, BULLET = 0, LASER = 0, ENERGY = 0, BOMB = 0, BIO = 100, RAD = 80, FIRE = 30, ACID = 100)
+	flags_inv = HIDEMASK|HIDEEARS|HIDEEYES
+	resistance_flags = ACID_PROOF
+
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/clothing/species/vox/helmet.dmi',
+		"Unathi" = 'icons/mob/clothing/species/unathi/head.dmi',
+		"Tajaran" = 'icons/mob/clothing/species/tajaran/head.dmi',
+		"Vulpkanin" = 'icons/mob/clothing/species/vulpkanin/head.dmi',
+		"Grey" = 'icons/mob/clothing/species/grey/head.dmi'
+	)
 
 /obj/item/clothing/suit/bio_suit
 	name = "bio suit"
@@ -18,15 +26,22 @@
 	w_class = WEIGHT_CLASS_BULKY
 	gas_transfer_coefficient = 0.01
 	permeability_coefficient = 0.01
-	clothing_flags = THICKMATERIAL | SHOWEROKAY
-	body_parts_covered = CHEST|GROIN|LEGS|FEET|ARMS|HANDS
+	flags = THICKMATERIAL
+	body_parts_covered = UPPER_TORSO|LOWER_TORSO|LEGS|FEET|ARMS|HANDS
 	slowdown = 1
-	allowed = list(/obj/item/tank/internals/emergency_oxygen, /obj/item/tank/internals/plasmaman, /obj/item/pen, /obj/item/flashlight/pen, /obj/item/reagent_containers/dropper, /obj/item/reagent_containers/syringe, /obj/item/reagent_containers/hypospray)
-	armor = list("melee" = 0, "bullet" = 0, "laser" = 0,"energy" = 0, "bomb" = 0, "bio" = 100, "rad" = 80, "fire" = 30, "acid" = 100, "stamina" = 0)
-	flags_inv = HIDEGLOVES|HIDESHOES|HIDEJUMPSUIT
+	allowed = list(/obj/item/tank/internals/emergency_oxygen,/obj/item/pen,/obj/item/flashlight/pen)
+	armor = list(MELEE = 0, BULLET = 0, LASER = 0, ENERGY = 0, BOMB = 0, BIO = 100, RAD = 80, FIRE = 30, ACID = 100)
+	flags_inv = HIDEGLOVES|HIDESHOES|HIDEJUMPSUIT|HIDETAIL
 	strip_delay = 70
-	equip_delay_other = 70
+	put_on_delay = 70
 	resistance_flags = ACID_PROOF
+	sprite_sheets = list(
+		"Tajaran" = 'icons/mob/clothing/species/tajaran/suit.dmi',
+		"Unathi" = 'icons/mob/clothing/species/unathi/suit.dmi',
+		"Vulpkanin" = 'icons/mob/clothing/species/vulpkanin/suit.dmi',
+		"Vox" = 'icons/mob/clothing/species/vox/suit.dmi'
+		)
+
 
 //Standard biosuit, orange stripe
 /obj/item/clothing/head/bio_hood/general
@@ -46,11 +61,11 @@
 
 //Security biosuit, grey with red stripe across the chest
 /obj/item/clothing/head/bio_hood/security
-	armor = list("melee" = 25, "bullet" = 15, "laser" = 25, "energy" = 10, "bomb" = 25, "bio" = 100, "rad" = 80, "fire" = 30, "acid" = 100, "stamina" = 20)
+	armor = list(MELEE = 25, BULLET = 15, LASER = 25, ENERGY = 10, BOMB = 25, BIO = 100, RAD = 80, FIRE = 30, ACID = 100)
 	icon_state = "bio_security"
 
 /obj/item/clothing/suit/bio_suit/security
-	armor = list("melee" = 25, "bullet" = 15, "laser" = 25, "energy" = 10, "bomb" = 25, "bio" = 100, "rad" = 80, "fire" = 30, "acid" = 100, "stamina" = 20)
+	armor = list(MELEE = 25, BULLET = 15, LASER = 25, ENERGY = 10, BOMB = 25, BIO = 100, RAD = 80, FIRE = 30, ACID = 100)
 	icon_state = "bio_security"
 
 
@@ -60,7 +75,7 @@
 
 /obj/item/clothing/suit/bio_suit/janitor
 	icon_state = "bio_janitor"
-	allowed = list(/obj/item/storage/bag/trash)
+
 
 //Scientist's biosuit, white with a pink-ish hue
 /obj/item/clothing/head/bio_hood/scientist
@@ -85,4 +100,11 @@
 	icon_state = "plaguedoctor"
 	item_state = "bio_suit"
 	strip_delay = 40
-	equip_delay_other = 20
+	put_on_delay = 20
+
+	sprite_sheets = list(
+		"Tajaran" = 'icons/mob/clothing/species/tajaran/suit.dmi',
+		"Unathi" = 'icons/mob/clothing/species/unathi/suit.dmi',
+		"Vulpkanin" = 'icons/mob/clothing/species/vulpkanin/suit.dmi',
+		)
+	hide_tail_by_species = list("Unathi, Tajaran, Vulpkanin")

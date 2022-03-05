@@ -1,46 +1,53 @@
 /obj/structure/statue
 	name = "statue"
-	desc = "Placeholder. Yell at Qwerty if you SOMEHOW see this."
+	desc = "Placeholder. Yell at Firecage if you SOMEHOW see this."
 	icon = 'icons/obj/statue.dmi'
 	icon_state = ""
-	density = TRUE
-	anchored = FALSE
+	density = 1
+	anchored = 0
 	max_integrity = 100
 	var/oreAmount = 5
-	var/material_drop_type = /obj/item/stack/sheet/iron
-	CanAtmosPass = ATMOS_PASS_DENSITY
-
+	var/material_drop_type = /obj/item/stack/sheet/metal
 
 /obj/structure/statue/attackby(obj/item/W, mob/living/user, params)
 	add_fingerprint(user)
-	user.changeNext_move(CLICK_CD_MELEE)
-	if(!(flags_1 & NODECONSTRUCT_1))
+	if(!(flags & NODECONSTRUCT))
 		if(default_unfasten_wrench(user, W))
 			return
-		if(W.tool_behaviour == TOOL_WELDER)
-			if(!W.tool_start_check(user, amount=0))
-				return FALSE
-
-			user.visible_message("[user] is slicing apart the [name].", \
-								"<span class='notice'>You are slicing apart the [name]...</span>")
-			if(W.use_tool(src, user, 40, volume=50))
+		if(istype(W, /obj/item/gun/energy/plasmacutter))
+			playsound(src, W.usesound, 100, 1)
+			user.visible_message("[user] is slicing apart the [name]...", \
+								 "<span class='notice'>You are slicing apart the [name]...</span>")
+			if(do_after(user, 40 * W.toolspeed, target = src))
+				if(!loc)
+					return
 				user.visible_message("[user] slices apart the [name].", \
-									"<span class='notice'>You slice apart the [name]!</span>")
+									 "<span class='notice'>You slice apart the [name].</span>")
 				deconstruct(TRUE)
 			return
 	return ..()
 
-/obj/structure/statue/attack_hand(mob/living/user)
-	. = ..()
-	if(.)
+
+/obj/structure/statue/welder_act(mob/user, obj/item/I)
+	if(anchored)
 		return
+	. = TRUE
+	if(!I.tool_use_check(user, 0))
+		return
+	WELDER_ATTEMPT_SLICING_MESSAGE
+	if(I.use_tool(src, user, 40, volume = I.tool_volume))
+		WELDER_SLICING_SUCCESS_MESSAGE
+		deconstruct(TRUE)
+
+
+/obj/structure/statue/attack_hand(mob/living/user)
 	user.changeNext_move(CLICK_CD_MELEE)
 	add_fingerprint(user)
 	user.visible_message("[user] rubs some dust off from the [name]'s surface.", \
 						 "<span class='notice'>You rub some dust off from the [name]'s surface.</span>")
 
 /obj/structure/statue/deconstruct(disassembled = TRUE)
-	if(!(flags_1 & NODECONSTRUCT_1))
+	if(!(flags & NODECONSTRUCT))
 		if(material_drop_type)
 			var/drop_amt = oreAmount
 			if(!disassembled)
@@ -48,9 +55,6 @@
 			if(drop_amt > 0)
 				new material_drop_type(get_turf(src), drop_amt)
 	qdel(src)
-
-//////////////////////////////////////STATUES/////////////////////////////////////////////////////////////
-////////////////////////uranium///////////////////////////////////
 
 /obj/structure/statue/uranium
 	max_integrity = 300
@@ -65,7 +69,7 @@
 	icon_state = "nuke"
 
 /obj/structure/statue/uranium/eng
-	name = "Statue of an engineer"
+	name = "statue of an engineer"
 	desc = "This statue has a sickening green colour."
 	icon_state = "eng"
 
@@ -73,29 +77,21 @@
 	radiate()
 	return ..()
 
-/obj/structure/statue/uranium/Bumped(atom/movable/AM)
+/obj/structure/statue/uranium/Bumped(atom/user)
 	radiate()
 	..()
 
 /obj/structure/statue/uranium/attack_hand(mob/user)
 	radiate()
-	. = ..()
-
-/obj/structure/statue/uranium/attack_paw(mob/user)
-	radiate()
-	. = ..()
+	..()
 
 /obj/structure/statue/uranium/proc/radiate()
 	if(!active)
-		if(world.time > last_event+15)
+		if(world.time > last_event + 15)
 			active = 1
 			radiation_pulse(src, 30)
 			last_event = world.time
 			active = null
-			return
-	return
-
-////////////////////////////plasma///////////////////////////////////////////////////////////////////////
 
 /obj/structure/statue/plasma
 	max_integrity = 200
@@ -106,46 +102,56 @@
 	name = "statue of a scientist"
 	icon_state = "sci"
 
+/obj/structure/statue/plasma/xeno
+	name = "statue of a xenomorph"
+	icon_state = "xeno"
+
 /obj/structure/statue/plasma/temperature_expose(datum/gas_mixture/air, exposed_temperature, exposed_volume)
+	..()
 	if(exposed_temperature > 300)
 		PlasmaBurn(exposed_temperature)
 
-
-/obj/structure/statue/plasma/bullet_act(obj/item/projectile/Proj)
-	var/burn = FALSE
-	if(!(Proj.nodamage) && Proj.damage_type == BURN && !QDELETED(src))
-		burn = TRUE
-	if(burn)
-		var/turf/T = get_turf(src)
-		if(Proj.firer)
-			message_admins("Plasma statue ignited by [ADMIN_LOOKUPFLW(Proj.firer)] in [ADMIN_VERBOSEJMP(T)]")
-			log_game("Plasma statue ignited by [key_name(Proj.firer)] in [AREACOORD(T)]")
-		else
-			message_admins("Plasma statue ignited by [Proj]. No known firer, in [ADMIN_VERBOSEJMP(T)]")
-			log_game("Plasma statue ignited by [Proj] in [AREACOORD(T)]. No known firer.")
-		PlasmaBurn(2500)
-	. = ..()
+/obj/structure/statue/plasma/bullet_act(obj/item/projectile/P)
+	if(!QDELETED(src)) //wasn't deleted by the projectile's effects.
+		if(!P.nodamage && ((P.damage_type == BURN) || (P.damage_type == BRUTE)))
+			if(P.firer)
+				message_admins("[key_name_admin(P.firer)] ignited a plasma statue with [P.name] at [COORD(loc)]")
+				log_game("[key_name(P.firer)] ignited a plasma statue with [P.name] at [COORD(loc)]")
+				investigate_log("[key_name(P.firer)] ignited a plasma statue with [P.name] at [COORD(loc)]", "atmos")
+			else
+				message_admins("A plasma statue was ignited with [P.name] at [COORD(loc)]. No known firer.")
+				log_game("A plasma statue was ignited with [P.name] at [COORD(loc)]. No known firer.")
+			PlasmaBurn()
+	..()
 
 /obj/structure/statue/plasma/attackby(obj/item/W, mob/user, params)
-	if(W.is_hot() > 300 && !QDELETED(src))//If the temperature of the object is over 300, then ignite
-		var/turf/T = get_turf(src)
-		message_admins("Plasma statue ignited by [ADMIN_LOOKUPFLW(user)] in [ADMIN_VERBOSEJMP(T)]")
-		log_game("Plasma statue ignited by [key_name(user)] in [AREACOORD(T)]")
-		ignite(W.is_hot())
-	else
-		return ..()
-
-/obj/structure/statue/plasma/proc/PlasmaBurn(exposed_temperature)
-	if(QDELETED(src))
+	if(is_hot(W) > 300)//If the temperature of the object is over 300, then ignite
+		message_admins("[key_name_admin(user)] ignited a plasma statue at [COORD(loc)]")
+		log_game("[key_name(user)] ignited plasma a statue at [COORD(loc)]")
+		investigate_log("[key_name(user)] ignited a plasma statue at [COORD(loc)]", "atmos")
+		ignite(is_hot(W))
 		return
-	atmos_spawn_air("plasma=[oreAmount*10];TEMP=[exposed_temperature]")
+	return ..()
+
+/obj/structure/statue/plasma/welder_act(mob/user, obj/item/I)
+	. = TRUE
+	if(!I.use_tool(src, user, volume = I.tool_volume))
+		return
+	user.visible_message("<span class='danger'>[user] sets [src] on fire!</span>",\
+						"<span class='danger'>[src] disintegrates into a cloud of plasma!</span>",\
+						"<span class='warning'>You hear a 'whoompf' and a roar.</span>")
+	message_admins("[key_name_admin(user)] ignited a plasma statue at [COORD(loc)]")
+	log_game("[key_name(user)] ignited plasma a statue at [COORD(loc)]")
+	investigate_log("[key_name(user)] ignited a plasma statue at [COORD(loc)]", "atmos")
+	ignite(2500)
+
+/obj/structure/statue/plasma/proc/PlasmaBurn()
+	atmos_spawn_air(LINDA_SPAWN_HEAT | LINDA_SPAWN_TOXINS, 160)
 	deconstruct(FALSE)
 
 /obj/structure/statue/plasma/proc/ignite(exposed_temperature)
 	if(exposed_temperature > 300)
-		PlasmaBurn(exposed_temperature)
-
-//////////////////////gold///////////////////////////////////////
+		PlasmaBurn()
 
 /obj/structure/statue/gold
 	max_integrity = 300
@@ -172,15 +178,13 @@
 	name = "statue of the research director"
 	icon_state = "rd"
 
-//////////////////////////silver///////////////////////////////////////
-
 /obj/structure/statue/silver
 	max_integrity = 300
 	material_drop_type = /obj/item/stack/sheet/mineral/silver
 	desc = "This is a valuable statue made from silver."
 
 /obj/structure/statue/silver/md
-	name = "statue of a medical officer"
+	name = "statue of a medical doctor"
 	icon_state = "md"
 
 /obj/structure/statue/silver/janitor
@@ -199,26 +203,22 @@
 	name = "statue of a medical cyborg"
 	icon_state = "medborg"
 
-/////////////////////////diamond/////////////////////////////////////////
-
 /obj/structure/statue/diamond
 	max_integrity = 1000
 	material_drop_type = /obj/item/stack/sheet/mineral/diamond
 	desc = "This is a very expensive diamond statue."
 
 /obj/structure/statue/diamond/captain
-	name = "statue of THE captain."
+	name = "statue of THE captain"
 	icon_state = "cap"
 
 /obj/structure/statue/diamond/ai1
-	name = "statue of the AI hologram."
+	name = "statue of the AI hologram"
 	icon_state = "ai1"
 
 /obj/structure/statue/diamond/ai2
-	name = "statue of the AI core."
+	name = "statue of the AI core"
 	icon_state = "ai2"
-
-////////////////////////bananium///////////////////////////////////////
 
 /obj/structure/statue/bananium
 	max_integrity = 300
@@ -230,7 +230,7 @@
 	name = "statue of a clown"
 	icon_state = "clown"
 
-/obj/structure/statue/bananium/Bumped(atom/movable/AM)
+/obj/structure/statue/bananium/Bumped(atom/user)
 	honk()
 	..()
 
@@ -240,20 +240,14 @@
 
 /obj/structure/statue/bananium/attack_hand(mob/user)
 	honk()
-	. = ..()
-
-/obj/structure/statue/bananium/attack_paw(mob/user)
-	honk()
 	..()
 
 /obj/structure/statue/bananium/proc/honk()
 	if(!spam_flag)
 		spam_flag = 1
-		playsound(src.loc, 'sound/items/bikehorn.ogg', 50, 1)
+		playsound(loc, 'sound/items/bikehorn.ogg', 50, 1)
 		spawn(20)
 			spam_flag = 0
-
-/////////////////////sandstone/////////////////////////////////////////
 
 /obj/structure/statue/sandstone
 	max_integrity = 50
@@ -264,39 +258,83 @@
 	desc = "A cheap statue of sandstone for a greyshirt."
 	icon_state = "assist"
 
-
 /obj/structure/statue/sandstone/venus //call me when we add marble i guess
 	name = "statue of a pure maiden"
 	desc = "An ancient marble statue. The subject is depicted with a floor-length braid and is wielding a toolbox. By Jove, it's easily the most gorgeous depiction of a woman you've ever seen. The artist must truly be a master of his craft. Shame about the broken arm, though."
 	icon = 'icons/obj/statuelarge.dmi'
 	icon_state = "venus"
 
-/////////////////////snow/////////////////////////////////////////
+/obj/structure/statue/tranquillite
+	max_integrity = 300
+	material_drop_type = /obj/item/stack/sheet/mineral/tranquillite
+	desc = "..."
 
-/obj/structure/statue/snow
-	max_integrity = 50
-	material_drop_type = /obj/item/stack/sheet/mineral/snow
+/obj/structure/statue/tranquillite/mime
+	name = "statue of a mime"
+	icon_state = "mime"
 
-/obj/structure/statue/snow/snowman
+/obj/structure/statue/tranquillite/mime/AltClick(mob/user)//has 4 dirs
+	if(user.incapacitated())
+		to_chat(user, "<span class='warning'>You can't do that right now!</span>")
+		return
+	if(!Adjacent(user))
+		return
+	if(anchored)
+		to_chat(user, "It is fastened to the floor!")
+		return
+	setDir(turn(dir, 90))
+
+/obj/structure/statue/kidanstatue
+	name = "Obsidian Kidan warrior statue"
+	desc = "A beautifully carved and menacing statue of a Kidan warrior made out of obsidian. It looks very heavy."
+	icon_state = "kidan"
+	anchored = TRUE
+	oreAmount = 0
+
+/obj/structure/statue/chickenstatue
+	name = "Bronze Chickenman Statue"
+	desc = "An antique and oriental-looking statue of a Chickenman made of bronze."
+	icon_state = "chicken"
+	anchored = TRUE
+	oreAmount = 0
+
+/obj/structure/statue/russian_mulebot
+	desc = "Like a MULEbot, but more Russian and less functional.";
+	icon = 'icons/obj/aibots.dmi';
+	icon_state = "mulebot0";
+	name = "OXENbot"
+	anchored = TRUE
+	oreAmount = 10
+
+////////////////////////////////
+
+/obj/structure/snowman
 	name = "snowman"
-	desc = "Several lumps of snow put together to form a snowman."
+	desc = "Seems someone made a snowman here."
+	icon = 'icons/obj/stationobjs.dmi'
 	icon_state = "snowman"
+	anchored = TRUE
+	density = TRUE
+	max_integrity = 50
 
-/obj/structure/statue/snow/snowlegion
-    name = "snowlegion"
-    desc = "Looks like that weird kid with the tiger plushie has been round here again."
-    icon_state = "snowlegion"
+/obj/structure/snowman/built
+	desc = "Just like the ones you remember from childhood!"
 
-//////////////////////////copper///////////////////////////////////////
+/obj/structure/snowman/built/Destroy()
+	new /obj/item/reagent_containers/food/snacks/grown/carrot(drop_location())
+	new /obj/item/grown/log(drop_location())
+	new /obj/item/grown/log(drop_location())
+	return ..()
 
-/obj/structure/statue/copper
-	max_integrity = 350
-	material_drop_type = /obj/item/stack/sheet/mineral/copper
-	desc = "This is a statue made from copper."
+/obj/structure/snowman/built/attackby(obj/item/I, mob/user)
+	if(istype(I, /obj/item/snowball) && obj_integrity < max_integrity)
+		to_chat(user, "<span class='notice'>You patch some of the damage on [src] with [I].</span>")
+		obj_integrity = max_integrity
+		qdel(I)
+	else
+		return ..()
 
-/obj/structure/statue/copper/dimas
-	name = "statue of the quartermaster"
-	desc = "This is a statue of the legendary Quartermaster, Lord of Cargonia the land of stolen things. You feel the need to bow before it."
-	max_integrity = 400
-	icon_state = "dimas"
-	oreAmount = 10 //dimas b dense
+/obj/structure/snowman/built/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume, global_overlay = TRUE)
+	..()
+	qdel(src)
+

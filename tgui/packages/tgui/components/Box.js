@@ -1,30 +1,19 @@
-/**
- * @file
- * @copyright 2020 Aleksej Komarov
- * @license MIT
- */
-
-import { classes, pureComponentHooks } from 'common/react';
+import { classes, isFalsy, pureComponentHooks } from 'common/react';
 import { createVNode } from 'inferno';
 import { ChildFlags, VNodeFlags } from 'inferno-vnode-flags';
 import { CSS_COLORS } from '../constants';
+
+const UNIT_PX = 12;
 
 /**
  * Coverts our rem-like spacing unit into a CSS unit.
  */
 export const unit = value => {
   if (typeof value === 'string') {
-    // Transparently convert pixels into rem units
-    if (value.endsWith('px') && !Byond.IS_LTE_IE8) {
-      return parseFloat(value) / 12 + 'rem';
-    }
     return value;
   }
   if (typeof value === 'number') {
-    if (Byond.IS_LTE_IE8) {
-      return value * 12 + 'px';
-    }
-    return value + 'rem';
+    return (value * UNIT_PX) + 'px';
   }
 };
 
@@ -33,10 +22,10 @@ export const unit = value => {
  */
 export const halfUnit = value => {
   if (typeof value === 'string') {
-    return unit(value);
+    return value;
   }
   if (typeof value === 'number') {
-    return unit(value * 0.5);
+    return (value * UNIT_PX * 0.5) + 'px';
   }
 };
 
@@ -46,25 +35,25 @@ const isColorClass = str => typeof str === 'string'
   && CSS_COLORS.includes(str);
 
 const mapRawPropTo = attrName => (style, value) => {
-  if (typeof value === 'number' || typeof value === 'string') {
+  if (!isFalsy(value)) {
     style[attrName] = value;
   }
 };
 
 const mapUnitPropTo = (attrName, unit) => (style, value) => {
-  if (typeof value === 'number' || typeof value === 'string') {
+  if (!isFalsy(value)) {
     style[attrName] = unit(value);
   }
 };
 
 const mapBooleanPropTo = (attrName, attrValue) => (style, value) => {
-  if (value) {
+  if (!isFalsy(value)) {
     style[attrName] = attrValue;
   }
 };
 
 const mapDirectionalUnitPropTo = (attrName, unit, dirs) => (style, value) => {
-  if (typeof value === 'number' || typeof value === 'string') {
+  if (!isFalsy(value)) {
     for (let i = 0; i < dirs.length; i++) {
       style[attrName + '-' + dirs[i]] = unit(value);
     }
@@ -79,7 +68,10 @@ const mapColorPropTo = attrName => (style, value) => {
 
 const styleMapperByPropName = {
   // Direct mapping
+  display: mapRawPropTo('display'),
   position: mapRawPropTo('position'),
+  float: mapRawPropTo('float'),
+  clear: mapRawPropTo('clear'),
   overflow: mapRawPropTo('overflow'),
   overflowX: mapRawPropTo('overflow-x'),
   overflowY: mapRawPropTo('overflow-y'),
@@ -95,17 +87,13 @@ const styleMapperByPropName = {
   maxHeight: mapUnitPropTo('max-height', unit),
   fontSize: mapUnitPropTo('font-size', unit),
   fontFamily: mapRawPropTo('font-family'),
-  lineHeight: (style, value) => {
-    if (typeof value === 'number') {
-      style['line-height'] = value;
-    }
-    else if (typeof value === 'string') {
-      style['line-height'] = unit(value);
-    }
-  },
+  lineHeight: mapRawPropTo('line-height'),
   opacity: mapRawPropTo('opacity'),
   textAlign: mapRawPropTo('text-align'),
   verticalAlign: mapRawPropTo('vertical-align'),
+  textTransform: mapRawPropTo('text-transform'),
+  wordWrap: mapRawPropTo('word-wrap'),
+  textOverflow: mapRawPropTo('text-overflow'),
   // Boolean props
   inline: mapBooleanPropTo('display', 'inline-block'),
   bold: mapBooleanPropTo('font-weight', 'bold'),
@@ -143,6 +131,18 @@ const styleMapperByPropName = {
   color: mapColorPropTo('color'),
   textColor: mapColorPropTo('color'),
   backgroundColor: mapColorPropTo('background-color'),
+  // Flex props
+  order: mapRawPropTo('order'),
+  flexDirection: mapRawPropTo('flex-direction'),
+  flexGrow: mapRawPropTo('flex-grow'),
+  flexShrink: mapRawPropTo('flex-shrink'),
+  flexWrap: mapRawPropTo('flex-wrap'),
+  flexFlow: mapRawPropTo('flex-flow'),
+  flexBasis: mapRawPropTo('flex-basis'),
+  flex: mapRawPropTo('flex'),
+  alignItems: mapRawPropTo('align-items'),
+  justifyContent: mapRawPropTo('justify-content'),
+  alignSelf: mapRawPropTo('align-self'),
   // Utility props
   fillPositionedParent: (style, value) => {
     if (value) {
@@ -158,14 +158,12 @@ const styleMapperByPropName = {
 export const computeBoxProps = props => {
   const computedProps = {};
   const computedStyles = {};
+  if (props.double) {
+    computedStyles["transform"] = "scale(2);";
+  }
   // Compute props
   for (let propName of Object.keys(props)) {
     if (propName === 'style') {
-      continue;
-    }
-    // IE8: onclick workaround
-    if (Byond.IS_LTE_IE8 && propName === 'onClick') {
-      computedProps.onclick = props[propName];
       continue;
     }
     const propValue = props[propName];

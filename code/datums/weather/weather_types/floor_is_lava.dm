@@ -16,7 +16,7 @@
 
 	area_type = /area
 	protected_areas = list(/area/space)
-	target_trait = ZTRAIT_STATION
+	target_trait = STATION_LEVEL
 
 	overlay_layer = ABOVE_OPEN_TURF_LAYER //Covers floors only
 	overlay_plane = FLOOR_PLANE
@@ -35,6 +35,10 @@
 		return
 	if(!L.client) //Only sentient people are going along with it!
 		return
-	if(L.movement_type & FLYING)
+	if(L.flying)
 		return
 	L.adjustFireLoss(3)
+
+/datum/weather/floor_is_lava/fake
+	name = "the floor is lava (fake)"
+	aesthetic = TRUE

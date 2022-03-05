@@ -5,9 +5,11 @@ SUBSYSTEM_DEF(input)
 	flags = SS_TICKER
 	priority = FIRE_PRIORITY_INPUT
 	runlevels = RUNLEVELS_DEFAULT | RUNLEVEL_LOBBY
+	offline_implications = "Player input will no longer be recognised. Immediate server restart recommended."
 
 	var/list/macro_sets
 	var/list/movement_keys
+	var/list/alt_movement_keys
 
 /datum/controller/subsystem/input/Initialize()
 	setup_default_macro_sets()
@@ -32,23 +34,23 @@ SUBSYSTEM_DEF(input)
 		"default" = list(
 			"Tab" = "\".winset \\\"input.focus=true?map.focus=true input.background-color=[COLOR_INPUT_DISABLED]:input.focus=true input.background-color=[COLOR_INPUT_ENABLED]\\\"\"",
 			"O" = "ooc",
-			"T" = "say",
-			"M" = "me",
-			"Back" = "\".winset \\\"input.text=\\\"\\\"\\\"\"", // This makes it so backspace can remove default inputs
+			"T" = ".say",
+			"M" = ".me",
+			"Back" = "\".winset \\\"input.focus=true input.text=\\\"\\\"\\\"\"", // This makes it so backspace can remove default inputs
 			"Any" = "\"KeyDown \[\[*\]\]\"",
 			"Any+UP" = "\"KeyUp \[\[*\]\]\"",
 			),
 		"old_default" = list(
 			"Tab" = "\".winset \\\"mainwindow.macro=old_hotkeys map.focus=true input.background-color=[COLOR_INPUT_DISABLED]\\\"\"",
-			"Ctrl+T" = "say",
+			"Ctrl+T" = ".say",
 			"Ctrl+O" = "ooc",
 			),
 		"old_hotkeys" = list(
 			"Tab" = "\".winset \\\"mainwindow.macro=old_default input.focus=true input.background-color=[COLOR_INPUT_ENABLED]\\\"\"",
 			"O" = "ooc",
-			"T" = "say",
-			"M" = "me",
-			"Back" = "\".winset \\\"input.text=\\\"\\\"\\\"\"", // This makes it so backspace can remove default inputs
+			"T" = ".say",
+			"M" = ".me",
+			"Back" = "\".winset \\\"input.focus=true input.text=\\\"\\\"\\\"\"", // This makes it so backspace can remove default inputs
 			"Any" = "\"KeyDown \[\[*\]\]\"",
 			"Any+UP" = "\"KeyUp \[\[*\]\]\"",
 			),
@@ -98,8 +100,12 @@ SUBSYSTEM_DEF(input)
 		"W" = NORTH, "A" = WEST, "S" = SOUTH, "D" = EAST,				// WASD
 		"North" = NORTH, "West" = WEST, "South" = SOUTH, "East" = EAST,	// Arrow keys & Numpad
 		)
-
+	var/static/list/azerty_movement_keys = list(
+		"Z" = NORTH, "Q" = WEST, "S" = SOUTH, "D" = EAST,				// WASD
+		"North" = NORTH, "West" = WEST, "South" = SOUTH, "East" = EAST,	// Arrow keys & Numpad
+	)
 	movement_keys = default_movement_keys.Copy()
+	alt_movement_keys = azerty_movement_keys.Copy()
 
 // Badmins just wanna have fun ♪
 /datum/controller/subsystem/input/proc/refresh_client_macro_sets()
@@ -110,6 +116,13 @@ SUBSYSTEM_DEF(input)
 
 /datum/controller/subsystem/input/fire()
 	var/list/clients = GLOB.clients // Let's sing the list cache song
+	if(listclearnulls(clients)) // clear nulls before we run keyloop
+		log_world("Found a null in clients list!")
 	for(var/i in 1 to clients.len)
 		var/client/C = clients[i]
 		C.keyLoop()
+
+/datum/controller/subsystem/input/Recover()
+	macro_sets = SSinput.macro_sets
+	movement_keys = SSinput.movement_keys
+	alt_movement_keys = SSinput.alt_movement_keys

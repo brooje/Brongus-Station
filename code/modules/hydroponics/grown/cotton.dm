@@ -32,7 +32,7 @@
 	var/cotton_name = "raw cotton"
 
 /obj/item/grown/cotton/attack_self(mob/user)
-	user.show_message("<span class='notice'>You pull some [cotton_name] out of the [name]!</span>", MSG_VISUAL)
+	user.show_message("<span class='notice'>You pull some [cotton_name] out of [src]!</span>", 1)
 	var/seed_modifier = 0
 	if(seed)
 		seed_modifier = round(seed.potency / 25)
@@ -61,6 +61,7 @@
 	yield = 2
 	potency = 50
 	growthstages = 3
+	mutatelist = list()
 	growing_icon = 'icons/obj/hydroponics/growing.dmi'
 	icon_dead = "cotton-dead"
 

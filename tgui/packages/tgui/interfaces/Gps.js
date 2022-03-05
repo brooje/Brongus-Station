@@ -1,128 +1,223 @@
-import { map, sortBy } from 'common/collections';
-import { flow } from 'common/fp';
-import { clamp } from 'common/math';
-import { vecLength, vecSubtract } from 'common/vector';
+import { rad2deg } from 'common/math';
 import { Fragment } from 'inferno';
-import { useBackend } from '../backend';
-import { Box, Button, Icon, LabeledList, Section, Table } from '../components';
+import { useBackend, useLocalState } from '../backend';
+import { Box, Button, Flex, Icon, Input, LabeledList, Section, Table } from '../components';
 import { Window } from '../layouts';
 
-const coordsToVec = coords => map(parseFloat)(coords.split(', '));
+const vectorText = vector => vector ? "(" + vector.join(", ") + ")" : "ERROR";
 
-export const Gps = (props, context) => {
-  const { act, data } = useBackend(context);
+const distanceToPoint = (from, to) => {
+  if (!from || !to) {
+    return;
+  }
+
+  // Different Z-level
+  if (from[2] !== to[2]) {
+    return null;
+  }
+
+  const angle = Math.atan2(to[1] - from[1], to[0] - from[0]);
+  const dist = Math.sqrt(Math.pow(to[1] - from[1], 2) + Math.pow(to[0] - from[0], 2));
+  return { angle: rad2deg(angle), distance: dist };
+};
+
+export const GPS = (properties, context) => {
+  const { data } = useBackend(context);
   const {
-    currentArea,
-    currentCoords,
-    globalmode,
-    power,
-    tag,
-    updating,
+    emped,
+    active,
+    area,
+    position,
+    saved,
   } = data;
-  const signals = flow([
-    map((signal, index) => {
-      // Calculate distance to the target. BYOND distance is capped to 127,
-      // that's why we roll our own calculations here.
-      const dist = signal.dist && (
-        Math.round(vecLength(vecSubtract(
-          coordsToVec(currentCoords),
-          coordsToVec(signal.coords))))
-      );
-      return { ...signal, dist, index };
-    }),
-    sortBy(
-      // Signals with distance metric go first
-      signal => signal.dist === undefined,
-      // Sort alphabetically
-      signal => signal.entrytag),
-  ])(data.signals || []);
   return (
-    <Window
-      resizable
-      width={470}
-      height={clamp(325 + signals.length * 14, 325, 700)}>
-      <Window.Content scrollable>
-        <Section
-          title="Control"
-          buttons={(
-            <Button
-              icon="power-off"
-              content={power ? "On" : "Off"}
-              selected={power}
-              onClick={() => act('power')} />
-          )}>
-          <LabeledList>
-            <LabeledList.Item label="Tag">
-              <Button
-                icon="pencil-alt"
-                content={tag}
-                onClick={() => act('rename')} />
-            </LabeledList.Item>
-            <LabeledList.Item label="Scan Mode">
-              <Button
-                icon={updating ? "unlock" : "lock"}
-                content={updating ? "AUTO" : "MANUAL"}
-                color={!updating && "bad"}
-                onClick={() => act('updating')} />
-            </LabeledList.Item>
-            <LabeledList.Item label="Range">
-              <Button
-                icon="sync"
-                content={globalmode ? "MAXIMUM" : "LOCAL"}
-                selected={!globalmode}
-                onClick={() => act('globalmode')} />
-            </LabeledList.Item>
-          </LabeledList>
-        </Section>
-        {!!power && (
-          <Fragment>
-            <Section title="Current Location">
-              <Box fontSize="18px">
-                {currentArea} ({currentCoords})
-              </Box>
-            </Section>
-            <Section title="Detected Signals">
-              <Table>
-                <Table.Row bold>
-                  <Table.Cell content="Name" />
-                  <Table.Cell collapsing content="Direction" />
-                  <Table.Cell collapsing content="Coordinates" />
-                </Table.Row>
-                {signals.map(signal => (
-                  <Table.Row
-                    key={signal.entrytag + signal.coords + signal.index}
-                    className="candystripe">
-                    <Table.Cell bold color="label">
-                      {signal.entrytag}
-                    </Table.Cell>
-                    <Table.Cell
-                      collapsing
-                      opacity={signal.dist !== undefined && (
-                        clamp(
-                          1.2 / Math.log(Math.E + signal.dist / 20),
-                          0.4, 1)
-                      )}>
-                      {signal.degrees !== undefined && (
-                        <Icon
-                          mr={1}
-                          size={1.2}
-                          name="arrow-up"
-                          rotation={signal.degrees} />
-                      )}
-                      {signal.dist !== undefined && (
-                        signal.dist + 'm'
-                      )}
-                    </Table.Cell>
-                    <Table.Cell collapsing>
-                      {signal.coords}
-                    </Table.Cell>
-                  </Table.Row>
-                ))}
-              </Table>
-            </Section>
-          </Fragment>
-        )}
+    <Window>
+      <Window.Content>
+        <Flex direction="column" height="100%">
+          {emped ? (
+            <Flex.Item grow="1" basis="0">
+              <TurnedOff emp />
+            </Flex.Item>
+          ) : (
+            <Fragment>
+              <Flex.Item>
+                <Settings />
+              </Flex.Item>
+              {active ? (
+                <Fragment>
+                  <Flex.Item mt="0.5rem">
+                    <Position area={area} position={position} />
+                  </Flex.Item>
+                  {saved && (
+                    <Flex.Item mt="0.5rem">
+                      <Position title="Saved Position" position={saved} />
+                    </Flex.Item>
+                  )}
+                  <Flex.Item mt="0.5rem" grow="1" basis="0">
+                    <Signals height="100%" />
+                  </Flex.Item>
+                </Fragment>
+              ) : (
+                <TurnedOff />
+              )}
+            </Fragment>
+          )}
+        </Flex>
       </Window.Content>
     </Window>
+  );
+};
+
+const TurnedOff = ({ emp }, context) => {
+  return (
+    <Section
+      mt="0.5rem"
+      width="100%"
+      height="100%"
+      stretchContents>
+      <Box
+        width="100%"
+        height="100%"
+        color="label"
+        textAlign="center">
+        <Flex height="100%">
+          <Flex.Item grow="1" align="center" color="label">
+            <Icon
+              name={emp ? "ban": "power-off"}
+              mb="0.5rem"
+              size="5"
+            /><br />
+            {emp
+              ? "ERROR: Device temporarily lost signal."
+              : "Device is disabled."}
+          </Flex.Item>
+        </Flex>
+      </Box>
+    </Section>
+  );
+};
+
+const Settings = (properties, context) => {
+  const { act, data } = useBackend(context);
+  const {
+    active,
+    tag,
+    same_z,
+  } = data;
+  const [newTag, setNewTag] = useLocalState(context, "newTag", tag);
+  return (
+    <Section
+      title="Settings"
+      buttons={
+        <Button
+          selected={active}
+          icon={active ? "toggle-on" : "toggle-off"}
+          content={active ? "On" : "Off"}
+          onClick={() => act('toggle')}
+        />
+      }>
+      <LabeledList>
+        <LabeledList.Item label="Tag">
+          <Input
+            width="5rem"
+            value={tag}
+            onEnter={() => act('tag', { newtag: newTag })}
+            onInput={(e, value) => setNewTag(value)}
+          />
+          <Button
+            disabled={tag === newTag}
+            width="20px"
+            mb="0"
+            ml="0.25rem"
+            onClick={() => act('tag', { newtag: newTag })}>
+            <Icon name="pen" />
+          </Button>
+        </LabeledList.Item>
+        <LabeledList.Item label="Range">
+          <Button
+            selected={!same_z}
+            icon={same_z ? "compress" : "expand"}
+            content={same_z ? "Local Sector" : "Global"}
+            onClick={() => act('same_z')}
+          />
+        </LabeledList.Item>
+      </LabeledList>
+    </Section>
+  );
+};
+
+const Position = ({ title, area, position }, context) => {
+  return (
+    <Section title={title || "Position"}>
+      <Box fontSize="1.5rem">
+        {area && (
+          <Fragment>
+            {area}
+            <br />
+          </Fragment>
+        )}
+        {vectorText(position)}
+      </Box>
+    </Section>
+  );
+};
+
+const Signals = (properties, context) => {
+  const { data } = useBackend(context);
+  const {
+    position,
+    signals,
+  } = data;
+  return (
+    <Section
+      title="Signals"
+      overflow="auto"
+      {...properties}>
+      <Table>
+        {signals
+          .map(signal => ({
+            ...signal,
+            ...distanceToPoint(position, signal.position),
+          }))
+          .map((signal, i) => (
+            <Table.Row
+              key={i}
+              backgroundColor={(i % 2 === 0) && "rgba(255, 255, 255, 0.05)"}>
+              <Table.Cell
+                width="30%"
+                verticalAlign="middle"
+                color="label"
+                p="0.25rem"
+                bold>
+                {signal.tag}
+              </Table.Cell>
+              <Table.Cell
+                verticalAlign="middle"
+                color="grey">
+                {signal.area}
+              </Table.Cell>
+              <Table.Cell
+                verticalAlign="middle"
+                collapsing>
+                {signal.distance !== undefined && (
+                  <Box opacity={Math.max(1 - Math.min(signal.distance, 100) / 100, 0.5)}>
+                    <Icon
+                      name={signal.distance > 0 ? "arrow-right" : "circle"}
+                      rotation={-signal.angle}
+                    />&nbsp;
+                    {Math.floor(signal.distance) + "m"}
+                  </Box>
+                )}
+              </Table.Cell>
+              <Table.Cell
+                verticalAlign="middle"
+                pr="0.25rem"
+                collapsing>
+                {vectorText(signal.position)}
+              </Table.Cell>
+            </Table.Row>
+          ))}
+      </Table>
+    </Section>
   );
 };

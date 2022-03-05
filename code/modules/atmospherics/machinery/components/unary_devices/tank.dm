@@ -1,51 +1,108 @@
-#define AIR_CONTENTS	((25*ONE_ATMOSPHERE)*(air_contents.return_volume())/(R_IDEAL_GAS_EQUATION*air_contents.return_temperature()))
-/obj/machinery/atmospherics/components/unary/tank
-	icon = 'icons/obj/atmospherics/pipes/pressure_tank.dmi'
-	icon_state = "generic"
-
+/obj/machinery/atmospherics/unary/tank
+	icon = 'icons/atmos/tank.dmi'
+	icon_state = "air_map"
+	layer = GAS_PIPE_VISIBLE_LAYER
 	name = "pressure tank"
 	desc = "A large vessel containing pressurized gas."
 
 	max_integrity = 800
-	density = TRUE
-	layer = ABOVE_WINDOW_LAYER
-	pipe_flags = PIPING_ONE_PER_TURF
 
-	var/volume = 10000 //in liters
-	var/gas_type = null
+	var/volume = 10000 //in liters, 1 meters by 1 meters by 2 meters ~tweaked it a little to simulate a pressure tank without needing to recode them yet
 
-/obj/machinery/atmospherics/components/unary/tank/New()
+	density = 1
+
+/obj/machinery/atmospherics/unary/tank/update_underlays()
+	if(..())
+		underlays.Cut()
+		var/turf/T = get_turf(src)
+		if(!istype(T))
+			return
+		add_underlay(T, node, dir)
+
+/obj/machinery/atmospherics/unary/tank/attackby(obj/item/W, mob/user, params)
+	if(istype(W, /obj/item/analyzer))
+		atmosanalyzer_scan(air_contents, user)
+		return
+
+	return ..()
+
+/obj/machinery/atmospherics/unary/tank/air
+	name = "Pressure Tank (Air)"
+	icon_state = "air_map"
+
+/obj/machinery/atmospherics/unary/tank/air/New()
 	..()
-	var/datum/gas_mixture/air_contents = airs[1]
-	air_contents.set_volume(volume)
-	air_contents.set_temperature(T20C)
-	if(gas_type)
-		air_contents.set_moles(gas_type, AIR_CONTENTS)
-		name = "[name] ([GLOB.meta_gas_info[gas_type][META_GAS_NAME]])"
-	setPipingLayer(piping_layer)
+	icon_state = "air"
+	air_contents.volume = volume
+	air_contents.temperature = T20C
+	air_contents.oxygen = (25*ONE_ATMOSPHERE*O2STANDARD)*(air_contents.volume)/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
+	air_contents.nitrogen = (25*ONE_ATMOSPHERE*N2STANDARD)*(air_contents.volume)/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
 
+/obj/machinery/atmospherics/unary/tank/oxygen
+	name = "Pressure Tank (Oxygen)"
+	icon_state = "o2_map"
 
-/obj/machinery/atmospherics/components/unary/tank/air
-	icon_state = "grey"
-	name = "pressure tank (Air)"
-
-/obj/machinery/atmospherics/components/unary/tank/air/New()
+/obj/machinery/atmospherics/unary/tank/oxygen/New()
 	..()
-	var/datum/gas_mixture/air_contents = airs[1]
-	air_contents.set_moles(/datum/gas/oxygen, AIR_CONTENTS * 0.2)
-	air_contents.set_moles(/datum/gas/nitrogen, AIR_CONTENTS * 0.8)
+	icon_state = "o2"
+	air_contents.volume = volume
+	air_contents.temperature = T20C
+	air_contents.oxygen = (25*ONE_ATMOSPHERE)*(air_contents.volume)/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
 
-/obj/machinery/atmospherics/components/unary/tank/carbon_dioxide
-	gas_type = /datum/gas/carbon_dioxide
+/obj/machinery/atmospherics/unary/tank/nitrogen
+	name = "Pressure Tank (Nitrogen)"
+	icon_state = "n2_map"
 
-/obj/machinery/atmospherics/components/unary/tank/toxins
-	icon_state = "orange"
-	gas_type = /datum/gas/plasma
+/obj/machinery/atmospherics/unary/tank/nitrogen/New()
+	..()
+	icon_state = "n2"
+	air_contents.volume = volume
+	air_contents.temperature = T20C
+	air_contents.nitrogen = (25*ONE_ATMOSPHERE)*(air_contents.volume)/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
 
-/obj/machinery/atmospherics/components/unary/tank/oxygen
-	icon_state = "blue"
-	gas_type = /datum/gas/oxygen
+/obj/machinery/atmospherics/unary/tank/carbon_dioxide
+	name = "Pressure Tank (Carbon Dioxide)"
+	icon_state = "co2_map"
 
-/obj/machinery/atmospherics/components/unary/tank/nitrogen
-	icon_state = "red"
-	gas_type = /datum/gas/nitrogen
+/obj/machinery/atmospherics/unary/tank/carbon_dioxide/New()
+	..()
+	icon_state = "co2"
+	air_contents.volume = volume
+	air_contents.temperature = T20C
+	air_contents.carbon_dioxide = (25*ONE_ATMOSPHERE)*(air_contents.volume)/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
+
+/obj/machinery/atmospherics/unary/tank/toxins
+	name = "Pressure Tank (Toxins)"
+	icon_state = "toxins_map"
+
+/obj/machinery/atmospherics/unary/tank/toxins/New()
+	..()
+	icon_state = "toxins"
+	air_contents.volume = volume
+	air_contents.temperature = T20C
+	air_contents.toxins = (25*ONE_ATMOSPHERE)*(air_contents.volume)/(R_IDEAL_GAS_EQUATION*air_contents.temperature)
+
+/obj/machinery/atmospherics/unary/tank/nitrous_oxide
+	name = "Pressure Tank (Nitrous Oxide)"
+	icon_state = "n2o_map"
+
+/obj/machinery/atmospherics/unary/tank/nitrous_oxide/New()
+	..()
+	icon_state = "n2o"
+	air_contents.volume = volume
+	air_contents.temperature = T20C
+
+	air_contents.sleeping_agent = (25 * ONE_ATMOSPHERE) * (air_contents.volume) / (R_IDEAL_GAS_EQUATION * air_contents.temperature)
+
+/obj/machinery/atmospherics/unary/tank/oxygen_agent_b
+	name = "Unidentified Gas Tank"
+	desc = "A large vessel containing an unknown pressurized gas."
+	icon_state = "agent_b_map"
+
+/obj/machinery/atmospherics/unary/tank/oxygen_agent_b/New()
+	..()
+	icon_state = "agent_b"
+	air_contents.volume = volume
+	air_contents.temperature = T20C
+
+	air_contents.agent_b = (50 * ONE_ATMOSPHERE) * (air_contents.volume) / (R_IDEAL_GAS_EQUATION * air_contents.temperature)

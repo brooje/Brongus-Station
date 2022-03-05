@@ -36,22 +36,23 @@
 	desc = "It's better than bad, it's good!"
 	icon_state = "logs"
 	force = 5
-	block_upgrade_walk = 1
 	throwforce = 5
 	w_class = WEIGHT_CLASS_NORMAL
 	throw_speed = 2
 	throw_range = 3
+	origin_tech = "materials=1"
 	attack_verb = list("bashed", "battered", "bludgeoned", "whacked")
-	var/plank_type = /obj/item/stack/sheet/mineral/wood
+	var/plank_type = /obj/item/stack/sheet/wood
 	var/plank_name = "wooden planks"
 	var/static/list/accepted = typecacheof(list(/obj/item/reagent_containers/food/snacks/grown/tobacco,
 	/obj/item/reagent_containers/food/snacks/grown/tea,
-	/obj/item/reagent_containers/food/snacks/grown/ambrosia,
+	/obj/item/reagent_containers/food/snacks/grown/ambrosia/vulgaris,
+	/obj/item/reagent_containers/food/snacks/grown/ambrosia/deus,
 	/obj/item/reagent_containers/food/snacks/grown/wheat))
 
 /obj/item/grown/log/attackby(obj/item/W, mob/user, params)
-	if(W.is_sharp())
-		user.show_message("<span class='notice'>You make [plank_name] out of \the [src]!</span>", MSG_VISUAL)
+	if(is_sharp(W))
+		user.show_message("<span class='notice'>You make [plank_name] out of \the [src]!</span>", 1)
 		var/seed_modifier = 0
 		if(seed)
 			seed_modifier = round(seed.potency / 25)
@@ -69,7 +70,7 @@
 		if(leaf.dry)
 			user.show_message("<span class='notice'>You wrap \the [W] around the log, turning it into a torch!</span>")
 			var/obj/item/flashlight/flare/torch/T = new /obj/item/flashlight/flare/torch(user.loc)
-			usr.dropItemToGround(W)
+			usr.unEquip(W)
 			usr.put_in_active_hand(T)
 			qdel(leaf)
 			qdel(src)
@@ -97,48 +98,6 @@
 
 /obj/item/grown/log/steel/CheckAccepted(obj/item/I)
 	return FALSE
-/obj/item/seeds/bamboo
-	name = "pack of bamboo seeds"
-	desc = "Plant known for their flexible and resistant logs."
-	icon_state = "seed-bamboo"
-	species = "bamboo"
-	plantname = "Bamboo"
-	product = /obj/item/grown/log/bamboo
-	lifespan = 80
-	endurance = 70
-	maturation = 15
-	production = 2
-	yield = 5
-	potency = 50
-	growthstages = 2
-	growing_icon = 'icons/obj/hydroponics/growing.dmi'
-	icon_dead = "bamboo-dead"
-	genes = list(/datum/plant_gene/trait/repeated_harvest)
-
-/obj/item/grown/log/bamboo
-	seed = /obj/item/seeds/bamboo
-	name = "bamboo log"
-	desc = "A long and resistant bamboo log."
-	icon_state = "bamboo"
-	plank_type = /obj/item/stack/sheet/mineral/bamboo
-	plank_name = "bamboo sticks"
-
-/obj/item/grown/log/bamboo/CheckAccepted(obj/item/I)
-	return FALSE
-
-/obj/structure/punji_sticks
-	name = "punji sticks"
-	desc = "Don't step on this."
-	icon = 'icons/obj/hydroponics/equipment.dmi'
-	icon_state = "punji"
-	resistance_flags = FLAMMABLE
-	max_integrity = 30
-	density = FALSE
-	anchored = TRUE
-
-/obj/structure/punji_sticks/Initialize(mapload)
-	. = ..()
-	AddComponent(/datum/component/caltrop, 20, 30, 100, CALTROP_BYPASS_SHOES)
 
 /////////BONFIRES//////////
 
@@ -147,112 +106,69 @@
 	desc = "For grilling, broiling, charring, smoking, heating, roasting, toasting, simmering, searing, melting, and occasionally burning things."
 	icon = 'icons/obj/hydroponics/equipment.dmi'
 	icon_state = "bonfire"
-	light_color = LIGHT_COLOR_FIRE
 	density = FALSE
 	anchored = TRUE
-	buckle_lying = 0
+	buckle_lying = FALSE
 	var/burning = 0
-	var/burn_icon = "bonfire_on_fire" //for a softer more burning embers icon, use "bonfire_warm"
-	var/grill = FALSE
+	var/lighter // Who lit the fucking thing
 	var/fire_stack_strength = 5
-	var/needs_oxygen = TRUE
-
-/obj/structure/bonfire/bluespace
-	needs_oxygen = FALSE
 
 /obj/structure/bonfire/dense
 	density = TRUE
 
-/obj/structure/bonfire/dense/askwalker
-	needs_oxygen = FALSE
-
-/obj/structure/bonfire/prelit/Initialize()
-	. = ..()
-	StartBurning()
-
-/obj/structure/bonfire/CanPass(atom/movable/mover, turf/target)
-	if(istype(mover) && (mover.pass_flags & PASSTABLE))
-		return TRUE
-	if(mover.throwing)
-		return TRUE
-	return ..()
-
 /obj/structure/bonfire/attackby(obj/item/W, mob/user, params)
-	if(istype(W, /obj/item/stack/rods) && !can_buckle && !grill)
+	if(istype(W, /obj/item/stack/rods) && !can_buckle)
 		var/obj/item/stack/rods/R = W
-		var/choice = input(user, "What would you like to construct?", "Bonfire") as null|anything in list("Stake","Grill")
-		switch(choice)
-			if("Stake")
-				R.use(1)
-				can_buckle = TRUE
-				buckle_requires_restraints = TRUE
-				to_chat(user, "<span class='italics'>You add a rod to \the [src].")
-				var/mutable_appearance/rod_underlay = mutable_appearance('icons/obj/hydroponics/equipment.dmi', "bonfire_rod")
-				rod_underlay.pixel_y = 16
-				underlays += rod_underlay
-			if("Grill")
-				R.use(1)
-				grill = TRUE
-				to_chat(user, "<span class='italics'>You add a grill to \the [src].")
-				add_overlay("bonfire_grill")
-			else
-				return ..()
-	if(W.is_hot())
+		R.use(1)
+		can_buckle = TRUE
+		buckle_requires_restraints = TRUE
+		to_chat(user, "<span class='italics'>You add a rod to [src].")
+		var/image/U = image(icon='icons/obj/hydroponics/equipment.dmi',icon_state="bonfire_rod",pixel_y=16)
+		underlays += U
+	if(is_hot(W))
+		lighter = user.ckey
+		user.create_log(MISC_LOG, "lit a bonfire", src)
 		StartBurning()
-	if(grill)
-		if(user.a_intent != INTENT_HARM && !(W.item_flags & ABSTRACT))
-			if(user.temporarilyRemoveItemFromInventory(W))
-				W.forceMove(get_turf(src))
-				var/list/click_params = params2list(params)
-				//Center the icon where the user clicked.
-				if(!click_params || !click_params["icon-x"] || !click_params["icon-y"])
-					return
-				//Clamp it so that the icon never moves more than 16 pixels in either direction (thus leaving the table turf)
-				W.pixel_x = CLAMP(text2num(click_params["icon-x"]) - 16, -(world.icon_size/2), world.icon_size/2)
-				W.pixel_y = CLAMP(text2num(click_params["icon-y"]) - 16, -(world.icon_size/2), world.icon_size/2)
-		else
-			return ..()
 
 
 /obj/structure/bonfire/attack_hand(mob/user)
-	. = ..()
-	if(.)
-		return
 	if(burning)
-		to_chat(user, "<span class='warning'>You need to extinguish [src] before removing the logs!</span>")
+		to_chat(user, "<span class='warning'>You need to extinguish [src] before removing the logs!")
 		return
 	if(!has_buckled_mobs() && do_after(user, 50, target = src))
 		for(var/I in 1 to 5)
-			var/obj/item/grown/log/L = new /obj/item/grown/log(src.loc)
+			var/obj/item/grown/log/L = new /obj/item/grown/log(loc)
 			L.pixel_x += rand(1,4)
 			L.pixel_y += rand(1,4)
-		if(can_buckle || grill)
-			new /obj/item/stack/rods(loc, 1)
 		qdel(src)
 		return
+	..()
+
 
 /obj/structure/bonfire/proc/CheckOxygen()
-	if(isopenturf(loc))
-		var/turf/open/O = loc
-		if(O.air)
-			if(O.air.get_moles(/datum/gas/oxygen) > 13)
-				return TRUE
-	return FALSE
+	var/datum/gas_mixture/G = loc.return_air() // Check if we're standing in an oxygenless environment
+	if(G.oxygen > 13)
+		return 1
+	return 0
 
 /obj/structure/bonfire/proc/StartBurning()
-	if(!burning && (!needs_oxygen || CheckOxygen()))
-		icon_state = burn_icon
-		burning = TRUE
-		set_light(6)
+	if(!burning && CheckOxygen())
+		icon_state = "bonfire_on_fire"
+		burning = 1
+		set_light(6, l_color = "#ED9200")
 		Burn()
 		START_PROCESSING(SSobj, src)
 
-/obj/structure/bonfire/fire_act(exposed_temperature, exposed_volume)
+/obj/structure/bonfire/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume, global_overlay = TRUE)
+	..()
 	StartBurning()
 
-/obj/structure/bonfire/Crossed(atom/movable/AM)
-	if(burning & !grill)
+/obj/structure/bonfire/Crossed(atom/movable/AM, oldloc)
+	if(burning)
 		Burn()
+		if(ishuman(AM))
+			var/mob/living/carbon/human/H = AM
+			add_attack_logs(src, H, "Burned by a bonfire (Lit by [lighter])", ATKLOG_ALMOSTALL)
 
 /obj/structure/bonfire/proc/Burn()
 	var/turf/current_location = get_turf(src)
@@ -268,27 +184,11 @@
 			L.adjust_fire_stacks(fire_stack_strength)
 			L.IgniteMob()
 
-/obj/structure/bonfire/proc/Cook()
-	var/turf/current_location = get_turf(src)
-	for(var/A in current_location)
-		if(A == src)
-			continue
-		else if(isliving(A)) //It's still a fire, idiot.
-			var/mob/living/L = A
-			L.adjust_fire_stacks(fire_stack_strength)
-			L.IgniteMob()
-		else if(istype(A, /obj/item) && prob(20))
-			var/obj/item/O = A
-			O.microwave_act()
-
 /obj/structure/bonfire/process()
-	if(needs_oxygen && !CheckOxygen())
+	if(!CheckOxygen())
 		extinguish()
 		return
-	if(!grill)
-		Burn()
-	else
-		Cook()
+	Burn()
 
 /obj/structure/bonfire/extinguish()
 	if(burning)
@@ -301,6 +201,6 @@
 	if(..())
 		M.pixel_y += 13
 
-/obj/structure/bonfire/unbuckle_mob(mob/living/buckled_mob, force=FALSE)
+/obj/structure/bonfire/unbuckle_mob(mob/living/buckled_mob, force = FALSE)
 	if(..())
 		buckled_mob.pixel_y -= 13

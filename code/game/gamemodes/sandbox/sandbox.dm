@@ -1,25 +1,21 @@
 /datum/game_mode/sandbox
 	name = "sandbox"
 	config_tag = "sandbox"
-	report_type = "sandbox"
 	required_players = 0
 
-	announce_span = "info"
-	announce_text = "Build your own station... or just shoot each other!"
+	uplink_welcome = "Syndicate Uplink Console:"
+	uplink_uses = 10
 
-	allow_persistence_save = FALSE
+/datum/game_mode/sandbox/announce()
+	to_chat(world, "<B>The current game mode is - Sandbox!</B>")
+	to_chat(world, "<B>Build your own station with the sandbox-panel command!</B>")
 
 /datum/game_mode/sandbox/pre_setup()
-
-	CONFIG_SET(flag/allow_random_events, FALSE) //stops harmful events
-
 	for(var/mob/M in GLOB.player_list)
 		M.CanBuild()
 	return 1
 
 /datum/game_mode/sandbox/post_setup()
 	..()
-	SSshuttle.registerHostileEnvironment(src)
-
-/datum/game_mode/sandbox/generate_report()
-	return "Sensors indicate that crewmembers have been all given psychic powers from which they can manifest various objects.<br><br>This can only end poorly."
+	if(emergency_shuttle)
+		emergency_shuttle.no_escape = 1

@@ -2,44 +2,78 @@
 	name = "Dispenser"
 	desc = "..."
 	icon = 'icons/obj/objects.dmi'
-	icon_state = "water"
+	icon_state = "watertank"
 	density = TRUE
-	anchored = FALSE
+	anchored = TRUE
 	pressure_resistance = 2*ONE_ATMOSPHERE
+	container_type = DRAINABLE | AMOUNT_VISIBLE
 	max_integrity = 300
-	var/tank_volume = 1000 //In units, how much the dispenser can hold
-	var/reagent_id = /datum/reagent/water //The ID of the reagent that the dispenser uses
+	/// How much this dispenser can hold (In units)
+	var/tank_volume = 1000
+	/// The ID of the reagent that the dispenser uses
+	var/reagent_id = "water"
+	/// The last person to rig this fuel tank - Stored with the object. Only the last person matters for investigation
+	var/lastrigger = ""
+	/// Can this tank be unwrenched
+	var/can_be_unwrenched = TRUE
+	/// If the dispenser is being blown up already. Used to avoid multiple boom calls due to itself exploding etc
+	var/went_boom = FALSE
 
 /obj/structure/reagent_dispensers/take_damage(damage_amount, damage_type = BRUTE, damage_flag = 0, sound_effect = 1, attack_dir)
 	. = ..()
 	if(. && obj_integrity > 0)
-		if(tank_volume && (damage_flag == "bullet" || damage_flag == "laser"))
-			boom()
+		if(tank_volume && (damage_flag == BULLET || damage_flag == LASER))
+			boom(FALSE, TRUE)
 
-/obj/structure/reagent_dispensers/attackby(obj/item/W, mob/user, params)
-	if(W.is_refillable())
-		return 0 //so we can refill them via their afterattack.
-	else
-		return ..()
+/obj/structure/reagent_dispensers/attackby(obj/item/I, mob/user, params)
+	if(I.is_refillable())
+		return FALSE //so we can refill them via their afterattack.
+	return ..()
 
-/obj/structure/reagent_dispensers/Initialize()
-	create_reagents(tank_volume, DRAINABLE | AMOUNT_VISIBLE)
-	if(reagent_id)
-		reagents.add_reagent(reagent_id, tank_volume)
+/obj/structure/reagent_dispensers/Initialize(mapload)
 	. = ..()
+	create_reagents(tank_volume)
+	reagents.add_reagent(reagent_id, tank_volume)
 
-/obj/structure/reagent_dispensers/proc/boom()
-	visible_message("<span class='danger'>\The [src] ruptures!</span>")
+/obj/structure/reagent_dispensers/wrench_act(mob/user, obj/item/I)
+	if(!can_be_unwrenched)
+		return
+	. = TRUE
+	if(!I.tool_use_check(user, 0))
+		return
+	default_unfasten_wrench(user, I)
+
+/obj/structure/reagent_dispensers/examine(mob/user)
+	. = ..()
+	if(can_be_unwrenched)
+		. += "<span class='notice'>The wheels look like they can be <b>[anchored ? "unlocked" : "locked in place"]</b> with a <b>wrench</b>."
+
+/obj/structure/reagent_dispensers/temperature_expose(datum/gas_mixture/air, exposed_temperature, exposed_volume)
+	..()
+	if(reagents)
+		for(var/i in 1 to 8)
+			if(reagents)
+				reagents.temperature_reagents(exposed_temperature)
+
+/obj/structure/reagent_dispensers/proc/boom(rigtrigger = FALSE, log_attack = FALSE)
+	if(went_boom)
+		return
+	went_boom = TRUE
+	do_boom(rigtrigger, log_attack)
+
+/obj/structure/reagent_dispensers/proc/do_boom(rigtrigger = FALSE, log_attack = FALSE)
+	visible_message("<span class='danger'>[src] ruptures!</span>")
 	chem_splash(loc, 5, list(reagents))
 	qdel(src)
 
 /obj/structure/reagent_dispensers/deconstruct(disassembled = TRUE)
-	if(!(flags_1 & NODECONSTRUCT_1))
+	if(!(flags & NODECONSTRUCT))
 		if(!disassembled)
-			boom()
+			boom(FALSE, TRUE)
 	else
 		qdel(src)
 
+//Dispensers
 /obj/structure/reagent_dispensers/watertank
 	name = "water tank"
 	desc = "A water tank."
@@ -47,28 +81,49 @@
 
 /obj/structure/reagent_dispensers/watertank/high
 	name = "high-capacity water tank"
-	desc = "A highly pressurized water tank made to hold gargantuan amounts of water."
+	desc = "A highly-pressurized water tank made to hold gargantuan amounts of water.."
 	icon_state = "water_high" //I was gonna clean my room...
 	tank_volume = 100000
 
-/obj/structure/reagent_dispensers/foamtank
-	name = "firefighting foam tank"
-	desc = "A tank full of firefighting foam."
-	icon_state = "foam"
-	reagent_id = /datum/reagent/firefighting_foam
-	tank_volume = 500
+
+/obj/structure/reagent_dispensers/oil
+	name = "oil tank"
+	desc = "A tank of oil, commonly used to by robotics to fix leaking IPCs or just to loosen up those rusted underused parts."
+	icon_state = "oil"
+	reagent_id = "oil"
+	tank_volume = 3000
 
 /obj/structure/reagent_dispensers/fueltank
 	name = "fuel tank"
 	desc = "A tank full of industrial welding fuel. Do not consume."
 	icon_state = "fuel"
-	reagent_id = /datum/reagent/fuel
+	reagent_id = "fuel"
+	tank_volume = 4000
+	var/obj/item/assembly_holder/rig = null
+	var/accepts_rig = 1
 
-/obj/structure/reagent_dispensers/fueltank/boom()
-	var/light_explosion_range = CLAMP(round(reagents.get_reagent_amount(/datum/reagent/fuel)/200, 1), 1, 5) //explosion range should decrease when there is less fuel in the tank
-	var/flame_explosion_range = CLAMP(light_explosion_range + 1, 1, 5) //Fire explosion is always one bigger than light explosion
-	var/heavy_explosion_range = round(light_explosion_range/5, 1) //if there is less than 500 fuel in the tank, no heavy explosion
-	explosion(get_turf(src), 0, heavy_explosion_range, light_explosion_range, flame_range = flame_explosion_range)
+/obj/structure/reagent_dispensers/fueltank/Destroy()
+	QDEL_NULL(rig)
+	return ..()
+
+/obj/structure/reagent_dispensers/fueltank/bullet_act(obj/item/projectile/P)
+	var/will_explode = !QDELETED(src) && !P.nodamage && (P.damage_type == BURN || P.damage_type == BRUTE)
+
+	if(will_explode) // Log here while you have the information needed
+		add_attack_logs(P.firer, src, "shot with [P.name]", ATKLOG_FEW)
+		log_game("[key_name(P.firer)] triggered a fueltank explosion with [P.name] at [COORD(loc)]")
+		investigate_log("[key_name(P.firer)] triggered a fueltank explosion with [P.name] at [COORD(loc)]", INVESTIGATE_BOMB)
+	..()
+
+/obj/structure/reagent_dispensers/fueltank/do_boom(rigtrigger = FALSE, log_attack = FALSE) // Prevent case where someone who rigged the tank is blamed for the explosion when the rig isn't what triggered the explosion
+	if(rigtrigger) // If the explosion is triggered by an assembly holder
+		log_game("A fueltank, last rigged by [lastrigger], triggered at [COORD(loc)]")
+		add_attack_logs(lastrigger, src, "rigged fuel tank exploded", ATKLOG_FEW)
+		investigate_log("A fueltank, last rigged by [lastrigger], triggered at [COORD(loc)]", INVESTIGATE_BOMB)
+	if(log_attack)
+		add_attack_logs(usr, src, "blew up", ATKLOG_FEW)
+	if(reagents)
+		reagents.set_reagent_temp(1000) //uh-oh
 	qdel(src)
 
 /obj/structure/reagent_dispensers/fueltank/blob_act(obj/structure/blob/B)
@@ -77,82 +132,125 @@
 /obj/structure/reagent_dispensers/fueltank/ex_act()
 	boom()
 
-/obj/structure/reagent_dispensers/fueltank/fire_act(exposed_temperature, exposed_volume)
+/obj/structure/reagent_dispensers/fueltank/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume, global_overlay = TRUE)
+	..()
 	boom()
 
-/obj/structure/reagent_dispensers/fueltank/tesla_act()
-	..() //extend the zap
-	boom()
+/obj/structure/reagent_dispensers/fueltank/zap_act(power, zap_flags)
+	. = ..() //extend the zap
+	if(ZAP_OBJ_DAMAGE & zap_flags)
+		boom()
 
-/obj/structure/reagent_dispensers/fueltank/bullet_act(obj/item/projectile/P)
+/obj/structure/reagent_dispensers/fueltank/examine(mob/user)
 	. = ..()
-	if(!QDELETED(src)) //wasn't deleted by the projectile's effects.
-		if(!P.nodamage && ((P.damage_type == BURN) || (P.damage_type == BRUTE)))
-			log_bomber(P.firer, "detonated a", src, "via projectile")
-			boom()
+	if(get_dist(user, src) <= 2 && rig)
+		. += "<span class='notice'>There is some kind of device rigged to the tank.</span>"
 
-/obj/structure/reagent_dispensers/fueltank/attackby(obj/item/I, mob/living/user, params)
-	if(I.tool_behaviour == TOOL_WELDER)
-		if(!reagents.has_reagent(/datum/reagent/fuel))
-			to_chat(user, "<span class='warning'>[src] is out of fuel!</span>")
-			return
-		var/obj/item/weldingtool/W = I
-		if(istype(W) && !W.welding)
-			if(W.reagents.has_reagent(/datum/reagent/fuel, W.max_fuel))
-				to_chat(user, "<span class='warning'>Your [W.name] is already full!</span>")
-				return
-			reagents.trans_to(W, W.max_fuel, transfered_by = user)
-			user.visible_message("<span class='notice'>[user] refills [user.p_their()] [W.name].</span>", "<span class='notice'>You refill [W].</span>")
-			playsound(src, 'sound/effects/refill.ogg', 50, 1)
-			W.update_icon()
-		else
-			user.visible_message("<span class='warning'>[user] catastrophically fails at refilling [user.p_their()] [I.name]!</span>", "<span class='userdanger'>That was stupid of you.</span>")
-			log_bomber(user, "detonated a", src, "via welding tool")
+/obj/structure/reagent_dispensers/fueltank/attack_hand()
+	if(rig)
+		usr.visible_message("<span class='notice'>[usr] begins to detach [rig] from [src].</span>", "<span class='notice'>You begin to detach [rig] from [src].</span>")
+		if(do_after(usr, 20, target = src))
+			usr.visible_message("<span class='notice'>[usr] detaches [rig] from [src].</span>", "<span class='notice'>You detach [rig] from [src].</span>")
+			rig.forceMove(get_turf(usr))
+			rig = null
+			qdel(GetComponent(/datum/component/proximity_monitor))
+			lastrigger = null
+			overlays.Cut()
 
-			if (user.client)
-				SSmedals.UnlockMedal(MEDAL_DETONATE_WELDERBOMB,user.client)
+/obj/structure/reagent_dispensers/fueltank/attackby(obj/item/I, mob/user, params)
+	if(istype(I, /obj/item/assembly_holder) && accepts_rig)
+		if(rig)
+			to_chat(user, "<span class='warning'>There is another device in the way.</span>")
+			return ..()
+		user.visible_message("[user] begins rigging [I] to [src].", "You begin rigging [I] to [src]")
+		if(do_after(user, 20, target = src))
+			user.visible_message("<span class='notice'>[user] rigs [I] to [src].</span>", "<span class='notice'>You rig [I] to [src].</span>")
 
-			boom()
+			var/obj/item/assembly_holder/H = I
+			if(istype(H.a_left, /obj/item/assembly/igniter) || istype(H.a_right, /obj/item/assembly/igniter))
+				log_game("[key_name(user)] rigged [src.name] with [I.name] for explosion at [COORD(loc)]")
+				add_attack_logs(user, src, "rigged fuel tank with [I.name] for explosion", ATKLOG_FEW)
+				investigate_log("[key_name(user)] rigged [src.name] with [I.name] for explosion at [COORD(loc)]", INVESTIGATE_BOMB)
+
+				lastrigger = "[key_name(user)]"
+				rig = H
+				user.drop_item()
+				H.forceMove(src)
+				if(rig.has_prox_sensors())
+					AddComponent(/datum/component/proximity_monitor)
+				var/icon/test = getFlatIcon(H)
+				test.Shift(NORTH, 1)
+				test.Shift(EAST, 6)
+				overlays += test
+	else
+		return ..()
+
+/obj/structure/reagent_dispensers/fueltank/welder_act(mob/user, obj/item/I)
+	. = TRUE
+	if(!reagents.has_reagent("fuel"))
+		to_chat(user, "<span class='warning'>[src] is out of fuel!</span>")
 		return
-	return ..()
+	if(I.tool_enabled && I.use_tool(src, user, volume = I.tool_volume)) //check it's enabled first to prevent duplicate messages when refuelling
+		user.visible_message("<span class='danger'>[user] catastrophically fails at refilling [user.p_their()] [I]!</span>", "<span class='userdanger'>That was stupid of you.</span>")
+		message_admins("[key_name_admin(user)] triggered a fueltank explosion at [COORD(loc)]")
+		log_game("[key_name(user)] triggered a fueltank explosion at [COORD(loc)]")
+		add_attack_logs(user, src, "hit with lit welder")
+		investigate_log("[key_name(user)] triggered a fueltank explosion at [COORD(loc)]", INVESTIGATE_BOMB)
+		boom()
+	else
+		I.refill(user, src, reagents.get_reagent_amount("fuel")) //Try dump all fuel into the welder
+
+
+/obj/structure/reagent_dispensers/fueltank/Move()
+	..()
+	if(rig)
+		rig.process_movement()
+
+/obj/structure/reagent_dispensers/fueltank/HasProximity(atom/movable/AM)
+	if(rig)
+		rig.HasProximity(AM)
+
+/obj/structure/reagent_dispensers/fueltank/Crossed(atom/movable/AM, oldloc)
+	if(rig)
+		rig.Crossed(AM, oldloc)
+
+/obj/structure/reagent_dispensers/fueltank/hear_talk(mob/living/M, list/message_pieces)
+	if(rig)
+		rig.hear_talk(M, message_pieces)
+
+/obj/structure/reagent_dispensers/fueltank/hear_message(mob/living/M, msg)
+	if(rig)
+		rig.hear_message(M, msg)
+
+/obj/structure/reagent_dispensers/fueltank/Bump()
+	..()
+	if(rig)
+		rig.process_movement()
 
 
 /obj/structure/reagent_dispensers/peppertank
 	name = "pepper spray refiller"
 	desc = "Contains condensed capsaicin for use in law \"enforcement.\""
 	icon_state = "pepper"
-	anchored = TRUE
 	density = FALSE
-	reagent_id = /datum/reagent/consumable/condensedcapsaicin
-
-/obj/structure/reagent_dispensers/peppertank/Initialize()
-	. = ..()
-	if(prob(1))
-		desc = "IT'S PEPPER TIME, BITCH!"
-
+	can_be_unwrenched = FALSE
+	reagent_id = "condensedcapsaicin"
 
 /obj/structure/reagent_dispensers/water_cooler
 	name = "liquid cooler"
 	desc = "A machine that dispenses liquid to drink."
 	icon = 'icons/obj/vending.dmi'
 	icon_state = "water_cooler"
-	anchored = TRUE
 	tank_volume = 500
+	reagent_id = "water"
 	var/paper_cups = 25 //Paper cups left from the cooler
 
 /obj/structure/reagent_dispensers/water_cooler/examine(mob/user)
 	. = ..()
-	if (paper_cups > 1)
-		. += "There are [paper_cups] paper cups left."
-	else if (paper_cups == 1)
-		. += "There is one paper cup left."
-	else
-		. += "There are no paper cups left."
+	if(get_dist(user, src) <= 2)
+		. += "There are [paper_cups ? paper_cups : "no"] paper cups left."
 
 /obj/structure/reagent_dispensers/water_cooler/attack_hand(mob/living/user)
-	. = ..()
-	if(.)
-		return
 	if(!paper_cups)
 		to_chat(user, "<span class='warning'>There aren't any cups left!</span>")
 		return
@@ -165,47 +263,41 @@
 	name = "beer keg"
 	desc = "Beer is liquid bread, it's good for you..."
 	icon_state = "beer"
-	reagent_id = /datum/reagent/consumable/ethanol/beer
+	reagent_id = "beer"
 
 /obj/structure/reagent_dispensers/beerkeg/blob_act(obj/structure/blob/B)
-	explosion(src.loc,0,3,5,7,10)
+	explosion(loc, 0, 3, 5, 7, 10)
 	if(!QDELETED(src))
 		qdel(src)
 
+/obj/structure/reagent_dispensers/beerkeg/nuke
+	name = "Nanotrasen-brand nuclear fission explosive"
+	desc = "One of the more successful achievements of the Nanotrasen Corporate Warfare Division, their nuclear fission explosives are renowned for being cheap\
+	to produce and devestatingly effective. Signs explain that though this is just a model, every Nanotrasen station is equipped with one, just in case. \
+	All Captains carefully guard the disk needed to detonate them - at least, the sign says they do. There seems to be a tap on the back."
+	icon = 'icons/obj/stationobjs.dmi'
+	icon_state = "nuclearbomb0"
 
 /obj/structure/reagent_dispensers/virusfood
 	name = "virus food dispenser"
 	desc = "A dispenser of low-potency virus mutagenic."
 	icon_state = "virus_food"
-	anchored = TRUE
+	can_be_unwrenched = FALSE
 	density = FALSE
-	reagent_id = /datum/reagent/consumable/virus_food
+	reagent_id = "virusfood"
 
+/obj/structure/reagent_dispensers/spacecleanertank
+	name = "space cleaner refiller"
+	desc = "Refills space cleaner bottles."
+	icon_state = "cleaner"
+	can_be_unwrenched = FALSE
+	density = FALSE
+	tank_volume = 5000
+	reagent_id = "cleaner"
 
-/obj/structure/reagent_dispensers/cooking_oil
-	name = "vat of cooking oil"
-	desc = "A huge metal vat with a tap on the front. Filled with cooking oil for use in frying food."
-	icon_state = "vat"
-	anchored = TRUE
-	reagent_id = /datum/reagent/consumable/cooking_oil
-
-/obj/structure/reagent_dispensers/plumbed
-	name = "stationairy water tank"
-	anchored = TRUE
-	icon_state = "water_stationairy"
-	desc = "A stationairy, plumbed, water tank."
-
-/obj/structure/reagent_dispensers/plumbed/wrench_act(mob/living/user, obj/item/I)
-	default_unfasten_wrench(user, I)
-	return TRUE
-
-/obj/structure/reagent_dispensers/plumbed/ComponentInitialize()
-	AddComponent(/datum/component/plumbing/simple_supply)
-
-/obj/structure/reagent_dispensers/plumbed/storage
-	name = "stationairy storage tank"
-	icon_state = "tank_stationairy"
-	reagent_id = null //start empty
-
-/obj/structure/reagent_dispensers/plumbed/storage/ComponentInitialize()
-	AddComponent(/datum/component/plumbing/tank)
+/obj/structure/reagent_dispensers/fueltank/chem
+	icon_state = "fuel_chem"
+	can_be_unwrenched = FALSE
+	density = FALSE
+	accepts_rig = FALSE
+	tank_volume = 1000

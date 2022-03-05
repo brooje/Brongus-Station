@@ -1,103 +1,132 @@
-/atom/movable/screen/ghost
+/mob/dead/observer/create_mob_hud()
+	if(client && !hud_used)
+		hud_used = new /datum/hud/ghost(src)
+
+/obj/screen/ghost
 	icon = 'icons/mob/screen_ghost.dmi'
 
-/atom/movable/screen/ghost/MouseEntered()
+/obj/screen/ghost/MouseEntered()
+	. = ..()
 	flick(icon_state + "_anim", src)
 
-/atom/movable/screen/ghost/jumptomob
+/obj/screen/ghost/jumptomob
 	name = "Jump to mob"
 	icon_state = "jumptomob"
 
-/atom/movable/screen/ghost/jumptomob/Click()
+/obj/screen/ghost/jumptomob/Click()
 	var/mob/dead/observer/G = usr
 	G.jumptomob()
 
-/atom/movable/screen/ghost/orbit
+/obj/screen/ghost/orbit
 	name = "Orbit"
 	icon_state = "orbit"
 
-/atom/movable/screen/ghost/orbit/Click()
+/obj/screen/ghost/orbit/Click()
 	var/mob/dead/observer/G = usr
 	G.follow()
 
-/atom/movable/screen/ghost/reenter_corpse
-	name = "Reenter corpse"
+/obj/screen/ghost/reenter_corpse
+	name = "Re-enter corpse"
 	icon_state = "reenter_corpse"
 
-/atom/movable/screen/ghost/reenter_corpse/Click()
+/obj/screen/ghost/reenter_corpse/Click()
 	var/mob/dead/observer/G = usr
 	G.reenter_corpse()
 
-/atom/movable/screen/ghost/teleport
+/obj/screen/ghost/teleport
 	name = "Teleport"
 	icon_state = "teleport"
 
-/atom/movable/screen/ghost/teleport/Click()
+/obj/screen/ghost/teleport/Click()
 	var/mob/dead/observer/G = usr
 	G.dead_tele()
 
-/atom/movable/screen/ghost/pai
-	name = "pAI Candidate"
+/obj/screen/ghost/respawn_list
+	name = "Ghost spawns"
+	icon = 'icons/mob/screen_midnight.dmi'
+	icon_state = "template"
+
+/obj/screen/ghost/respawn_list/Initialize(mapload)
+	. = ..()
+	update_hidden_state()
+
+/obj/screen/ghost/respawn_list/Click()
+	var/client/C = hud.mymob.client
+	hud.inventory_shown = !hud.inventory_shown
+	if(hud.inventory_shown)
+		C.screen += hud.toggleable_inventory
+	else
+		C.screen -= hud.toggleable_inventory
+	update_hidden_state()
+
+/obj/screen/ghost/respawn_list/proc/update_hidden_state()
+	var/matrix/M = matrix(transform)
+	M.Turn(-90)
+
+	overlays.Cut()
+	var/image/img = image('icons/mob/actions/actions.dmi', src, (hud && hud.inventory_shown) ? "hide" : "show")
+	img.transform = M
+	overlays += img
+
+/obj/screen/ghost/respawn_mob
+	name = "Mob spawners"
+	icon_state = "mob_spawner"
+
+/obj/screen/ghost/respawn_mob/Click()
+	var/mob/dead/observer/G = usr
+	G.open_spawners_menu()
+
+/obj/screen/ghost/respawn_pai
+	name = "Configure pAI"
 	icon_state = "pai"
 
-/atom/movable/screen/ghost/pai/Click()
+/obj/screen/ghost/respawn_pai/Click()
 	var/mob/dead/observer/G = usr
-	G.register_pai()
+	if(!GLOB.paiController.check_recruit(G))
+		to_chat(G, "<span class='warning'>You are not eligible to become a pAI.</span>")
+		return
+	GLOB.paiController.recruitWindow(G)
+
+/datum/hud/ghost
+	inventory_shown = FALSE
 
 /datum/hud/ghost/New(mob/owner)
 	..()
-	var/atom/movable/screen/using
+	var/obj/screen/using
 
-	using = new /atom/movable/screen/ghost/jumptomob()
+	using = new /obj/screen/ghost/jumptomob()
 	using.screen_loc = ui_ghost_jumptomob
-	using.hud = src
 	static_inventory += using
 
-	using = new /atom/movable/screen/ghost/orbit()
+	using = new /obj/screen/ghost/orbit()
 	using.screen_loc = ui_ghost_orbit
-	using.hud = src
 	static_inventory += using
 
-	using = new /atom/movable/screen/ghost/reenter_corpse()
+	using = new /obj/screen/ghost/reenter_corpse()
 	using.screen_loc = ui_ghost_reenter_corpse
-	using.hud = src
 	static_inventory += using
 
-	using = new /atom/movable/screen/ghost/teleport()
+	using = new /obj/screen/ghost/teleport()
 	using.screen_loc = ui_ghost_teleport
-	using.hud = src
+	static_inventory += using
 	static_inventory += using
 
-	using = new /atom/movable/screen/ghost/pai()
-	using.screen_loc = ui_ghost_pai
-	using.hud = src
+	using = new /obj/screen/ghost/respawn_list()
+	using.screen_loc = ui_ghost_respawn_list
 	static_inventory += using
 
-	using = new /atom/movable/screen/language_menu
-	using.icon = ui_style
-	using.hud = src
-	static_inventory += using
+	using = new /obj/screen/ghost/respawn_mob()
+	using.screen_loc = ui_ghost_respawn_mob
+	toggleable_inventory += using
 
-/datum/hud/ghost/show_hud(version = 0, mob/viewmob)
-	// don't show this HUD if observing; show the HUD of the observee
-	var/mob/dead/observer/O = mymob
-	if (istype(O) && O.observetarget)
-		plane_masters_update()
-		return FALSE
+	using = new /obj/screen/ghost/respawn_pai()
+	using.screen_loc = ui_ghost_respawn_pai
+	toggleable_inventory += using
 
-	. = ..()
-	if(!.)
-		return
-	var/mob/screenmob = viewmob || mymob
-	if(!screenmob.client.prefs.ghost_hud)
-		screenmob.client.screen -= static_inventory
-	else
-		screenmob.client.screen += static_inventory
+	for(var/obj/screen/S in (static_inventory + toggleable_inventory))
+		S.hud = src
 
-//We should only see observed mob alerts.
-/datum/hud/ghost/reorganize_alerts(mob/viewmob)
-	var/mob/dead/observer/O = mymob
-	if (istype(O) && O.observetarget)
-		return
-	. = ..()
-
+/datum/hud/ghost/show_hud()
+	mymob.client.screen = list()
+	mymob.client.screen += static_inventory
+	..()

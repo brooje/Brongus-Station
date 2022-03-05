@@ -1,61 +1,76 @@
-// How much "space" we give the edge of the map
-GLOBAL_LIST_INIT(potentialRandomZlevels, generateMapList(filename = "[global.config.directory]/awaymissionconfig.txt"))
+// Call this before you remove the last dirt on a z level - that way, all objects
+// will have proper atmos and other important enviro things
+/proc/late_setup_level(turfs, smoothTurfs)
+	var/total_timer = start_watch()
+	var/subtimer = start_watch()
+	if(!smoothTurfs)
+		smoothTurfs = turfs
 
-/proc/createRandomZlevel()
-	if(GLOB.awaydestinations.len)	//crude, but it saves another var!
-		return
+	log_debug("Setting up atmos")
+	if(SSair)
+		SSair.setup_allturfs(turfs)
+	log_debug("\tTook [stop_watch(subtimer)]s")
 
-	if(GLOB.potentialRandomZlevels?.len)
-		to_chat(world, "<span class='boldannounce'>Loading away mission...</span>")
-		var/map = pick(GLOB.potentialRandomZlevels)
-		load_new_z_level(map, "Away Mission")
-		to_chat(world, "<span class='boldannounce'>Away mission loaded.</span>")
+	subtimer = start_watch()
+	log_debug("Smoothing tiles")
+	for(var/turf/T in smoothTurfs)
+		if(T.smoothing_flags)
+			QUEUE_SMOOTH(T)
+		for(var/R in T)
+			var/atom/A = R
+			if(A.smoothing_flags)
+				QUEUE_SMOOTH(A)
+	log_debug("\tTook [stop_watch(subtimer)]s")
+	log_debug("Late setup finished - took [stop_watch(total_timer)]s")
 
-/proc/reset_gateway_spawns(reset = FALSE)
-	for(var/obj/machinery/gateway/G in world)
-		if(reset)
-			G.randomspawns = GLOB.awaydestinations
-		else
-			G.randomspawns.Add(GLOB.awaydestinations)
+/proc/empty_rect(low_x,low_y, hi_x,hi_y, z)
+	var/timer = start_watch()
+	log_debug("Emptying region: ([low_x], [low_y]) to ([hi_x], [hi_y]) on z '[z]'")
+	empty_region(block(locate(low_x, low_y, z), locate(hi_x, hi_y, z)))
+	log_debug("Took [stop_watch(timer)]s")
 
-/obj/effect/landmark/awaystart
-	name = "away mission spawn"
-	desc = "Randomly picked away mission spawn points."
+/proc/empty_region(list/turfs)
+	for(var/thing in turfs)
+		var/turf/T = thing
+		for(var/otherthing in T)
+			qdel(otherthing)
+		T.ChangeTurf(T.baseturf)
 
-/obj/effect/landmark/awaystart/New()
-	GLOB.awaydestinations += src
-	..()
+/datum/map_template/ruin/proc/try_to_place(z,allowed_areas)
+	var/sanity = PLACEMENT_TRIES
+	while(sanity > 0)
+		sanity--
+		var/width_border = TRANSITIONEDGE + SPACERUIN_MAP_EDGE_PAD + round(width / 2)
+		var/height_border = TRANSITIONEDGE + SPACERUIN_MAP_EDGE_PAD + round(height / 2)
+		var/turf/central_turf = locate(rand(width_border, world.maxx - width_border), rand(height_border, world.maxy - height_border), z)
+		var/valid = TRUE
 
-/obj/effect/landmark/awaystart/Destroy()
-	GLOB.awaydestinations -= src
-	return ..()
+		for(var/turf/check in get_affected_turfs(central_turf,1))
+			var/area/new_area = get_area(check)
+			if(!(istype(new_area, allowed_areas)) || check.flags & NO_RUINS)
+				valid = FALSE
+				break
 
-/proc/generateMapList(filename)
-	. = list()
-	var/list/Lines = world.file2list(filename)
-
-	if(!Lines.len)
-		return
-	for (var/t in Lines)
-		if (!t)
+		if(!valid)
 			continue
 
-		t = trim(t)
-		if (length(t) == 0)
-			continue
-		else if (t[1] == "#")
-			continue
+		log_world("Ruin \"[name]\" placed at ([central_turf.x], [central_turf.y], [central_turf.z])")
 
-		var/pos = findtext(t, " ")
-		var/name = null
+		for(var/i in get_affected_turfs(central_turf, 1))
+			var/turf/T = i
+			for(var/obj/structure/spawner/nest in T)
+				qdel(nest)
+			for(var/mob/living/simple_animal/monster in T)
+				qdel(monster)
+			for(var/obj/structure/flora/ash/plant in T)
+				qdel(plant)
 
-		if (pos)
-			name = lowertext(copytext(t, 1, pos))
+		load(central_turf,centered = TRUE)
+		loaded++
 
-		else
-			name = lowertext(t)
+		for(var/turf/T in get_affected_turfs(central_turf, 1))
+			T.flags |= NO_RUINS
 
-		if (!name)
-			continue
-
-		. += t
+		new /obj/effect/landmark/ruin(central_turf, src)
+		return TRUE
+	return FALSE

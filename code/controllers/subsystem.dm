@@ -1,7 +1,9 @@
 
 /datum/controller/subsystem
 	// Metadata; you should define these.
-	name = "fire coderbus" //name of the subsystem
+	name = "fire codertrain" //name of the subsystem
+	/// Subsystem ID. Used for when we need a technical name for the SS
+	var/ss_id = "fire_codertrain_again"
 	var/init_order = INIT_ORDER_DEFAULT		//order of initialization. Higher numbers are initialized first, lower numbers later. Use defines in __DEFINES/subsystems.dm for easy understanding of order.
 	var/wait = 20			//time to wait (in deciseconds) between each call to fire(). Must be a positive integer.
 	var/priority = FIRE_PRIORITY_DEFAULT	//When mutiple subsystems need to run in the same tick, higher priority subsystems will run first and be given a higher share of the tick before MC_TICK_CHECK triggers a sleep
@@ -35,6 +37,8 @@
 
 	var/static/list/failure_strikes //How many times we suspect a subsystem type has crashed the MC, 3 strikes and you're out!
 
+	var/offline_implications = "None. No immediate action is needed." // What are the implications of this SS being offlined?
+
 //Do not override
 ///datum/controller/subsystem/New()
 
@@ -50,9 +54,9 @@
 	. = SS_SLEEPING
 	fire(resumed)
 	. = state
-	if (state == SS_SLEEPING)
+	if(state == SS_SLEEPING)
 		state = SS_IDLE
-	if (state == SS_PAUSING)
+	if(state == SS_PAUSING)
 		var/QT = queued_time
 		enqueue()
 		state = SS_PAUSED
@@ -82,48 +86,48 @@
 	var/queue_node_priority
 	var/queue_node_flags
 
-	for (queue_node = Master.queue_head; queue_node; queue_node = queue_node.queue_next)
+	for(queue_node = Master.queue_head; queue_node; queue_node = queue_node.queue_next)
 		queue_node_priority = queue_node.queued_priority
 		queue_node_flags = queue_node.flags
 
-		if (queue_node_flags & SS_TICKER)
-			if ((SS_flags & (SS_TICKER|SS_BACKGROUND)) != SS_TICKER)
+		if(queue_node_flags & SS_TICKER)
+			if((SS_flags & (SS_TICKER|SS_BACKGROUND)) != SS_TICKER)
 				continue
-			if (queue_node_priority < SS_priority)
+			if(queue_node_priority < SS_priority)
 				break
 
-		else if (queue_node_flags & SS_BACKGROUND)
-			if (!(SS_flags & SS_BACKGROUND))
+		else if(queue_node_flags & SS_BACKGROUND)
+			if(!(SS_flags & SS_BACKGROUND))
 				break
-			if (queue_node_priority < SS_priority)
+			if(queue_node_priority < SS_priority)
 				break
 
 		else
-			if (SS_flags & SS_BACKGROUND)
+			if(SS_flags & SS_BACKGROUND)
 				continue
-			if (SS_flags & SS_TICKER)
+			if(SS_flags & SS_TICKER)
 				break
-			if (queue_node_priority < SS_priority)
+			if(queue_node_priority < SS_priority)
 				break
 
 	queued_time = world.time
 	queued_priority = SS_priority
 	state = SS_QUEUED
-	if (SS_flags & SS_BACKGROUND) //update our running total
+	if(SS_flags & SS_BACKGROUND) //update our running total
 		Master.queue_priority_count_bg += SS_priority
 	else
 		Master.queue_priority_count += SS_priority
 
 	queue_next = queue_node
-	if (!queue_node)//we stopped at the end, add to tail
+	if(!queue_node)//we stopped at the end, add to tail
 		queue_prev = Master.queue_tail
-		if (Master.queue_tail)
+		if(Master.queue_tail)
 			Master.queue_tail.queue_next = src
 		else //empty queue, we also need to set the head
 			Master.queue_head = src
 		Master.queue_tail = src
 
-	else if (queue_node == Master.queue_head)//insert at start of list
+	else if(queue_node == Master.queue_head)//insert at start of list
 		Master.queue_head.queue_prev = src
 		Master.queue_head = src
 		queue_prev = null
@@ -134,16 +138,16 @@
 
 
 /datum/controller/subsystem/proc/dequeue()
-	if (queue_next)
+	if(queue_next)
 		queue_next.queue_prev = queue_prev
-	if (queue_prev)
+	if(queue_prev)
 		queue_prev.queue_next = queue_next
-	if (src == Master.queue_tail)
+	if(src == Master.queue_tail)
 		Master.queue_tail = queue_prev
-	if (src == Master.queue_head)
+	if(src == Master.queue_head)
 		Master.queue_head = queue_next
 	queued_time = 0
-	if (state == SS_QUEUED)
+	if(state == SS_QUEUED)
 		state = SS_IDLE
 
 
@@ -155,55 +159,57 @@
 		if(SS_SLEEPING)
 			state = SS_PAUSING
 
-/// Called after the config has been loaded or reloaded.
-/datum/controller/subsystem/proc/OnConfigLoad()
 
 //used to initialize the subsystem AFTER the map has loaded
 /datum/controller/subsystem/Initialize(start_timeofday)
 	initialized = TRUE
 	var/time = (REALTIMEOFDAY - start_timeofday) / 10
-	var/msg = "Initialized [name] subsystem within [time] second[time == 1 ? "" : "s"]!"
-	testing("[msg]")
-	log_world(msg)
+	log_startup_progress("Initialized within [time] second[time == 1 ? "" : "s"]!")
 	return time
 
 //hook for printing stats to the "MC" statuspanel for admins to see performance and related stats etc.
 /datum/controller/subsystem/stat_entry(msg)
-	var/list/tab_data = list()
+	if(!statclick)
+		statclick = new/obj/effect/statclick/debug(null, "Initializing...", src)
+
+
 
 	if(can_fire && !(SS_NO_FIRE & flags))
-		msg = "[round(cost,1)]ms|[round(tick_usage,1)]%([round(tick_overrun,1)]%)|[round(ticks,0.1)]\t[msg]"
+		msg = "[round(cost, 1)]ms | [round(tick_usage, 1)]%([round(tick_overrun, 1)]%) | [round(ticks, 0.1)]\t[msg]"
 	else
 		msg = "OFFLINE\t[msg]"
 
 	var/title = name
-	if (can_fire)
-		title = "\[[state_letter()]][title]"
+	if(can_fire)
+		title = "[state_colour()]\[[state_letter()]][title]</font>"
 
-	tab_data["[title]"] = list(
-		text="[msg]",
-		action = "statClickDebug",
-		params=list(
-			"targetRef" = REF(src),
-			"class"="subsystem",
-		),
-		type=STAT_BUTTON,
-	)
-	return tab_data
+	stat(title, statclick.update(msg))
 
 /datum/controller/subsystem/proc/state_letter()
-	switch (state)
-		if (SS_RUNNING)
+	switch(state)
+		if(SS_RUNNING)
 			. = "R"
-		if (SS_QUEUED)
+		if(SS_QUEUED)
 			. = "Q"
-		if (SS_PAUSED, SS_PAUSING)
+		if(SS_PAUSED, SS_PAUSING)
 			. = "P"
-		if (SS_SLEEPING)
+		if(SS_SLEEPING)
 			. = "S"
-		if (SS_IDLE)
+		if(SS_IDLE)
 			. = "  "
 
+/datum/controller/subsystem/proc/state_colour()
+	switch(state)
+		if(SS_RUNNING) // If its actively processing, colour it green
+			. = "<font color='#32a852'>"
+		if(SS_QUEUED) // If its in the running queue, but delayed, colour it orange
+			. = "<font color='#fcba03'>"
+		if(SS_PAUSED, SS_PAUSING) // If its being paused due to lag, colour it red
+			. = "<font color='#eb4034'>"
+		if(SS_SLEEPING) // If fire() slept, colour it blue
+			. = "<font color='#4287f5'>"
+		if(SS_IDLE) // Leave it default if the SS is idle
+			. = "<font>"
 //could be used to postpone a costly subsystem for (default one) var/cycles, cycles
 //for instance, during cpu intensive operations like explosions
 /datum/controller/subsystem/proc/postpone(cycles = 1)
@@ -215,12 +221,25 @@
 /datum/controller/subsystem/Recover()
 
 /datum/controller/subsystem/vv_edit_var(var_name, var_value)
-	switch (var_name)
-		if ("can_fire")
+	switch(var_name)
+		if("can_fire")
 			//this is so the subsystem doesn't rapid fire to make up missed ticks causing more lag
-			if (var_value)
+			if(var_value)
 				next_fire = world.time + wait
-		if ("queued_priority") //editing this breaks things.
+		if("queued_priority") //editing this breaks things.
 			return 0
 	. = ..()
 
+/**
+  * Returns the metrics for the subsystem.
+  *
+  * This can be overriden on subtypes for variables that could affect tick usage
+  * Example: ATs on SSair
+  */
+/datum/controller/subsystem/proc/get_metrics()
+	SHOULD_CALL_PARENT(TRUE)
+	var/list/out = list()
+	out["cost"] = cost
+	out["tick_usage"] = tick_usage
+	out["custom"] = list() // Override as needed on child
+	return out

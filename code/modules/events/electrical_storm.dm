@@ -1,33 +1,27 @@
-/datum/round_event_control/electrical_storm
-	name = "Electrical Storm"
-	typepath = /datum/round_event/electrical_storm
-	earliest_start = 10 MINUTES
-	min_players = 5
-	weight = 20
-	alert_observers = 0
-
-/datum/round_event/electrical_storm
+/datum/event/electrical_storm
 	var/lightsoutAmount	= 1
 	var/lightsoutRange	= 25
-	announceWhen	= 1
 
-/datum/round_event/electrical_storm/announce(fake)
-	priority_announce("An electrical storm has been detected in your area, please repair potential electronic overloads.", "Electrical Storm Alert")
+/datum/event/electrical_storm/announce()
+	GLOB.event_announcement.Announce("An electrical storm has been detected in your area, please repair potential electronic overloads.", "Electrical Storm Alert", 'sound/AI/elec_storm.ogg')
 
-
-/datum/round_event/electrical_storm/start()
+/datum/event/electrical_storm/start()
 	var/list/epicentreList = list()
 
 	for(var/i=1, i <= lightsoutAmount, i++)
-		var/turf/T = find_safe_turf()
-		if(istype(T))
-			epicentreList += T
+		var/list/possibleEpicentres = list()
+		for(var/obj/effect/landmark/lightsout/newEpicentre in GLOB.landmarks_list)
+			if(!(newEpicentre in epicentreList))
+				possibleEpicentres += newEpicentre
+		if(possibleEpicentres.len)
+			epicentreList += pick(possibleEpicentres)
+		else
+			break
 
 	if(!epicentreList.len)
 		return
 
-	for(var/centre in epicentreList)
-		for(var/a in GLOB.apcs_list)
-			var/obj/machinery/power/apc/A = a
-			if(get_dist(centre, A) <= lightsoutRange)
-				A.overload_lighting()
+	for(var/thing in epicentreList)
+		var/obj/effect/landmark/epicentre = thing
+		for(var/obj/machinery/power/apc/apc in range(epicentre, lightsoutRange))
+			INVOKE_ASYNC(apc, /obj/machinery/power/apc.proc/overload_lighting)

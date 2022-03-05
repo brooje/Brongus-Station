@@ -2,72 +2,106 @@
 	set waitfor = FALSE
 	set invisibility = 0
 
-	if(digitalinvis) //AI unable to see mob
-		if(!digitaldisguise)
-			src.digitaldisguise = image(loc = src)
-		src.digitaldisguise.override = 1
-		for(var/mob/living/silicon/ai/AI in GLOB.ai_list)
-			AI.client?.images |= src.digitaldisguise
+	if(flying && !floating) //TODO: Better floating
+		float(TRUE)
 
-	if((movement_type & FLYING) && !(movement_type & FLOATING))	//TODO: Better floating
-		float(on = TRUE)
+	if(client || registered_z) // This is a temporary error tracker to make sure we've caught everything
+		var/turf/T = get_turf(src)
+		if(client && registered_z != T.z)
+			message_admins("[src] [ADMIN_FLW(src, "FLW")] has somehow ended up in Z-level [T.z] despite being registered in Z-level [registered_z]. If you could ask them how that happened and notify the coders, it would be appreciated.")
+			log_game("Z-TRACKING: [src] has somehow ended up in Z-level [T.z] despite being registered in Z-level [registered_z].")
+			update_z(T.z)
+		else if (!client && registered_z)
+			log_game("Z-TRACKING: [src] of type [src.type] has a Z-registration despite not having a client.")
+			update_z(null)
 
-	if (notransform)
-		return
+	if(notransform)
+		return FALSE
 	if(!loc)
+		return FALSE
+
+	if(stat != DEAD)
+		//Chemicals in the body
+		if(reagents)
+			handle_chemicals_in_body()
+
+	if(QDELETED(src)) // some chems can gib mobs
 		return
 
-	if(!has_status_effect(STATUS_EFFECT_STASIS))
+	if(stat != DEAD)
+		//Mutations and radiation
+		handle_mutations_and_radiation()
 
-		if(stat != DEAD)
-			//Mutations and radiation
-			handle_mutations_and_radiation()
+	if(stat != DEAD)
+		//Breathing, if applicable
+		handle_breathing(times_fired)
 
-		if(stat != DEAD)
-			//Breathing, if applicable
-			handle_breathing(times_fired)
+	if(stat != DEAD)
+		//Random events (vomiting etc)
+		handle_random_events()
 
-		handle_diseases()// DEAD check is in the proc itself; we want it to spread even if the mob is dead, but to handle its disease-y properties only if you're not.
+	if(LAZYLEN(viruses))
+		handle_diseases()
 
-		if (QDELETED(src)) // diseases can qdel the mob via transformations
-			return
+	if(QDELETED(src)) // diseases can qdel the mob via transformations
+		return
 
-		if(stat != DEAD)
-			//Random events (vomiting etc)
-			handle_random_events()
+	//Heart Attack, if applicable
+	if(stat != DEAD)
+		handle_heartattack()
 
-		//Handle temperature/pressure differences between body and environment
-		var/datum/gas_mixture/environment = loc.return_air()
-		if(environment)
-			handle_environment(environment)
-
-		//Handle gravity
-		var/gravity = has_gravity()
-		update_gravity(gravity)
-
-		if(gravity > STANDARD_GRAVITY)
-			if(!get_filter("gravity"))
-				add_filter("gravity",1,list("type"="motion_blur", "x"=0, "y"=0))
-			INVOKE_ASYNC(src, .proc/gravity_pulse_animation)
-			handle_high_gravity(gravity)
-
-		if(stat != DEAD)
-			handle_traits() // eye, ear, brain damages
-			handle_status_effects() //all special effects, stun, knockdown, jitteryness, hallucination, sleeping, etc
+	//Handle temperature/pressure differences between body and environment
+	var/datum/gas_mixture/environment = loc.return_air()
+	if(environment)
+		handle_environment(environment)
 
 	handle_fire()
+
+	update_gravity(mob_has_gravity())
+
+	if(pulling)
+		update_pulling()
+
+	for(var/obj/item/grab/G in src)
+		G.process()
+
+	if(stat != DEAD)
+		handle_critical_condition()
+
+	if(stat != DEAD) // Status & health update, are we dead or alive etc.
+		handle_disabilities() // eye, ear, brain damages
+
+	if(stat != DEAD)
+		handle_status_effects() //all special effects, stunned, weakened, jitteryness, hallucination, sleeping, etc
+
+	if(stat != DEAD)
+		if(forced_look)
+			if(!isnum(forced_look))
+				var/atom/A = locateUID(forced_look)
+				if(istype(A))
+					var/view = client ? client.view : world.view
+					if(get_dist(src, A) > view || !(src in viewers(view, A)))
+						forced_look = null
+						to_chat(src, "<span class='notice'>Your direction target has left your view, you are no longer facing anything.</span>")
+						return
+			setDir()
 
 	if(machine)
 		machine.check_eye(src)
 
 	if(stat != DEAD)
-		return 1
+		return TRUE
 
 /mob/living/proc/handle_breathing(times_fired)
 	return
 
+/mob/living/proc/handle_heartattack()
+	return
+
 /mob/living/proc/handle_mutations_and_radiation()
 	radiation = 0 //so radiation don't accumulate in simple animals
+
+/mob/living/proc/handle_chemicals_in_body()
 	return
 
 /mob/living/proc/handle_diseases()
@@ -79,57 +113,98 @@
 /mob/living/proc/handle_environment(datum/gas_mixture/environment)
 	return
 
-/mob/living/proc/handle_fire()
-	if(fire_stacks < 0) //If we've doused ourselves in water to avoid fire, dry off slowly
-		fire_stacks = min(0, fire_stacks + 1)//So we dry ourselves back to default, nonflammable.
-	if(!on_fire)
-		return TRUE //the mob is no longer on fire, no need to do the rest.
-	if(fire_stacks > 0)
-		adjust_fire_stacks(-0.1) //the fire is slowly consumed
-	else
-		ExtinguishMob()
-		return TRUE //mob was put out, on_fire = FALSE via ExtinguishMob(), no need to update everything down the chain.
-	var/datum/gas_mixture/G = loc.return_air() // Check if we're standing in an oxygenless environment
-	if(G.get_moles(/datum/gas/oxygen) < 1)
-		ExtinguishMob() //If there's no oxygen in the tile we're on, put out the fire
-		return TRUE
-	var/turf/location = get_turf(src)
-	location.hotspot_expose(700, 50, 1)
+/mob/living/proc/update_pulling()
+	if(incapacitated())
+		stop_pulling()
 
-//this updates all special effects: knockdown, druggy, stuttering, etc..
-/mob/living/proc/handle_status_effects()
+//this updates all special effects: stunned, sleeping, weakened, druggy, stuttering, etc..
+/mob/living/proc/handle_status_effects() // We check for the status effect in this proc as opposed to the procs below to avoid excessive proc call overhead
+	if(stunned)
+		AdjustStunned(-1, updating = 1, force = 1)
+	if(weakened)
+		AdjustWeakened(-1, updating = 1, force = 1)
+	if(stuttering)
+		stuttering = max(stuttering - 1, 0)
+	if(silent)
+		AdjustSilence(-1)
+	if(druggy)
+		AdjustDruggy(-1)
+	if(slurring)
+		AdjustSlur(-1)
+	if(paralysis)
+		AdjustParalysis(-1, updating = 1, force = 1)
+	if(sleeping)
+		handle_sleeping()
+	if(slowed)
+		AdjustSlowed(-1)
+	if(drunk)
+		handle_drunk()
+	if(cultslurring)
+		AdjustCultSlur(-1)
 	if(confused)
-		confused = max(0, confused - 1)
-
-/mob/living/proc/handle_traits()
-	//Eyes
-	if(eye_blind)			//blindness, heals slowly over time
-		if(!stat && !(HAS_TRAIT(src, TRAIT_BLIND)))
-			eye_blind = max(eye_blind-1,0)
-			if(client && !eye_blind)
-				clear_alert("blind")
-				clear_fullscreen("blind")
-		else
-			eye_blind = max(eye_blind-1,1)
-	else if(eye_blurry)			//blurry eyes heal slowly
-		eye_blurry = max(eye_blurry-1, 0)
-		if(client)
-			update_eye_blur()
+		AdjustConfused(-1)
 
 /mob/living/proc/update_damage_hud()
 	return
 
-/mob/living/proc/gravity_animate()
-	if(!get_filter("gravity"))
-		add_filter("gravity",1,list("type"="motion_blur", "x"=0, "y"=0))
-	INVOKE_ASYNC(src, .proc/gravity_pulse_animation)
+/mob/living/proc/handle_sleeping()
+	AdjustSleeping(-1)
+	return sleeping
 
-/mob/living/proc/gravity_pulse_animation()
-	animate(get_filter("gravity"), y = 1, time = 10)
-	sleep(10)
-	animate(get_filter("gravity"), y = 0, time = 10)
+/mob/living/proc/handle_drunk()
+	AdjustDrunk(-1)
+	return drunk
 
-/mob/living/proc/handle_high_gravity(gravity)
-	if(gravity >= GRAVITY_DAMAGE_TRESHOLD) //Aka gravity values of 3 or more
-		var/grav_stregth = gravity - GRAVITY_DAMAGE_TRESHOLD
-		adjustBruteLoss(min(grav_stregth,3))
+/mob/living/proc/handle_disabilities()
+	//Eyes
+	if(HAS_TRAIT(src, TRAIT_BLIND) || stat)	//blindness from disability or unconsciousness doesn't get better on its own
+		EyeBlind(1)
+	else if(eye_blind)			//blindness, heals slowly over time
+		AdjustEyeBlind(-1)
+	else if(eye_blurry)			//blurry eyes heal slowly
+		AdjustEyeBlurry(-1)
+
+// Gives a mob the vision of being dead
+/mob/living/proc/grant_death_vision()
+	sight |= SEE_TURFS
+	sight |= SEE_MOBS
+	sight |= SEE_OBJS
+	lighting_alpha = LIGHTING_PLANE_ALPHA_INVISIBLE
+	see_in_dark = 8
+	see_invisible = SEE_INVISIBLE_OBSERVER
+	sync_lighting_plane_alpha()
+
+/mob/living/proc/handle_critical_condition()
+	return
+
+/mob/living/update_health_hud()
+	if(!client)
+		return
+	if(healths)
+		var/severity = 0
+		var/healthpercent = (health / maxHealth) * 100
+		switch(healthpercent)
+			if(100 to INFINITY)
+				healths.icon_state = "health0"
+			if(80 to 100)
+				healths.icon_state = "health1"
+				severity = 1
+			if(60 to 80)
+				healths.icon_state = "health2"
+				severity = 2
+			if(40 to 60)
+				healths.icon_state = "health3"
+				severity = 3
+			if(20 to 40)
+				healths.icon_state = "health4"
+				severity = 4
+			if(1 to 20)
+				healths.icon_state = "health5"
+				severity = 5
+			else
+				healths.icon_state = "health7"
+				severity = 6
+		if(severity > 0)
+			overlay_fullscreen("brute", /obj/screen/fullscreen/brute, severity)
+		else
+			clear_fullscreen("brute")

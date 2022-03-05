@@ -1,193 +1,194 @@
+import { filter, sortBy } from 'common/collections';
+import { flow } from 'common/fp';
 import { createSearch, decodeHtmlEntities } from 'common/string';
-import { Fragment } from 'inferno';
-import { useBackend, useLocalState } from '../backend';
-import { Box, Button, Flex, Input, Section, Table, Tabs, NoticeBox } from '../components';
-import { formatMoney } from '../format';
-import { Window } from '../layouts';
+import { Fragment } from "inferno";
+import { useBackend, useLocalState } from "../backend";
+import { Box, Button, Flex, Input, Section, Tabs } from "../components";
+import { FlexItem } from "../components/Flex";
+import { Window } from "../layouts";
+import { ComplexModal } from './common/ComplexModal';
 
-const MAX_SEARCH_RESULTS = 25;
+const PickTab = index => {
+  switch (index) {
+    case 0:
+      return <ItemsPage />;
+    case 1:
+      return <ExploitableInfoPage />;
+    default:
+      return "SOMETHING WENT VERY WRONG PLEASE AHELP";
+  }
+};
 
 export const Uplink = (props, context) => {
-  const { data } = useBackend(context);
-  const { telecrystals } = data;
+  const { act, data } = useBackend(context);
+
+  const [tabIndex, setTabIndex] = useLocalState(context, 'tabIndex', 0);
+
   return (
-    <Window
-      theme="syndicate"
-      resizable
-      width={620}
-      height={580}>
+    <Window theme="syndicate">
+      <ComplexModal />
       <Window.Content scrollable>
-        <GenericUplink
-          currencyAmount={telecrystals}
-          currencySymbol="TC" />
+        <Tabs>
+          <Tabs.Tab
+            key="PurchasePage"
+            selected={tabIndex === 0}
+            onClick={() => setTabIndex(0)}
+            icon="shopping-cart">
+            Purchase Equipment
+          </Tabs.Tab>
+          <Tabs.Tab
+            key="ExploitableInfo"
+            selected={tabIndex === 1}
+            onClick={() => setTabIndex(1)}
+            icon="user">
+            Exploitable Information
+          </Tabs.Tab>
+          <Tabs.Tab
+            key="LockUplink"
+            // This cant ever be selected. Its just a close button.
+            onClick={() => act('lock')}
+            icon="lock">
+            Lock Uplink
+          </Tabs.Tab>
+        </Tabs>
+        {PickTab(tabIndex)}
       </Window.Content>
     </Window>
   );
 };
 
-export const GenericUplink = (props, context) => {
-  const {
-    currencyAmount = 0,
-    currencySymbol = 'cr',
-  } = props;
+const ItemsPage = (_properties, context) => {
   const { act, data } = useBackend(context);
   const {
-    compactMode,
-    lockable,
-    categories = [],
+    crystals,
+    cats,
   } = data;
+  // Default to first
   const [
-    searchText,
-    setSearchText,
-  ] = useLocalState(context, 'searchText', '');
-  const [
-    selectedCategory,
-    setSelectedCategory,
-  ] = useLocalState(context, 'category', categories[0]?.name);
-  const testSearch = createSearch(searchText, item => {
-    return item.name + item.desc;
-  });
-  const items = searchText.length > 0
-    // Flatten all categories and apply search to it
-    && categories
-      .flatMap(category => category.items || [])
-      .filter(testSearch)
-      .filter((item, i) => i < MAX_SEARCH_RESULTS)
-    // Select a category and show all items in it
-    || categories
-      .find(category => category.name === selectedCategory)
-      ?.items
-    // If none of that results in a list, return an empty list
-    || [];
+    uplinkCat,
+    setUplinkCat,
+  ] = useLocalState(context, 'uplinkTab', cats[0]);
   return (
     <Section
-      title={(
-        <Box
-          inline
-          color={currencyAmount > 0 ? 'good' : 'bad'}>
-          {formatMoney(currencyAmount)} {currencySymbol}
-        </Box>
-      )}
-      buttons={(
+      title={"Current Balance: " + crystals + "TC"}
+      buttons={
         <Fragment>
-          Search
-          <Input
-            value={searchText}
-            onInput={(e, value) => setSearchText(value)}
-            mx={1} />
           <Button
-            icon={compactMode ? 'list' : 'info'}
-            content={compactMode ? 'Compact' : 'Detailed'}
-            onClick={() => act('compact_toggle')} />
-          {!!lockable && (
-            <Button
-              icon="lock"
-              content="Lock"
-              onClick={() => act('lock')} />
-          )}
+            content="Random Item"
+            icon="question"
+            onClick={() => act('buyRandom')}
+          />
+          <Button
+            content="Refund Currently Held Item"
+            icon="undo"
+            onClick={() => act('refund')}
+          />
         </Fragment>
-      )}>
+      }>
       <Flex>
-        {searchText.length === 0 && (
-          <Flex.Item>
-            <Tabs vertical>
-              {categories.map(category => (
-                <Tabs.Tab
-                  key={category.name}
-                  selected={category.name === selectedCategory}
-                  onClick={() => setSelectedCategory(category.name)}>
-                  {category.name} ({category.items?.length || 0})
-                </Tabs.Tab>
-              ))}
-            </Tabs>
-          </Flex.Item>
-        )}
+        <FlexItem>
+          <Tabs vertical>
+            {cats.map(c => (
+              <Tabs.Tab
+                key={c}
+                selected={c === uplinkCat}
+                onClick={() => setUplinkCat(c)}>
+                {c.cat}
+              </Tabs.Tab>
+            ))}
+          </Tabs>
+        </FlexItem>
         <Flex.Item grow={1} basis={0}>
-          {items.length === 0 && (
-            <NoticeBox>
-              {searchText.length === 0
-                ? 'No items in this category.'
-                : 'No results found.'}
-            </NoticeBox>
-          )}
-          <ItemList
-            compactMode={searchText.length > 0 || compactMode}
-            currencyAmount={currencyAmount}
-            currencySymbol={currencySymbol}
-            items={items} />
+          {uplinkCat.items.map(i => (
+            <Section
+              key={decodeHtmlEntities(i.name)}
+              title={decodeHtmlEntities(i.name)}
+              buttons={
+                <Button
+                  content={"Buy (" + i.cost + "TC)" + (i.refundable ? " [Refundable]" : "")}
+                  color={i.hijack_only === 1 && "red"}
+                  // Yes I care this much about both of these being able to render at the same time
+                  tooltip={(i.hijack_only === 1 && "Hijack Agents Only!")}
+                  tooltipPosition="left"
+                  onClick={() => act("buyItem", {
+                    item: i.obj_path,
+                  })}
+                  disabled={i.cost > crystals}
+                />
+              }>
+              <Box italic>
+                {decodeHtmlEntities(i.desc)}
+              </Box>
+            </Section>
+          ))}
         </Flex.Item>
       </Flex>
     </Section>
   );
 };
 
-const ItemList = (props, context) => {
+
+const ExploitableInfoPage = (_properties, context) => {
+  const { act, data } = useBackend(context);
   const {
-    compactMode,
-    currencyAmount,
-    currencySymbol,
-  } = props;
-  const { act } = useBackend(context);
+    exploitable,
+  } = data;
+  // Default to first
   const [
-    hoveredItem,
-    setHoveredItem,
-  ] = useLocalState(context, 'hoveredItem', {});
-  const hoveredCost = hoveredItem && hoveredItem.cost || 0;
-  // Append extra hover data to items
-  const items = props.items.map(item => {
-    const notSameItem = hoveredItem && hoveredItem.name !== item.name;
-    const notEnoughHovered = currencyAmount - hoveredCost < item.cost;
-    const disabledDueToHovered = notSameItem && notEnoughHovered;
-    const disabled = currencyAmount < item.cost || disabledDueToHovered;
-    return {
-      ...item,
-      disabled,
-    };
-  });
-  if (compactMode) {
-    return (
-      <Table>
-        {items.map(item => (
-          <Table.Row
-            key={item.name}
-            className="candystripe">
-            <Table.Cell bold>
-              {decodeHtmlEntities(item.name)}
-            </Table.Cell>
-            <Table.Cell collapsing textAlign="right">
-              <Button
-                fluid
-                content={formatMoney(item.cost) + ' ' + currencySymbol}
-                disabled={item.disabled}
-                tooltip={item.desc}
-                tooltipPosition="left"
-                onmouseover={() => setHoveredItem(item)}
-                onmouseout={() => setHoveredItem({})}
-                onClick={() => act('buy', {
-                  name: item.name,
-                })} />
-            </Table.Cell>
-          </Table.Row>
-        ))}
-      </Table>
-    );
-  }
-  return items.map(item => (
-    <Section
-      key={item.name}
-      title={item.name}
-      level={2}
-      buttons={(
-        <Button
-          content={item.cost + ' ' + currencySymbol}
-          disabled={item.disabled}
-          onmouseover={() => setHoveredItem(item)}
-          onmouseout={() => setHoveredItem({})}
-          onClick={() => act('buy', {
-            name: item.name,
-          })} />
-      )}>
-      {decodeHtmlEntities(item.desc)}
+    selectedRecord,
+    setSelectedRecord,
+  ] = useLocalState(context, 'selectedRecord', exploitable[0]);
+
+  const [
+    searchText,
+    setSearchText,
+  ] = useLocalState(context, 'searchText', '');
+
+  // Search for peeps
+  const SelectMembers = (people, searchText = '') => {
+    const MemberSearch = createSearch(searchText, member => member.name);
+    return flow([
+      // Null member filter
+      filter(member => member?.name),
+      // Optional search term
+      searchText && filter(MemberSearch),
+      // Slightly expensive, but way better than sorting in BYOND
+      sortBy(member => member.name),
+    ])(people);
+  };
+
+  const crew = SelectMembers(exploitable, searchText);
+
+  return (
+    <Section title="Exploitable Records">
+      <Flex>
+        <FlexItem basis={20}>
+          <Input
+            fluid
+            mb={1}
+            placeholder="Search Crew"
+            onInput={(e, value) => setSearchText(value)} />
+          <Tabs vertical>
+            {crew.map(r => (
+              <Tabs.Tab
+                key={r}
+                selected={r === selectedRecord}
+                onClick={() => setSelectedRecord(r)}>
+                {r.name}
+              </Tabs.Tab>
+            ))}
+          </Tabs>
+        </FlexItem>
+        <Flex.Item grow={1} basis={0}>
+          <Section title={"Name: " + selectedRecord.name}>
+            <Box>Age: {selectedRecord.age}</Box>
+            <Box>Fingerprint: {selectedRecord.fingerprint}</Box>
+            <Box>Rank: {selectedRecord.rank}</Box>
+            <Box>Sex: {selectedRecord.sex}</Box>
+            <Box>Species: {selectedRecord.species}</Box>
+          </Section>
+        </Flex.Item>
+      </Flex>
     </Section>
-  ));
+  );
 };

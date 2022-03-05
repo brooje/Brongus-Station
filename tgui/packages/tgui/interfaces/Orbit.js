@@ -1,9 +1,8 @@
 import { createSearch } from 'common/string';
-import { Box, Button, Input, Section } from '../components';
-import { Window } from '../layouts';
 import { useBackend, useLocalState } from '../backend';
+import { Button, Divider, Flex, Icon, Input, Section } from '../components';
+import { Window } from '../layouts';
 
-const PATTERN_DESCRIPTOR = / \[(?:ghost|dead)\]$/;
 const PATTERN_NUMBER = / \(([0-9]+)\)$/;
 
 const searchFor = searchText => createSearch(searchText, thing => thing.name);
@@ -13,6 +12,10 @@ const compareString = (a, b) => a < b ? -1 : a > b;
 const compareNumberedText = (a, b) => {
   const aName = a.name;
   const bName = b.name;
+
+  if (!aName || !bName) {
+    return 0;
+  }
 
   // Check if aName and bName are the same except for a number at the end
   // e.g. Medibot (2) and Medibot (3)
@@ -42,9 +45,9 @@ const BasicSection = (props, context) => {
       {things.map(thing => (
         <Button
           key={thing.name}
-          content={thing.name.replace(PATTERN_DESCRIPTOR, "")}
+          content={thing.name}
           onClick={() => act("orbit", {
-            name: thing.name,
+            ref: thing.ref,
           })} />
       ))}
     </Section>
@@ -59,19 +62,9 @@ const OrbitedButton = (props, context) => {
     <Button
       color={color}
       onClick={() => act("orbit", {
-        name: thing.name,
+        ref: thing.ref,
       })}>
       {thing.name}
-      {thing.orbiters && (
-        <Box inline ml={1}>
-          {"("}{thing.orbiters}{" "}
-          <Box
-            as="img"
-            src="ghost.png"
-            opacity={0.7} />
-          {")"}
-        </Box>
-      )}
     </Button>
   );
 };
@@ -81,6 +74,7 @@ export const Orbit = (props, context) => {
   const {
     alive,
     antagonists,
+    auto_observe,
     dead,
     ghosts,
     misc,
@@ -111,27 +105,47 @@ export const Orbit = (props, context) => {
         .filter(searchFor(searchText))
         .sort(compareNumberedText)[0];
       if (member !== undefined) {
-        act("orbit", { name: member.name });
+        act("orbit", { ref: member.ref });
         break;
       }
     }
   };
 
   return (
-    <Window
-      width={350}
-      height={700}>
+    <Window resizable>
       <Window.Content scrollable>
         <Section>
-          <Input
-            fluid
-            value={searchText}
-            onInput={(_, value) => setSearchText(value)}
-            onEnter={(_, value) => orbitMostRelevant(value)} />
+          <Flex>
+            <Flex.Item>
+              <Icon
+                name="search"
+                mr={1} />
+            </Flex.Item>
+            <Flex.Item grow={1}>
+              <Input
+                placeholder="Search..."
+                autoFocus
+                fluid
+                value={searchText}
+                onInput={(_, value) => setSearchText(value)}
+                onEnter={(_, value) => orbitMostRelevant(value)} />
+            </Flex.Item>
+            <Flex.Item>
+              <Divider vertical />
+            </Flex.Item>
+            <Flex.Item>
+              <Button
+                inline
+                color="transparent"
+                tooltip="Refresh"
+                tooltipPosition="bottom-left"
+                icon="sync-alt"
+                onClick={() => act("refresh")} />
+            </Flex.Item>
+          </Flex>
         </Section>
-
         {antagonists.length > 0 && (
-          <Section title="Ghost-Visible Antagonists">
+          <Section title="Antagonists">
             {sortedAntagonists.map(([name, antags]) => (
               <Section key={name} title={name} level={2}>
                 {antags
@@ -149,7 +163,7 @@ export const Orbit = (props, context) => {
           </Section>
         )}
 
-        <Section title="Alive">
+        <Section title={`Alive - (${alive.length})`}>
           {alive
             .filter(searchFor(searchText))
             .sort(compareNumberedText)
@@ -161,11 +175,17 @@ export const Orbit = (props, context) => {
             ))}
         </Section>
 
-        <BasicSection
-          title="Ghosts"
-          source={ghosts}
-          searchText={searchText}
-        />
+        <Section title={`Ghosts - (${ghosts.length})`}>
+          {ghosts
+            .filter(searchFor(searchText))
+            .sort(compareNumberedText)
+            .map(thing => (
+              <OrbitedButton
+                key={thing.name}
+                color="grey"
+                thing={thing} />
+            ))}
+        </Section>
 
         <BasicSection
           title="Dead"

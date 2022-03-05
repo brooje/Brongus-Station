@@ -42,7 +42,7 @@ export const AiAirlock = (props, context) => {
               )}>
               {data.power.main ? 'Online' : 'Offline'}
               {' '}
-              {(!data.wires.main_1 || !data.wires.main_2)
+              {(!data.wires.main_power)
                 && '[Wires have been cut!]'
                 || (data.power.main_timeleft > 0
                   && `[${data.power.main_timeleft}s]`)}
@@ -59,7 +59,7 @@ export const AiAirlock = (props, context) => {
               )}>
               {data.power.backup ? 'Online' : 'Offline'}
               {' '}
-              {(!data.wires.backup_1 || !data.wires.backup_2)
+              {(!data.wires.backup_power)
                 && '[Wires have been cut!]'
                 || (data.power.backup_timeleft > 0
                   && `[${data.power.backup_timeleft}s]`)}
@@ -71,7 +71,7 @@ export const AiAirlock = (props, context) => {
                 <Fragment>
                   <Button
                     icon="wrench"
-                    disabled={!(data.wires.shock && data.shock === 0)}
+                    disabled={!(data.wires.shock && data.shock !== 2)}
                     content="Restore"
                     onClick={() => act('shock-restore')} />
                   <Button
@@ -81,7 +81,7 @@ export const AiAirlock = (props, context) => {
                     onClick={() => act('shock-temp')} />
                   <Button
                     icon="bolt"
-                    disabled={!data.wires.shock}
+                    disabled={!data.wires.shock || data.shock === 0}
                     content="Permanent"
                     onClick={() => act('shock-perm')} />
                 </Fragment>

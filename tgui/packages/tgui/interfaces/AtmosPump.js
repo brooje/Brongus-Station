@@ -1,67 +1,56 @@
-import { useBackend } from '../backend';
-import { Button, LabeledList, NumberInput, Section } from '../components';
-import { Window } from '../layouts';
+import { useBackend } from "../backend";
+import { Button, Section, NumberInput, LabeledList } from "../components";
+import { Window } from "../layouts";
 
 export const AtmosPump = (props, context) => {
   const { act, data } = useBackend(context);
+  const {
+    on,
+    rate,
+    max_rate,
+    gas_unit,
+    step,
+  } = data;
+
   return (
-    <Window
-      width={335}
-      height={115}>
+    <Window>
       <Window.Content>
         <Section>
           <LabeledList>
             <LabeledList.Item label="Power">
               <Button
-                icon={data.on ? 'power-off' : 'times'}
-                content={data.on ? 'On' : 'Off'}
-                selected={data.on}
+                icon={on ? "power-off" : "power-off"}
+                content={on ? "On" : "Off"}
+                color={on ? null : "red"}
+                selected={on}
                 onClick={() => act('power')} />
             </LabeledList.Item>
-            {data.max_rate ? (
-              <LabeledList.Item label="Transfer Rate">
-                <NumberInput
-                  animated
-                  value={parseFloat(data.rate)}
-                  width="63px"
-                  unit="L/s"
-                  minValue={0}
-                  maxValue={200}
-                  onChange={(e, value) => act('rate', {
-                    rate: value,
-                  })} />
-                <Button
-                  ml={1}
-                  icon="plus"
-                  content="Max"
-                  disabled={data.rate === data.max_rate}
-                  onClick={() => act('rate', {
-                    rate: 'max',
-                  })} />
-              </LabeledList.Item>
-            ) : (
-              <LabeledList.Item label="Output Pressure">
-                <NumberInput
-                  animated
-                  value={parseFloat(data.pressure)}
-                  unit="kPa"
-                  width="75px"
-                  minValue={0}
-                  maxValue={4500}
-                  step={10}
-                  onChange={(e, value) => act('pressure', {
-                    pressure: value,
-                  })} />
-                <Button
-                  ml={1}
-                  icon="plus"
-                  content="Max"
-                  disabled={data.pressure === data.max_pressure}
-                  onClick={() => act('pressure', {
-                    pressure: 'max',
-                  })} />
-              </LabeledList.Item>
-            )}
+            <LabeledList.Item label="Rate">
+              <Button
+                icon="fast-backward"
+                textAlign="center"
+                disabled={rate === 0}
+                width={2.2}
+                onClick={() => act('min_rate')} />
+              <NumberInput
+                animated
+                unit={gas_unit}
+                width={6.1}
+                lineHeight={1.5}
+                step={step}
+                minValue={0}
+                maxValue={max_rate}
+                value={rate}
+                onDrag={(e, value) => act('custom_rate', {
+                  rate: value,
+                })} />
+              <Button
+                icon="fast-forward"
+                textAlign="center"
+                disabled={rate === max_rate}
+                width={2.2}
+                onClick={() => act('max_rate')} />
+            </LabeledList.Item>
           </LabeledList>
         </Section>
       </Window.Content>

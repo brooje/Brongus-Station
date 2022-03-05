@@ -3,24 +3,23 @@
 	icon = 'icons/obj/doors/airlocks/station2/glass.dmi'
 	overlays_file = 'icons/obj/doors/airlocks/station2/overlays.dmi'
 	opacity = 0
-	assemblytype = /obj/structure/door_assembly/door_assembly_public
-	glass = TRUE
-
+	glass = 1
+	autoclose = 0
 	var/datum/radio_frequency/air_connection
-	var/air_frequency = FREQ_ATMOS_ALARMS
-	autoclose = FALSE
+	var/air_frequency = ATMOS_FIRE_FREQ
 
-/obj/machinery/door/airlock/alarmlock/Initialize()
-	. = ..()
+/obj/machinery/door/airlock/alarmlock/New()
+	..()
 	air_connection = new
 
 /obj/machinery/door/airlock/alarmlock/Destroy()
-	SSradio.remove_object(src,air_frequency)
+	if(SSradio)
+		SSradio.remove_object(src,air_frequency)
 	air_connection = null
 	return ..()
 
 /obj/machinery/door/airlock/alarmlock/Initialize()
-	. = ..()
+	..()
 	SSradio.remove_object(src, air_frequency)
 	air_connection = SSradio.add_object(src, air_frequency, RADIO_TO_AIRALARM)
 	open()
@@ -33,11 +32,13 @@
 	var/alarm_area = signal.data["zone"]
 	var/alert = signal.data["alert"]
 
-	if(alarm_area == get_area_name(src))
+	var/area/our_area = get_area(src)
+
+	if(alarm_area == our_area.name)
 		switch(alert)
 			if("severe")
-				autoclose = TRUE
+				autoclose = 1
 				close()
 			if("minor", "clear")
-				autoclose = FALSE
+				autoclose = 0
 				open()

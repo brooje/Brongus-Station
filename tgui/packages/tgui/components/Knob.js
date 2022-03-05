@@ -1,11 +1,6 @@
-/**
- * @file
- * @copyright 2020 Aleksej Komarov
- * @license MIT
- */
-
 import { keyOfMatchingRange, scale } from 'common/math';
 import { classes } from 'common/react';
+import { IS_IE8 } from '../byond';
 import { computeBoxClassName, computeBoxProps } from './Box';
 import { DraggableControl } from './DraggableControl';
 import { NumberInput } from './NumberInput';
@@ -13,7 +8,7 @@ import { NumberInput } from './NumberInput';
 export const Knob = props => {
   // IE8: I don't want to support a yet another component on IE8.
   // IE8: It also can't handle SVG.
-  if (Byond.IS_LTE_IE8) {
+  if (IS_IE8) {
     return (
       <NumberInput {...props} />
     );
@@ -24,7 +19,6 @@ export const Knob = props => {
     format,
     maxValue,
     minValue,
-    unclamped,
     onChange,
     onDrag,
     step,
@@ -38,9 +32,10 @@ export const Knob = props => {
     fillValue,
     color,
     ranges = {},
-    size = 1,
+    size,
     bipolar,
     children,
+    popUpPosition,
     ...rest
   } = props;
   return (
@@ -51,7 +46,6 @@ export const Knob = props => {
         format,
         maxValue,
         minValue,
-        unclamped,
         onChange,
         onDrag,
         step,
@@ -81,7 +75,7 @@ export const Knob = props => {
         const effectiveColor = color
           || keyOfMatchingRange(fillValue ?? value, ranges)
           || 'default';
-        const rotation = Math.min((scaledDisplayValue - 0.5) * 270, 225);
+        const rotation = (scaledDisplayValue - 0.5) * 270;
         return (
           <div
             className={classes([
@@ -93,7 +87,7 @@ export const Knob = props => {
             ])}
             {...computeBoxProps({
               style: {
-                'font-size': size + 'em',
+                'font-size': size + 'rem',
                 ...style,
               },
               ...rest,
@@ -109,7 +103,10 @@ export const Knob = props => {
               </div>
             </div>
             {dragging && (
-              <div className="Knob__popupValue">
+              <div className={classes([
+                'Knob__popupValue',
+                popUpPosition && 'Knob__popupValue--' + popUpPosition,
+              ])}>
                 {displayElement}
               </div>
             )}
@@ -129,8 +126,8 @@ export const Knob = props => {
                 className="Knob__ringFill"
                 style={{
                   'stroke-dashoffset': (
-                    Math.max(((bipolar ? 2.75 : 2.00) - scaledFillValue * 1.5)
-                      * Math.PI * 50, 0)
+                    ((bipolar ? 2.75 : 2.00) - scaledFillValue * 1.5)
+                      * Math.PI * 50
                   ),
                 }}
                 cx="50"

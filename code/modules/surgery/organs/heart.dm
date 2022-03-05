@@ -1,104 +1,81 @@
-/obj/item/organ/heart
+/obj/item/organ/internal/heart
 	name = "heart"
-	desc = "I feel bad for the heartless bastard who lost this."
 	icon_state = "heart-on"
-	zone = BODY_ZONE_CHEST
-	slot = ORGAN_SLOT_HEART
-
-	healing_factor = STANDARD_ORGAN_HEALING
-	decay_factor = 5 * STANDARD_ORGAN_DECAY		//designed to fail about 5 minutes after death
-
-	low_threshold_passed = "<span class='info'>Prickles of pain appear then die out from within your chest...</span>"
-	high_threshold_passed = "<span class='warning'>Something inside your chest hurts, and the pain isn't subsiding. You notice yourself breathing far faster than before.</span>"
-	now_fixed = "<span class='info'>Your heart begins to beat again.</span>"
-	high_threshold_cleared = "<span class='info'>The pain in your chest has died down, and your breathing becomes more relaxed.</span>"
-
-	// Heart attack code is in code/modules/mob/living/carbon/human/life.dm
-	var/beating = 1
+	organ_tag = "heart"
+	parent_organ = "chest"
+	slot = "heart"
+	origin_tech = "biotech=5"
+	var/beating = TRUE
+	dead_icon = "heart-off"
 	var/icon_base = "heart"
-	attack_verb = list("beat", "thumped")
-	var/beat = BEAT_NONE//is this mob having a heatbeat sound played? if so, which?
-	var/failed = FALSE		//to prevent constantly running failing code
-	var/operated = FALSE	//whether the heart's been operated on to fix some of its damages
 
-/obj/item/organ/heart/update_icon()
+/obj/item/organ/internal/heart/update_icon()
 	if(beating)
 		icon_state = "[icon_base]-on"
 	else
 		icon_state = "[icon_base]-off"
 
-/obj/item/organ/heart/Remove(mob/living/carbon/M, special = 0)
-	..()
+/obj/item/organ/internal/heart/remove(mob/living/carbon/M, special = 0)
+	. = ..()
+	if(ishuman(M))
+		var/mob/living/carbon/human/H = M
+		if(H.stat == DEAD)
+			Stop()
+			return
+
 	if(!special)
 		addtimer(CALLBACK(src, .proc/stop_if_unowned), 120)
 
-/obj/item/organ/heart/proc/stop_if_unowned()
-	if(!owner)
-		Stop()
+/obj/item/organ/internal/heart/emp_act(intensity)
+	if(!is_robotic() || emp_proof)
+		return
+	Stop()
 
-/obj/item/organ/heart/attack_self(mob/user)
+/obj/item/organ/internal/heart/necrotize()
 	..()
+	Stop()
+
+/obj/item/organ/internal/heart/attack_self(mob/user)
+	..()
+	if(status & ORGAN_DEAD)
+		to_chat(user, "<span class='warning'>You can't restart a dead heart.</span>")
+		return
 	if(!beating)
-		user.visible_message("<span class='notice'>[user] squeezes [src] to \
-			make it beat again!</span>","<span class='notice'>You squeeze [src] to make it beat again!</span>")
 		Restart()
 		addtimer(CALLBACK(src, .proc/stop_if_unowned), 80)
 
-/obj/item/organ/heart/proc/Stop()
-	beating = 0
-	update_icon()
-	return 1
-
-/obj/item/organ/heart/proc/Restart()
-	beating = 1
-	update_icon()
-	return 1
-
-/obj/item/organ/heart/prepare_eat()
-	var/obj/S = ..()
-	S.icon_state = "heart-off"
-	return S
-
-/obj/item/organ/heart/on_life()
+/obj/item/organ/internal/heart/safe_replace(mob/living/carbon/human/target)
+	Restart()
 	..()
-	if(owner.client && beating)
-		failed = FALSE
-		var/sound/slowbeat = sound('sound/health/slowbeat.ogg', repeat = TRUE)
-		var/sound/fastbeat = sound('sound/health/fastbeat.ogg', repeat = TRUE)
-		var/mob/living/carbon/H = owner
 
+/obj/item/organ/internal/heart/proc/stop_if_unowned()
+	if(!owner)
+		Stop()
 
-		if(H.health <= H.crit_threshold && beat != BEAT_SLOW)
-			beat = BEAT_SLOW
-			H.playsound_local(get_turf(H), slowbeat,40,0, channel = CHANNEL_HEARTBEAT)
-			to_chat(owner, "<span class = 'notice'>You feel your heart slow down.</span>")
-		if(beat == BEAT_SLOW && H.health > H.crit_threshold)
-			H.stop_sound_channel(CHANNEL_HEARTBEAT)
-			beat = BEAT_NONE
+/obj/item/organ/internal/heart/proc/Stop()
+	beating = FALSE
+	update_icon()
+	return TRUE
 
-		if(H.jitteriness)
-			if(H.health > HEALTH_THRESHOLD_FULLCRIT && (!beat || beat == BEAT_SLOW))
-				H.playsound_local(get_turf(H),fastbeat,40,0, channel = CHANNEL_HEARTBEAT)
-				beat = BEAT_FAST
-		else if(beat == BEAT_FAST)
-			H.stop_sound_channel(CHANNEL_HEARTBEAT)
-			beat = BEAT_NONE
+/obj/item/organ/internal/heart/proc/Restart()
+	beating = TRUE
+	update_icon()
+	return TRUE
 
-	if(organ_flags & ORGAN_FAILING)	//heart broke, stopped beating, death imminent
-		if(owner.stat == CONSCIOUS)
-			owner.visible_message("<span class='userdanger'>[owner] clutches at [owner.p_their()] chest as if [owner.p_their()] heart is stopping!</span>")
-		owner.set_heartattack(TRUE)
-		failed = TRUE
+/obj/item/organ/internal/heart/prepare_eat()
+	var/obj/S = ..()
+	if(S)
+		S.icon_state = dead_icon
+		return S
 
-/obj/item/organ/heart/cursed
+/obj/item/organ/internal/heart/cursed
 	name = "cursed heart"
-	desc = "A heart that, when inserted, will force you to pump it manually."
+	desc = "it needs to be pumped..."
 	icon_state = "cursedheart-off"
 	icon_base = "cursedheart"
-	decay_factor = 0
+	origin_tech = "biotech=6"
 	actions_types = list(/datum/action/item_action/organ_action/cursed_heart)
 	var/last_pump = 0
-	var/add_colour = TRUE //So we're not constantly recreating colour datums
 	var/pump_delay = 30 //you can pump 1 second early, for lag, but no more (otherwise you could spam heal)
 	var/blood_loss = 100 //600 blood is human default, so 5 failures (below 122 blood is where humans die because reasons?)
 
@@ -107,47 +84,44 @@
 	var/heal_burn = 0
 	var/heal_oxy = 0
 
-
-/obj/item/organ/heart/cursed/attack(mob/living/carbon/human/H, mob/living/carbon/human/user, obj/target)
+/obj/item/organ/internal/heart/cursed/attack(mob/living/carbon/human/H, mob/living/carbon/human/user, obj/target)
 	if(H == user && istype(H))
-		playsound(user,'sound/effects/singlebeat.ogg',40,1)
-		user.temporarilyRemoveItemFromInventory(src, TRUE)
-		Insert(user)
+		if(NO_BLOOD in H.dna.species.species_traits)
+			to_chat(H, "<span class='userdanger'>[src] is not compatible with your form!</span>")
+			return
+		playsound(user,'sound/effects/singlebeat.ogg', 40, 1)
+		user.drop_item()
+		insert(user)
 	else
 		return ..()
 
-/obj/item/organ/heart/cursed/on_life()
+/obj/item/organ/internal/heart/cursed/on_life()
 	if(world.time > (last_pump + pump_delay))
 		if(ishuman(owner) && owner.client) //While this entire item exists to make people suffer, they can't control disconnects.
 			var/mob/living/carbon/human/H = owner
-			if(H.dna && !(NOBLOOD in H.dna.species.species_traits))
+			if(!(NO_BLOOD in H.dna.species.species_traits))
 				H.blood_volume = max(H.blood_volume - blood_loss, 0)
-				to_chat(H, "<span class = 'userdanger'>You have to keep pumping your blood!</span>")
-				if(add_colour)
-					H.add_client_colour(/datum/client_colour/cursed_heart_blood) //bloody screen so real
-					add_colour = FALSE
+				to_chat(H, "<span class='userdanger'>You have to keep pumping your blood!</span>")
+				if(H.client)
+					H.client.color = "red" //bloody screen so real
 		else
 			last_pump = world.time //lets be extra fair *sigh*
 
-/obj/item/organ/heart/cursed/Insert(mob/living/carbon/M, special = 0)
+/obj/item/organ/internal/heart/cursed/insert(mob/living/carbon/M, special = 0)
 	..()
 	if(owner)
-		to_chat(owner, "<span class ='userdanger'>Your heart has been replaced with a cursed one, you have to pump this one manually otherwise you'll die!</span>")
-
-/obj/item/organ/heart/cursed/Remove(mob/living/carbon/M, special = 0)
-	..()
-	M.remove_client_colour(/datum/client_colour/cursed_heart_blood)
+		to_chat(owner, "<span class='userdanger'>Your heart has been replaced with a cursed one, you have to pump this one manually otherwise you'll die!</span>")
 
 /datum/action/item_action/organ_action/cursed_heart
-	name = "Pump your blood"
+	name = "pump your blood"
 
 //You are now brea- pumping blood manually
 /datum/action/item_action/organ_action/cursed_heart/Trigger()
 	. = ..()
-	if(. && istype(target, /obj/item/organ/heart/cursed))
-		var/obj/item/organ/heart/cursed/cursed_heart = target
+	if(. && istype(target, /obj/item/organ/internal/heart/cursed))
+		var/obj/item/organ/internal/heart/cursed/cursed_heart = target
 
-		if(world.time < (cursed_heart.last_pump + (cursed_heart.pump_delay-10))) //no spam
+		if(world.time < (cursed_heart.last_pump + (cursed_heart.pump_delay - 10))) //no spam
 			to_chat(owner, "<span class='userdanger'>Too soon!</span>")
 			return
 
@@ -157,64 +131,155 @@
 
 		var/mob/living/carbon/human/H = owner
 		if(istype(H))
-			if(H.dna && !(NOBLOOD in H.dna.species.species_traits))
-				H.blood_volume = min(H.blood_volume + cursed_heart.blood_loss*0.5, BLOOD_VOLUME_MAXIMUM)
-				H.remove_client_colour(/datum/client_colour/cursed_heart_blood)
-				cursed_heart.add_colour = TRUE
+			if(!(NO_BLOOD in H.dna.species.species_traits))
+				H.blood_volume = min(H.blood_volume + cursed_heart.blood_loss * 0.5, BLOOD_VOLUME_NORMAL)
+				if(owner.client)
+					owner.client.color = ""
+
 				H.adjustBruteLoss(-cursed_heart.heal_brute)
 				H.adjustFireLoss(-cursed_heart.heal_burn)
 				H.adjustOxyLoss(-cursed_heart.heal_oxy)
 
-
-/datum/client_colour/cursed_heart_blood
-	priority = 100 //it's an indicator you're dying, so it's very high priority
-	colour = "red"
-
-/obj/item/organ/heart/cybernetic
+/obj/item/organ/internal/heart/cybernetic
 	name = "cybernetic heart"
-	desc = "An electronic device designed to mimic the functions of an organic human heart. Also holds an emergency dose of epinephrine, used automatically after facing severe trauma."
-	icon_state = "heart-c"
-	organ_flags = ORGAN_SYNTHETIC
-	status = ORGAN_ROBOTIC
-	var/dose_available = TRUE
-	var/rid = /datum/reagent/medicine/epinephrine
-	var/ramount = 10
+	desc = "An electronic device designed to mimic the functions of an organic human heart. Offers no benefit over an organic heart other than being easy to make."
+	icon_state = "heart-c-on"
+	icon_base = "heart-c"
+	dead_icon = "heart-c-off"
+	status = ORGAN_ROBOT
 
-/obj/item/organ/heart/cybernetic/emp_act()
-	. = ..()
-	if(. & EMP_PROTECT_SELF)
-		return
-	Stop()
-
-/obj/item/organ/heart/cybernetic/on_life()
-	. = ..()
-	if(dose_available && owner.stat == UNCONSCIOUS && !owner.reagents.has_reagent(rid))
-		owner.reagents.add_reagent(rid, ramount)
-		used_dose()
-
-/obj/item/organ/heart/cybernetic/proc/used_dose()
-	dose_available = FALSE
-
-/obj/item/organ/heart/cybernetic/upgraded
+/obj/item/organ/internal/heart/cybernetic/upgraded
 	name = "upgraded cybernetic heart"
-	desc = "An electronic device designed to mimic the functions of an organic human heart. Also holds an emergency dose of epinephrine, used automatically after facing severe trauma. This upgraded model can regenerate its dose after use."
-	icon_state = "heart-c-u"
+	desc = "A more advanced version of a cybernetic heart. Grants the user additional stamina and heart stability, but the electronics are vulnerable to shock."
+	icon_state = "heart-c-u-on"
+	icon_base = "heart-c-u"
+	dead_icon = "heart-c-u-off"
+	var/attempted_restart = FALSE
 
-/obj/item/organ/heart/cybernetic/upgraded/used_dose()
-	. = ..()
-	addtimer(VARSET_CALLBACK(src, dose_available, TRUE), 5 MINUTES)
+/obj/item/organ/internal/heart/cybernetic/upgraded/insert(mob/living/carbon/M, special = FALSE)
+	..()
+	RegisterSignal(M, COMSIG_LIVING_MINOR_SHOCK, .proc/shock_heart)
+	RegisterSignal(M, COMSIG_LIVING_ELECTROCUTE_ACT, .proc/shock_heart)
 
-/obj/item/organ/heart/freedom
-	name = "heart of freedom"
-	desc = "This heart pumps with the passion to give... something freedom."
-	organ_flags = ORGAN_SYNTHETIC //the power of freedom prevents heart attacks
-	var/min_next_adrenaline = 0
+/obj/item/organ/internal/heart/cybernetic/upgraded/remove(mob/living/carbon/M, special = FALSE)
+	UnregisterSignal(M, COMSIG_LIVING_MINOR_SHOCK)
+	UnregisterSignal(M, COMSIG_LIVING_ELECTROCUTE_ACT)
+	return  ..()
 
-/obj/item/organ/heart/freedom/on_life()
-	. = ..()
-	if(owner.health < 5 && world.time > min_next_adrenaline)
-		min_next_adrenaline = world.time + rand(250, 600) //anywhere from 4.5 to 10 minutes
-		to_chat(owner, "<span class='userdanger'>You feel yourself dying, but you refuse to give up!</span>")
-		owner.heal_overall_damage(15, 15, 0, BODYPART_ORGANIC)
-		if(owner.reagents.get_reagent_amount(/datum/reagent/medicine/ephedrine) < 20)
-			owner.reagents.add_reagent(/datum/reagent/medicine/ephedrine, 10)
+
+/obj/item/organ/internal/heart/cybernetic/upgraded/on_life()
+	if(!ishuman(owner))
+		return
+
+	if(!(status & ORGAN_DEAD) && !attempted_restart && !beating)
+		to_chat(owner, "<span class='warning'>Your [name] detects a cardiac event and attempts to return to its normal rhythm!</span>")
+		if(prob(20) && emagged)
+			attempted_restart = TRUE
+			Restart()
+			addtimer(CALLBACK(src, .proc/message_to_owner, owner, "<span class='warning'>Your [name] returns to its normal rhythm!</span>"), 30)
+			addtimer(CALLBACK(src, .proc/recharge), 200)
+		else if(prob(10))
+			attempted_restart = TRUE
+			Restart()
+			addtimer(CALLBACK(src, .proc/message_to_owner, owner, "<span class='warning'>Your [name] returns to its normal rhythm!</span>"), 30)
+			addtimer(CALLBACK(src, .proc/recharge), 300)
+		else
+			attempted_restart = TRUE
+			if(emagged)
+				addtimer(CALLBACK(src, .proc/recharge), 200)
+			else
+				addtimer(CALLBACK(src, .proc/recharge), 300)
+			addtimer(CALLBACK(src, .proc/message_to_owner, owner, "<span class='warning'>Your [name] fails to return to its normal rhythm!</span>"), 30)
+
+	if(!(status & ORGAN_DEAD) && !attempted_restart && owner.HasDisease(new /datum/disease/critical/heart_failure(0)))
+		to_chat(owner, "<span class='warning'>Your [name] detects a cardiac event and attempts to return to its normal rhythm!</span>")
+		if(prob(40) && emagged)
+			attempted_restart = TRUE
+			for(var/datum/disease/critical/heart_failure/HF in owner.viruses)
+				HF.cure()
+			addtimer(CALLBACK(src, .proc/message_to_owner, owner, "<span class='warning'>Your [name] returns to its normal rhythm!</span>"), 30)
+			addtimer(CALLBACK(src, .proc/recharge), 200)
+		else if(prob(25))
+			attempted_restart = TRUE
+			for(var/datum/disease/critical/heart_failure/HF in owner.viruses)
+				HF.cure()
+			addtimer(CALLBACK(src, .proc/message_to_owner, owner, "<span class='warning'>Your [name] returns to its normal rhythm!</span>"), 30)
+			addtimer(CALLBACK(src, .proc/recharge), 200)
+		else
+			attempted_restart = TRUE
+			if(emagged)
+				addtimer(CALLBACK(src, .proc/recharge), 200)
+			else
+				addtimer(CALLBACK(src, .proc/recharge), 300)
+			addtimer(CALLBACK(src, .proc/message_to_owner, owner, "<span class='warning'>Your [name] fails to return to its normal rhythm!</span>"), 30)
+
+	if(!(status & ORGAN_DEAD))
+		var/boost = emagged ? 2 : 1
+		owner.AdjustDrowsy(-4 * boost)
+		owner.AdjustParalysis(-1 * boost)
+		owner.AdjustStunned(-1 * boost)
+		owner.AdjustWeakened(-1 * boost)
+		owner.SetSleeping(0)
+		owner.adjustStaminaLoss(-1 * boost)
+
+
+/obj/item/organ/internal/heart/cybernetic/upgraded/proc/message_to_owner(mob/M, message)
+	to_chat(M, message)
+
+
+/obj/item/organ/internal/heart/cybernetic/upgraded/proc/recharge()
+	attempted_restart = FALSE
+
+
+/obj/item/organ/internal/heart/cybernetic/upgraded/emag_act(mob/user)
+	if(!emagged)
+		to_chat(user, "<span class='warning'>You disable the safeties on [src]</span>")
+		emagged = TRUE
+	else
+		to_chat(user, "<span class='warning'>You re-enable the safeties on [src]</span>")
+		emagged = FALSE
+
+
+/obj/item/organ/internal/heart/cybernetic/upgraded/emp_act(severity)
+	..()
+	if(emp_proof)
+		return
+	necrotize()
+
+/obj/item/organ/internal/heart/cybernetic/upgraded/proc/shock_heart(mob/living/carbon/human/source, intensity)
+	SIGNAL_HANDLER_DOES_SLEEP
+
+	if(!ishuman(owner))
+		return
+	if(emp_proof)
+		return
+	intensity = min(intensity, 100)
+	var/numHigh = round(intensity / 5)
+	var/numMid = round(intensity / 10)
+	var/numLow = round(intensity / 20)
+	if(emagged && !(status & ORGAN_DEAD))
+		if(prob(numHigh))
+			to_chat(owner, "<span class='warning'>Your [name] spasms violently!</span>")
+			owner.adjustBruteLoss(numHigh)
+		if(prob(numHigh))
+			to_chat(owner, "<span class='warning'>Your [name] shocks you painfully!</span>")
+			owner.adjustFireLoss(numHigh)
+		if(prob(numMid))
+			to_chat(owner, "<span class='warning'>Your [name] lurches awkwardly!</span>")
+			owner.ForceContractDisease(new /datum/disease/critical/heart_failure(0))
+		if(prob(numMid))
+			to_chat(owner, "<span class='danger'>Your [name] stops beating!</span>")
+			Stop()
+		if(prob(numLow))
+			to_chat(owner, "<span class='danger'>Your [name] shuts down!</span>")
+			necrotize()
+	else if(!emagged && !(status & ORGAN_DEAD))
+		if(prob(numMid))
+			to_chat(owner, "<span class='warning'>Your [name] spasms violently!</span>")
+			owner.adjustBruteLoss(numMid)
+		if(prob(numMid))
+			to_chat(owner, "<span class='warning'>Your [name] shocks you painfully!</span>")
+			owner.adjustFireLoss(numMid)
+		if(prob(numLow))
+			to_chat(owner, "<span class='warning'>Your [name] lurches awkwardly!</span>")
+			owner.ForceContractDisease(new /datum/disease/critical/heart_failure(0))

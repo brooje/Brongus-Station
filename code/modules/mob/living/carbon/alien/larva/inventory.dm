@@ -1,3 +1,3 @@
 //can't unequip since it can't equip anything
-/mob/living/carbon/alien/larva/doUnEquip(obj/item/I, force, newloc, no_move, invdrop = TRUE, was_thrown = FALSE)
+/mob/living/carbon/alien/larva/unEquip(obj/item/I, force, silent = FALSE)
 	return

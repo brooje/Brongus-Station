@@ -1,30 +1,21 @@
 //temporary visual effects(/obj/effect/temp_visual) used by cult stuff
 /obj/effect/temp_visual/cult
 	icon = 'icons/effects/cult_effects.dmi'
-	randomdir = 0
+	randomdir = FALSE
 	duration = 10
 
 /obj/effect/temp_visual/cult/sparks
-	randomdir = 1
+	randomdir = TRUE
 	name = "blood sparks"
 	icon_state = "bloodsparkles"
 
-/obj/effect/temp_visual/cult/blood  // The traditional teleport
-	name = "blood jaunt"
-	duration = 12
-	icon_state = "bloodin"
-
-/obj/effect/temp_visual/cult/blood/out
-	icon_state = "bloodout"
-
-/obj/effect/temp_visual/dir_setting/cult/phase  // The veil shifter teleport
-	icon = 'icons/effects/cult_effects.dmi'
+/obj/effect/temp_visual/dir_setting/cult/phase
 	name = "phase glow"
-	duration = 7
+	duration = 12
+	icon = 'icons/effects/cult_effects.dmi'
 	icon_state = "cultin"
 
 /obj/effect/temp_visual/dir_setting/cult/phase/out
-	icon = 'icons/effects/cult_effects.dmi'
 	icon_state = "cultout"
 
 /obj/effect/temp_visual/cult/sac
@@ -34,7 +25,7 @@
 /obj/effect/temp_visual/cult/door
 	name = "unholy glow"
 	icon_state = "doorglow"
-	layer = CLOSED_FIREDOOR_LAYER //above closed doors
+	layer = 3.17 //above closed doors
 
 /obj/effect/temp_visual/cult/door/unruned
 	icon_state = "unruneddoorglow"
@@ -42,9 +33,9 @@
 /obj/effect/temp_visual/cult/turf
 	name = "unholy glow"
 	icon_state = "wallglow"
-	layer = ABOVE_NORMAL_TURF_LAYER
+	layer = TURF_LAYER + 0.07
 
-/obj/effect/temp_visual/cult/turf/floor
+/obj/effect/temp_visual/cult/turf/open/floor
 	icon_state = "floorglow"
 	duration = 5
 	plane = FLOOR_PLANE
@@ -54,6 +45,14 @@
 	duration = 600
 	layer = ABOVE_OBJ_LAYER
 
+/obj/effect/temp_visual/emp/cult
+	name = "cult emp sparks"
+	icon_state = "empdisable_cult"
+
+/obj/effect/temp_visual/emp/pulse/cult
+	name = "cult emp pulse"
+	icon_state = "emppulse_cult"
+
 //visuals for runes being magically created
 /obj/effect/temp_visual/cult/rune_spawn
 	icon_state = "runeouter"
@@ -61,13 +60,13 @@
 	var/turnedness = 179 //179 turns counterclockwise, 181 turns clockwise
 
 /obj/effect/temp_visual/cult/rune_spawn/Initialize(mapload, set_duration, set_color)
-	if(isnum_safe(set_duration))
+	if(isnum(set_duration))
 		duration = set_duration
 	if(set_color)
 		add_atom_colour(set_color, FIXED_COLOUR_PRIORITY)
 	. = ..()
 	var/oldtransform = transform
-	transform = matrix()*2
+	transform = matrix() * 2
 	var/matrix/M = transform
 	M.Turn(turnedness)
 	transform = M

@@ -17,3 +17,9 @@
 	MA.layer = layer
 	MA.plane = plane
 	return MA
+
+
+/mutable_appearance/clean/New()
+	. = ..()
+	alpha = 255
+	transform = null

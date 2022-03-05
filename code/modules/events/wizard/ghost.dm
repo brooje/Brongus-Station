@@ -1,26 +1,14 @@
-/datum/round_event_control/wizard/ghost //The spook is real
-	name = "G-G-G-Ghosts!"
-	weight = 3
-	typepath = /datum/round_event/wizard/ghost
-	max_occurrences = 1
-	earliest_start = 0 MINUTES
+/datum/event/wizard/ghost //The spook is real
 
-/datum/round_event/wizard/ghost/start()
+/datum/event/wizard/ghost/start()
 	var/msg = "<span class='warning'>You suddenly feel extremely obvious...</span>"
 	set_observer_default_invisibility(0, msg)
 
+/datum/event/wizard/ghost_mute //The spook is silent
 
-//--//
-
-/datum/round_event_control/wizard/possession //Oh shit
-	name = "Possessing G-G-G-Ghosts!"
-	weight = 2
-	typepath = /datum/round_event/wizard/possession
-	max_occurrences = 5
-	earliest_start = 0 MINUTES
-
-/datum/round_event/wizard/possession/start()
-	for(var/mob/dead/observer/G in GLOB.player_list)
-		G.add_verb(/mob/dead/observer/verb/boo)
-		G.add_verb(/mob/dead/observer/verb/possess)
-		to_chat(G, "You suddenly feel a welling of new spooky powers...")
+/datum/event/wizard/ghost_mute/start()
+	GLOB.dsay_enabled = FALSE
+	var/sound/S = sound('sound/hallucinations/wail.ogg')
+	for(var/mob/dead/observer/silenced in GLOB.player_list)
+		to_chat(silenced, "<span class='warning'>Magical forces wrap around your spectral form. You can no longer speak to other ghosts!</span>")
+		SEND_SOUND(silenced, S)

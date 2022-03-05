@@ -1,10 +1,10 @@
 GLOBAL_LIST_EMPTY(custom_outfits) //Admin created outfits
 
 /client/proc/outfit_manager()
-	set category = "Debug"
+	set category = "Event"
 	set name = "Outfit Manager"
 
-	if(!check_rights(R_DEBUG))
+	if(!check_rights(R_EVENT))
 		return
 	holder.outfit_manager(usr)
 
@@ -15,10 +15,10 @@ GLOBAL_LIST_EMPTY(custom_outfits) //Admin created outfits
 		var/datum/outfit/varedit/VO = O
 		if(istype(VO))
 			vv = length(VO.vv_values)
-		dat += "<li>[O.name][vv ? "(VV)" : ""]</li> <a href='?_src_=holder;[HrefToken()];save_outfit=1;chosen_outfit=[REF(O)]'>Save</a> <a href='?_src_=holder;[HrefToken()];delete_outfit=1;chosen_outfit=[REF(O)]'>Delete</a>"
+		dat += "<li>[O.name][vv ? "(VV)" : ""]</li> <a href='?_src_=holder;save_outfit=1;chosen_outfit=[O.UID()]'>Save</a> <a href='?_src_=holder;delete_outfit=1;chosen_outfit=[O.UID()]'>Delete</a>"
 	dat += "</ul>"
-	dat += "<a href='?_src_=holder;[HrefToken()];create_outfit_menu=1'>Create</a><br>"
-	dat += "<a href='?_src_=holder;[HrefToken()];load_outfit=1'>Load from file</a>"
+	dat += "<a href='?_src_=holder;create_outfit_menu=1'>Create</a><br>"
+	dat += "<a href='?_src_=holder;load_outfit=1'>Load from file</a>"
 	admin << browse(dat.Join(),"window=outfitmanager")
 
 /datum/admins/proc/save_outfit(mob/admin,datum/outfit/O)
@@ -35,7 +35,7 @@ GLOBAL_LIST_EMPTY(custom_outfits) //Admin created outfits
 	var/outfit_file = input("Pick outfit json file:", "File") as null|file
 	if(!outfit_file)
 		return
-	var/filedata = rustg_file_read(outfit_file)
+	var/filedata = file2text(outfit_file)
 	var/json = json_decode(filedata)
 	if(!json)
 		to_chat(admin,"<span class='warning'>JSON decode error.</span>")
@@ -59,6 +59,7 @@ GLOBAL_LIST_EMPTY(custom_outfits) //Admin created outfits
 	var/list/headwear = typesof(/obj/item/clothing/head)
 	var/list/glasses = typesof(/obj/item/clothing/glasses)
 	var/list/masks = typesof(/obj/item/clothing/mask)
+	var/list/pdas = typesof(/obj/item/pda)
 	var/list/ids = typesof(/obj/item/card/id)
 
 	var/uniform_select = "<select name=\"outfit_uniform\"><option value=\"\">None</option>"
@@ -101,11 +102,15 @@ GLOBAL_LIST_EMPTY(custom_outfits) //Admin created outfits
 		id_select += "<option value=\"[path]\">[path]</option>"
 	id_select += "</select>"
 
+	var/pda_select = "<select name=\"outfit_pda\"><option value=\"\">None</option>"
+	for(var/path in pdas)
+		pda_select += "<option value=\"[path]\">[path]</option>"
+	pda_select += "</select>"
+
 	var/dat = {"
-	<html><head><meta http-equiv='Content-Type' content='text/html; charset=UTF-8'><title>Create Outfit</title></head><body>
-	<form name="outfit" action="byond://?src=[REF(src)];[HrefToken()]" method="get">
-	<input type="hidden" name="src" value="[REF(src)]">
-	[HrefTokenFormField()]
+	<html><head><title>Create Outfit</title></head><body>
+	<form name="outfit" action="byond://?src=[UID()];" method="get">
+	<input type="hidden" name="src" value="[UID()]">
 	<input type="hidden" name="create_outfit_finalize" value="1">
 	<table>
 		<tr>
@@ -163,9 +168,15 @@ GLOBAL_LIST_EMPTY(custom_outfits) //Admin created outfits
 			</td>
 		</tr>
 		<tr>
-			<th>Ears:</th>
+			<th>Left Ear:</th>
 			<td>
-				<input type="text" name="outfit_ears" value="">
+				<input type="text" name="outfit_l_ear" value="">
+			</td>
+		</tr>
+		<tr>
+			<th>Right Ear:</th>
+			<td>
+				<input type="text" name="outfit_r_ear" value="">
 			</td>
 		</tr>
 		<tr>
@@ -178,6 +189,12 @@ GLOBAL_LIST_EMPTY(custom_outfits) //Admin created outfits
 			<th>ID:</th>
 			<td>
 				[id_select]
+			</td>
+		</tr>
+		<tr>
+			<th>PDA:</th>
+			<td>
+				[pda_select]
 			</td>
 		</tr>
 		<tr>
@@ -236,8 +253,10 @@ GLOBAL_LIST_EMPTY(custom_outfits) //Admin created outfits
 	O.l_pocket = text2path(href_list["outfit_l_pocket"])
 	O.r_pocket = text2path(href_list["outfit_r_pocket"])
 	O.id = text2path(href_list["outfit_id"])
+	O.pda = text2path(href_list["outfit_pda"])
 	O.belt = text2path(href_list["outfit_belt"])
-	O.ears = text2path(href_list["outfit_ears"])
+	O.l_ear = text2path(href_list["outfit_l_ear"])
+	O.r_ear = text2path(href_list["outfit_r_ear"])
 
 	GLOB.custom_outfits.Add(O)
-	message_admins("[key_name(usr)] created \"[O.name]\" outfit!")
+	message_admins("[key_name_admin(usr)] created \"[O.name]\" outfit.")

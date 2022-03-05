@@ -1,11 +1,11 @@
-// Hey! Listen! Update \config\lavaruinblacklist.txt with your new ruins!
-
 /datum/map_template/ruin/lavaland
-	prefix = "_maps/RandomRuins/LavaRuins/"
+	prefix = "_maps/map_files/RandomRuins/LavaRuins/"
+	ci_exclude = /datum/map_template/ruin/lavaland
 
 /datum/map_template/ruin/lavaland/biodome
 	cost = 5
 	allow_duplicates = FALSE
+	ci_exclude = /datum/map_template/ruin/lavaland/biodome // This is a parent holder, not a ruin itself
 
 /datum/map_template/ruin/lavaland/biodome/beach
 	name = "Biodome Beach"
@@ -18,8 +18,8 @@
 	name = "Biodome Winter"
 	id = "biodome-winter"
 	description = "For those getaways where you want to get back to nature, but you don't want to leave the fortified military compound where you spend your days. \
-	Includes a unique(*) laser pistol display case, and the recently introduced I.C.E(tm)."
-	suffix = "lavaland_surface_biodome_winter.dmm"
+	Includes the recently introduced I.C.E(tm)."
+	suffix = "lavaland_biodome_winter.dmm"
 
 /datum/map_template/ruin/lavaland/biodome/clown
 	name = "Biodome Clown Planet"
@@ -53,14 +53,6 @@
 	cost = 20
 	allow_duplicates = FALSE
 
-/datum/map_template/ruin/lavaland/syndicate_base
-	name = "Syndicate Lava Base"
-	id = "lava-base"
-	description = "A secret base researching illegal bioweapons, it is closely guarded by an elite team of syndicate agents."
-	suffix = "lavaland_surface_syndicate_base1.dmm"
-	cost = 20
-	allow_duplicates = FALSE
-
 /datum/map_template/ruin/lavaland/free_golem
 	name = "Free Golem Ship"
 	id = "golem-ship"
@@ -73,7 +65,7 @@
 /datum/map_template/ruin/lavaland/animal_hospital
 	name = "Animal Hospital"
 	id = "animal-hospital"
-	description = "An ancient animal hospital, its true purpose long forgotten. The doctors awaken with a singular purpose: heal the dying, sick, and injured habitants of the wasteland around them."
+	description = "Rats with cancer do not live very long. And the ones that wake up from cryostasis seem to commit suicide out of boredom."
 	cost = 5
 	suffix = "lavaland_surface_animal_hospital.dmm"
 	allow_duplicates = FALSE
@@ -81,6 +73,7 @@
 /datum/map_template/ruin/lavaland/sin
 	cost = 10
 	allow_duplicates = FALSE
+	ci_exclude = /datum/map_template/ruin/lavaland/sin // This is a parent holder, not a ruin itself
 
 /datum/map_template/ruin/lavaland/sin/envy
 	name = "Ruin of Envy"
@@ -97,8 +90,7 @@
 /datum/map_template/ruin/lavaland/sin/greed
 	name = "Ruin of Greed"
 	id = "greed"
-	description = "Sure you don't need magical powers, but you WANT them, and \
-		that's what's important."
+	description = "Sure you don't need magical powers, but you WANT them, and that's what's important."
 	suffix = "lavaland_surface_greed.dmm"
 
 /datum/map_template/ruin/lavaland/sin/pride
@@ -112,7 +104,6 @@
 	id = "sloth"
 	description = "..."
 	suffix = "lavaland_surface_sloth.dmm"
-	// Generates nothing but atmos runtimes and salt
 	cost = 0
 
 /datum/map_template/ruin/lavaland/ratvar
@@ -222,12 +213,3 @@
 	description = "Mystery to be solved."
 	suffix = "lavaland_surface_puzzle.dmm"
 	cost = 5
-  
-/datum/map_template/ruin/lavaland/elite_tumor
-	name = "Pulsating Tumor"
-	id = "tumor"
-	description = "A strange tumor which houses a powerful beast..."
-	suffix = "lavaland_surface_elite_tumor.dmm"
-	cost = 5
-	always_place = TRUE
-	allow_duplicates = TRUE

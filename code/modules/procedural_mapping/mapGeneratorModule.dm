@@ -9,14 +9,14 @@
 	var/allowAtomsOnSpace = FALSE
 
 
-//Syncs the module up with its mother
+//Syncs the module up with it's mother
 /datum/mapGeneratorModule/proc/sync(datum/mapGenerator/mum)
 	mother = null
 	if(mum)
 		mother = mum
 
 
-//Generates its spawnable atoms and turfs
+//Generates it's spawnable atoms and turfs
 /datum/mapGeneratorModule/proc/generate()
 	if(!mother)
 		return
@@ -42,7 +42,7 @@
 			//You're the same as me? I hate you I'm going home
 			if(clusterCheckFlags & CLUSTER_CHECK_SAME_TURFS)
 				clustering = rand(clusterMin,clusterMax)
-				for(var/turf/F as() in RANGE_TURFS(clustering,T))
+				for(var/turf/F in spiral_range_turfs(clustering,T))
 					if(istype(F,turfPath))
 						skipLoopIteration = TRUE
 						break
@@ -53,7 +53,7 @@
 			//You're DIFFERENT to me? I hate you I'm going home
 			if(clusterCheckFlags & CLUSTER_CHECK_DIFFERENT_TURFS)
 				clustering = rand(clusterMin,clusterMax)
-				for(var/turf/F as() in RANGE_TURFS(clustering,T))
+				for(var/turf/F in spiral_range_turfs(clustering,T))
 					if(!(istype(F,turfPath)))
 						skipLoopIteration = TRUE
 						break
@@ -70,7 +70,6 @@
 	if(checkPlaceAtom(T))
 
 		for(var/atomPath in spawnableAtoms)
-
 			//Clustering!
 			if(clusterMax && clusterMin)
 
@@ -114,7 +113,7 @@
 		if(A.density)
 			. = 0
 			break
-	if(!allowAtomsOnSpace && (isspaceturf(T)))
+	if(!allowAtomsOnSpace && (istype(T,/turf/space)))
 		. = 0
 
 

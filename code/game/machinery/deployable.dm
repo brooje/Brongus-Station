@@ -16,39 +16,48 @@
 	max_integrity = 100
 	var/proj_pass_rate = 50 //How many projectiles will pass the cover. Lower means stronger cover
 	var/bar_material = METAL
+	var/drop_amount = 3
+	var/stacktype = /obj/item/stack/sheet/metal
 
 /obj/structure/barricade/deconstruct(disassembled = TRUE)
-	if(!(flags_1 & NODECONSTRUCT_1))
+	if(!(flags & NODECONSTRUCT))
 		make_debris()
 	qdel(src)
 
+
 /obj/structure/barricade/proc/make_debris()
-	return
+	if(stacktype)
+		new stacktype(get_turf(src), drop_amount)
 
-/obj/structure/barricade/attackby(obj/item/I, mob/user, params)
-	if(I.tool_behaviour == TOOL_WELDER && user.a_intent != INTENT_HARM && bar_material == METAL)
-		if(obj_integrity < max_integrity)
-			if(!I.tool_start_check(user, amount=0))
-				return
-
-			to_chat(user, "<span class='notice'>You begin repairing [src]...</span>")
-			if(I.use_tool(src, user, 40, volume=40))
-				obj_integrity = CLAMP(obj_integrity + 20, 0, max_integrity)
-	else
-		return ..()
+/obj/structure/barricade/welder_act(mob/user, obj/item/I)
+	if(bar_material != METAL)
+		return
+	if(obj_integrity >= max_integrity)
+		to_chat(user, "<span class='notice'>[src] does not need repairs.</span>")
+		return
+	if(user.a_intent == INTENT_HARM)
+		return
+	if(!I.tool_use_check(user, 0))
+		return
+	WELDER_ATTEMPT_REPAIR_MESSAGE
+	if(I.use_tool(src, user, 40, volume = I.tool_volume))
+		WELDER_REPAIR_SUCCESS_MESSAGE
+		obj_integrity = clamp(obj_integrity + 20, 0, max_integrity)
+		update_icon()
+	return TRUE
 
 /obj/structure/barricade/CanPass(atom/movable/mover, turf/target)//So bullets will fly over and stuff.
 	if(locate(/obj/structure/barricade) in get_turf(mover))
-		return 1
+		return TRUE
 	else if(istype(mover, /obj/item/projectile))
 		if(!anchored)
-			return 1
+			return TRUE
 		var/obj/item/projectile/proj = mover
 		if(proj.firer && Adjacent(proj.firer))
-			return 1
+			return TRUE
 		if(prob(proj_pass_rate))
-			return 1
-		return 0
+			return TRUE
+		return FALSE
 	else
 		return !density
 
@@ -62,23 +71,25 @@
 	icon = 'icons/obj/structures.dmi'
 	icon_state = "woodenbarricade"
 	bar_material = WOOD
-	var/drop_amount = 3
+	stacktype = /obj/item/stack/sheet/wood
+
 
 /obj/structure/barricade/wooden/attackby(obj/item/I, mob/user)
-	if(istype(I,/obj/item/stack/sheet/mineral/wood))
-		var/obj/item/stack/sheet/mineral/wood/W = I
-		if(W.amount < 5)
+	if(istype(I,/obj/item/stack/sheet/wood))
+		var/obj/item/stack/sheet/wood/W = I
+		if(W.get_amount() < 5)
 			to_chat(user, "<span class='warning'>You need at least five wooden planks to make a wall!</span>")
 			return
 		else
 			to_chat(user, "<span class='notice'>You start adding [I] to [src]...</span>")
-			if(do_after(user, 50, target=src))
-				W.use(5)
-				new /turf/closed/wall/mineral/wood/nonmetal(get_turf(src))
+			if(do_after(user, 50, target = src))
+				if(!W.use(5))
+					return
+				var/turf/T = get_turf(src)
+				T.ChangeTurf(/turf/simulated/wall/mineral/wood/nonmetal)
 				qdel(src)
 				return
 	return ..()
-
 
 /obj/structure/barricade/wooden/crude
 	name = "crude plank barricade"
@@ -93,23 +104,21 @@
 	icon_state = "woodenbarricade-snow-old"
 	max_integrity = 75
 
-/obj/structure/barricade/wooden/make_debris()
-	new /obj/item/stack/sheet/mineral/wood(get_turf(src), drop_amount)
-
-
 /obj/structure/barricade/sandbags
 	name = "sandbags"
 	desc = "Bags of sand. Self explanatory."
 	icon = 'icons/obj/smooth_structures/sandbags.dmi'
-	icon_state = "sandbags"
+	icon_state = "sandbags-0"
+	base_icon_state = "sandbags"
 	max_integrity = 280
 	proj_pass_rate = 20
 	pass_flags = LETPASSTHROW
 	bar_material = SAND
 	climbable = TRUE
-	smooth = SMOOTH_TRUE
-	canSmoothWith = list(/obj/structure/barricade/sandbags, /turf/closed/wall, /turf/closed/wall/r_wall, /obj/structure/falsewall, /obj/structure/falsewall/reinforced, /turf/closed/wall/rust, /turf/closed/wall/r_wall/rust, /obj/structure/barricade/security)
-
+	smoothing_flags = SMOOTH_BITMASK
+	smoothing_groups = list(SMOOTH_GROUP_SANDBAGS)
+	canSmoothWith = list(SMOOTH_GROUP_SANDBAGS, SMOOTH_GROUP_WALLS, SMOOTH_GROUP_SECURITY_BARRICADE)
+	stacktype = null
 
 /obj/structure/barricade/security
 	name = "security barrier"
@@ -120,13 +129,12 @@
 	anchored = FALSE
 	max_integrity = 180
 	proj_pass_rate = 20
-	armor = list("melee" = 10, "bullet" = 50, "laser" = 50, "energy" = 50, "bomb" = 10, "bio" = 100, "rad" = 100, "fire" = 10, "acid" = 0, "stamina" = 0)
-
+	armor = list(melee = 10, bullet = 50, laser = 50, energy = 50, bomb = 10, bio = 100, rad = 100, fire = 10, acid = 0)
+	stacktype = null
 	var/deploy_time = 40
 	var/deploy_message = TRUE
 
-
-/obj/structure/barricade/security/Initialize()
+/obj/structure/barricade/security/Initialize(mapload)
 	. = ..()
 	addtimer(CALLBACK(src, .proc/deploy), deploy_time)
 
@@ -152,7 +160,7 @@
 	. += "<span class='notice'>Alt-click to toggle modes.</span>"
 
 /obj/item/grenade/barrier/AltClick(mob/living/carbon/user)
-	if(!istype(user) || !user.canUseTopic(src, BE_CLOSE))
+	if(!istype(user) || !user.Adjacent(src) || user.incapacitated())
 		return
 	toggle_mode(user)
 
@@ -168,7 +176,7 @@
 	to_chat(user, "[src] is now in [mode] mode.")
 
 /obj/item/grenade/barrier/prime()
-	new /obj/structure/barricade/security(get_turf(src.loc))
+	new /obj/structure/barricade/security(get_turf(loc))
 	switch(mode)
 		if(VERTICAL)
 			var/target_turf = get_step(src, NORTH)
@@ -191,6 +199,16 @@
 /obj/item/grenade/barrier/ui_action_click(mob/user)
 	toggle_mode(user)
 
+
+/obj/structure/barricade/mime
+	name = "floor"
+	desc = "Is... this a floor?"
+	icon = 'icons/effects/water.dmi'
+	icon_state = "wet_floor_static"
+	stacktype = /obj/item/stack/sheet/mineral/tranquillite
+
+/obj/structure/barricade/mime/mrcd
+	stacktype = null
 
 #undef SINGLE
 #undef VERTICAL

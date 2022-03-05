@@ -15,9 +15,10 @@
 	var/generation = 1
 	var/spreadIntoAdjacentChance = 60
 	var/obj/item/seeds/myseed = /obj/item/seeds/glowshroom
-	var/static/list/blacklisted_glowshroom_turfs = typecacheof(list(
-	/turf/open/lava,
-	/turf/open/floor/plating/beach/water))
+
+/obj/structure/glowshroom/extinguish_light()
+	visible_message("<span class='warning'>[src] withers away!</span>")
+	qdel(src)
 
 /obj/structure/glowshroom/glowcap
 	name = "glowcap"
@@ -31,6 +32,9 @@
 	icon_state = "shadowshroom"
 	myseed = /obj/item/seeds/glowshroom/shadowshroom
 
+/obj/structure/glowshroom/shadowshroom/extinguish_light()
+	return
+
 /obj/structure/glowshroom/single/Spread()
 	return
 
@@ -39,8 +43,7 @@
 	. += "This is a [generation]\th generation [name]!"
 
 /obj/structure/glowshroom/Destroy()
-	if(myseed)
-		QDEL_NULL(myseed)
+	QDEL_NULL(myseed)
 	return ..()
 
 /obj/structure/glowshroom/New(loc, obj/item/seeds/newseed, mutate_stats)
@@ -58,12 +61,9 @@
 	delay = delay - myseed.production * 100 //So the delay goes DOWN with better stats instead of up. :I
 	obj_integrity = myseed.endurance
 	max_integrity = myseed.endurance
-	var/datum/plant_gene/trait/glow/G = myseed.get_gene(/datum/plant_gene/trait/glow)
-	if(ispath(G)) // Seeds were ported to initialize so their genes are still typepaths here, luckily their initializer is smart enough to handle us doing this
-		myseed.genes -= G
-		G = new G
-		myseed.genes += G
-	set_light(G.glow_range(myseed), G.glow_power(myseed), G.glow_color)
+	if(myseed.get_gene(/datum/plant_gene/trait/glow))
+		var/datum/plant_gene/trait/glow/G = myseed.get_gene(/datum/plant_gene/trait/glow)
+		set_light(G.glow_range(myseed), G.glow_power(myseed), G.glow_color)
 	setDir(CalcDir())
 	var/base_icon_state = initial(icon_state)
 	if(!floor)
@@ -78,7 +78,7 @@
 				pixel_x = -32
 		icon_state = "[base_icon_state][rand(1,3)]"
 	else //if on the floor, glowshroom on-floor sprite
-		icon_state = base_icon_state
+		icon_state = "[base_icon_state]f"
 
 	addtimer(CALLBACK(src, .proc/Spread), delay)
 
@@ -93,9 +93,7 @@
 			if(prob(spreadIntoAdjacentChance))
 				spreadsIntoAdjacent = TRUE
 
-			for(var/turf/open/floor/earth in view(3,src))
-				if(is_type_in_typecache(earth, blacklisted_glowshroom_turfs))
-					continue
+			for(var/turf/simulated/floor/earth in view(3,src))
 				if(!ownturf.CanAtmosPass(earth))
 					continue
 				if(spreadsIntoAdjacent || !locate(/obj/structure/glowshroom) in view(1,earth))
@@ -111,7 +109,7 @@
 			var/placeCount = 1
 			for(var/obj/structure/glowshroom/shroom in newLoc)
 				shroomCount++
-			for(var/wallDir in GLOB.cardinals)
+			for(var/wallDir in GLOB.cardinal)
 				var/turf/isWall = get_step(newLoc,wallDir)
 				if(isWall.density)
 					placeCount++
@@ -132,7 +130,7 @@
 /obj/structure/glowshroom/proc/CalcDir(turf/location = loc)
 	var/direction = 16
 
-	for(var/wallDir in GLOB.cardinals)
+	for(var/wallDir in GLOB.cardinal)
 		var/turf/newTurf = get_step(location,wallDir)
 		if(newTurf.density)
 			direction |= wallDir
@@ -163,9 +161,10 @@
 
 /obj/structure/glowshroom/play_attack_sound(damage_amount, damage_type = BRUTE, damage_flag = 0)
 	if(damage_type == BURN && damage_amount)
-		playsound(src.loc, 'sound/items/welder.ogg', 100, 1)
+		playsound(src.loc, 'sound/items/welder.ogg', 100, TRUE)
 
 /obj/structure/glowshroom/temperature_expose(datum/gas_mixture/air, exposed_temperature, exposed_volume)
+	..()
 	if(exposed_temperature > 300)
 		take_damage(5, BURN, 0, 0)
 

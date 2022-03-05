@@ -1,139 +1,164 @@
 /obj/machinery/chem_heater
 	name = "chemical heater"
 	density = TRUE
+	anchored = TRUE
 	icon = 'icons/obj/chemical.dmi'
 	icon_state = "mixer0b"
 	use_power = IDLE_POWER_USE
 	idle_power_usage = 40
-	resistance_flags = FIRE_PROOF | ACID_PROOF
-	circuit = /obj/item/circuitboard/machine/chem_heater
-
-
-
+	resistance_flags = FIRE_PROOF|ACID_PROOF
 	var/obj/item/reagent_containers/beaker = null
-	var/target_temperature = 300
-	var/heater_coefficient = 0.1
+	var/desired_temp = T0C
 	var/on = FALSE
+	/// Whether this should auto-eject the beaker once done heating/cooling.
+	var/auto_eject = FALSE
+	/// The higher this number, the faster reagents will heat/cool.
+	var/speed_increase = 0
 
-/obj/machinery/chem_heater/Destroy()
-	QDEL_NULL(beaker)
-	return ..()
-
-/obj/machinery/chem_heater/handle_atom_del(atom/A)
-	. = ..()
-	if(A == beaker)
-		beaker = null
-		update_icon()
-
-/obj/machinery/chem_heater/update_icon()
-	if(beaker)
-		icon_state = "mixer1b"
-	else
-		icon_state = "mixer0b"
-
-/obj/machinery/chem_heater/AltClick(mob/living/user)
-	if(!istype(user) || !user.canUseTopic(src, BE_CLOSE, FALSE, NO_TK))
-		return
-	replace_beaker(user)
-	return
-
-/obj/machinery/chem_heater/proc/replace_beaker(mob/living/user, obj/item/reagent_containers/new_beaker)
-	if(beaker)
-		beaker.forceMove(drop_location())
-		if(user && Adjacent(user) && !issiliconoradminghost(user))
-			user.put_in_hands(beaker)
-	if(new_beaker)
-		beaker = new_beaker
-	else
-		beaker = null
-	update_icon()
-	return TRUE
+/obj/machinery/chem_heater/New()
+	..()
+	component_parts = list()
+	component_parts += new /obj/item/circuitboard/chem_heater(null)
+	component_parts += new /obj/item/stock_parts/micro_laser(null)
+	component_parts += new /obj/item/stack/sheet/glass(null)
+	RefreshParts()
 
 /obj/machinery/chem_heater/RefreshParts()
-	heater_coefficient = 0.1
+	speed_increase = initial(speed_increase)
 	for(var/obj/item/stock_parts/micro_laser/M in component_parts)
-		heater_coefficient *= M.rating
-
-/obj/machinery/chem_heater/examine(mob/user)
-	. = ..()
-	if(in_range(user, src) || isobserver(user))
-		. += "<span class='notice'>The status display reads: Heating reagents at <b>[heater_coefficient*1000]%</b> speed.</span>"
+		speed_increase += 5 * (M.rating - 1)
 
 /obj/machinery/chem_heater/process()
 	..()
-	if(stat & NOPOWER)
+	if(stat & (NOPOWER|BROKEN))
 		return
 	if(on)
-		if(beaker && beaker.reagents.total_volume)
-			//keep constant with the chemical acclimator please
-			beaker.reagents.adjust_thermal_energy((target_temperature - beaker.reagents.chem_temp) * heater_coefficient * SPECIFIC_HEAT_DEFAULT * beaker.reagents.total_volume)
-			beaker.reagents.handle_reactions()
+		if(beaker)
+			if(!beaker.reagents.total_volume)
+				on = FALSE
+				return
+			beaker.reagents.temperature_reagents(desired_temp, max(1, 35 - speed_increase))
+			if(round(beaker.reagents.chem_temp) == round(desired_temp))
+				playsound(loc, 'sound/machines/ding.ogg', 50, 1)
+				on = FALSE
+				if(auto_eject)
+					eject_beaker()
 
-/obj/machinery/chem_heater/attackby(obj/item/I, mob/user, params)
-	if(default_deconstruction_screwdriver(user, "mixer0b", "mixer0b", I))
-		return
-
-	if(default_deconstruction_crowbar(I))
-		return
-
-	if(istype(I, /obj/item/reagent_containers) && !(I.item_flags & ABSTRACT) && I.is_open_container())
-		. = TRUE //no afterattack
-		var/obj/item/reagent_containers/B = I
-		if(!user.transferItemToLoc(B, src))
-			return
-		replace_beaker(user, B)
-		to_chat(user, "<span class='notice'>You add [B] to [src].</span>")
-		updateUsrDialog()
-		update_icon()
-		return
-	return ..()
-
-/obj/machinery/chem_heater/on_deconstruction()
-	replace_beaker()
-	return ..()
-
-
-/obj/machinery/chem_heater/ui_state(mob/user)
-	return GLOB.default_state
-
-/obj/machinery/chem_heater/ui_interact(mob/user, datum/tgui/ui)
-	ui = SStgui.try_update_ui(user, src, ui)
-	if(!ui)
-		ui = new(user, src, "ChemHeater")
-		ui.open()
-
-/obj/machinery/chem_heater/ui_data()
-	var/data = list()
-	data["targetTemp"] = target_temperature
-	data["isActive"] = on
-	data["isBeakerLoaded"] = beaker ? 1 : 0
-
-	data["currentTemp"] = beaker ? beaker.reagents.chem_temp : null
-	data["beakerCurrentVolume"] = beaker ? beaker.reagents.total_volume : null
-	data["beakerMaxVolume"] = beaker ? beaker.volume : null
-
-	var beakerContents[0]
+/obj/machinery/chem_heater/proc/eject_beaker(mob/user)
 	if(beaker)
-		for(var/datum/reagent/R in beaker.reagents.reagent_list)
-			beakerContents.Add(list(list("name" = R.name, "volume" = R.volume))) // list in a list because Byond merges the first list...
-	data["beakerContents"] = beakerContents
-	return data
+		beaker.forceMove(get_turf(src))
+		if(user && Adjacent(user) && !issilicon(user))
+			user.put_in_hands(beaker)
+		beaker = null
+		icon_state = "mixer0b"
+		on = FALSE
+		SStgui.update_uis(src)
+
+/obj/machinery/chem_heater/power_change()
+	if(powered())
+		stat &= ~NOPOWER
+	else
+		stat |= NOPOWER
+
+/obj/machinery/chem_heater/attackby(obj/item/I, mob/user)
+	if(isrobot(user))
+		return
+
+	if(istype(I, /obj/item/reagent_containers/glass))
+		if(beaker)
+			to_chat(user, "<span class='notice'>A beaker is already loaded into the machine.</span>")
+			return
+
+		if(user.drop_item())
+			beaker = I
+			I.forceMove(src)
+			to_chat(user, "<span class='notice'>You add the beaker to the machine!</span>")
+			icon_state = "mixer1b"
+			SStgui.update_uis(src)
+			return
+
+	if(exchange_parts(user, I))
+		return
+
+	return ..()
+
+/obj/machinery/chem_heater/wrench_act(mob/user, obj/item/I)
+	. = TRUE
+	default_unfasten_wrench(user, I)
+
+/obj/machinery/chem_heater/screwdriver_act(mob/user, obj/item/I)
+	. = TRUE
+	default_deconstruction_screwdriver(user, "mixer0b", "mixer0b", I)
+
+/obj/machinery/chem_heater/crowbar_act(mob/user, obj/item/I)
+	if(!panel_open)
+		return
+	. = TRUE
+	eject_beaker()
+	default_deconstruction_crowbar(user, I)
+
+/obj/machinery/chem_heater/attack_hand(mob/user)
+	ui_interact(user)
+
+/obj/machinery/chem_heater/attack_ghost(mob/user)
+	ui_interact(user)
+
+/obj/machinery/chem_heater/attack_ai(mob/user)
+	add_hiddenprint(user)
+	return attack_hand(user)
 
 /obj/machinery/chem_heater/ui_act(action, params)
 	if(..())
 		return
+	if(stat & (NOPOWER|BROKEN))
+		return
+
+	. = TRUE
 	switch(action)
-		if("power")
+		if("toggle_on")
 			on = !on
-			. = TRUE
-		if("temperature")
-			var/target = params["target"]
-			if(text2num(target) != null)
-				target = text2num(target)
-				. = TRUE
-			if(.)
-				target_temperature = clamp(target, 0, 1000)
-		if("eject")
-			on = FALSE
-			replace_beaker(usr)
-			. = TRUE
+		if("adjust_temperature")
+			desired_temp = clamp(text2num(params["target"]), 0, 1000)
+		if("eject_beaker")
+			eject_beaker(usr)
+			. = FALSE
+		if("toggle_autoeject")
+			auto_eject = !auto_eject
+		else
+			return FALSE
+	add_fingerprint(usr)
+
+/obj/machinery/chem_heater/ui_interact(mob/user, ui_key = "main", datum/tgui/ui = null, force_open = FALSE, datum/tgui/master_ui = null, datum/ui_state/state = GLOB.default_state)
+	if(user.stat || user.restrained())
+		return
+
+	ui = SStgui.try_update_ui(user, src, ui_key, ui, force_open)
+	if(!ui)
+		ui = new(user, src, ui_key, "ChemHeater", "Chemical Heater", 350, 270, master_ui, state)
+		ui.open()
+
+/obj/machinery/chem_heater/ui_data(mob/user)
+	var/data[0]
+	var/cur_temp = beaker ? beaker.reagents.chem_temp : null
+
+	data["targetTemp"] = desired_temp
+	data["targetTempReached"] = FALSE
+	data["autoEject"] = auto_eject
+	data["isActive"] = on
+	data["isBeakerLoaded"] = beaker ? TRUE : FALSE
+
+	data["currentTemp"] = cur_temp
+	data["beakerCurrentVolume"] = beaker ? beaker.reagents.total_volume : null
+	data["beakerMaxVolume"] = beaker ? beaker.volume : null
+
+	if(cur_temp)
+		data["targetTempReached"] = round(cur_temp) == round(desired_temp)
+
+	//copy-pasted from chem dispenser
+	var/beakerContents[0]
+	if(beaker)
+		for(var/datum/reagent/R in beaker.reagents.reagent_list)
+			beakerContents.Add(list(list("name" = R.name, "volume" = R.volume))) // list in a list because Byond merges the first list...
+	data["beakerContents"] = beakerContents
+
+	return data

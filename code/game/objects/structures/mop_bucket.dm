@@ -1,30 +1,37 @@
 /obj/structure/mopbucket
-	name = "mop bucket"
 	desc = "Fill it with water, but don't forget a mop!"
+	name = "mop bucket"
 	icon = 'icons/obj/janitor.dmi'
 	icon_state = "mopbucket"
-	density = TRUE
-	var/amount_per_transfer_from_this = 5	//shit I dunno, adding this so syringes stop runtime erroring. --NeoFite
+	density = 1
+	container_type = OPENCONTAINER
+	var/amount_per_transfer_from_this = 5 //shit I dunno, adding this so syringes stop runtime erroring. --NeoFite
 
-
-/obj/structure/mopbucket/Initialize()
+/obj/structure/mopbucket/Initialize(mapload)
 	. = ..()
-	create_reagents(100, OPENCONTAINER)
+	create_reagents(100)
+	GLOB.janitorial_equipment += src
 
-/obj/structure/mopbucket/attackby(obj/item/I, mob/user, params)
-	if(istype(I, /obj/item/mop))
-		if(reagents.total_volume < 1)
-			to_chat(user, "[src] is out of water!</span>")
-		else
-			reagents.trans_to(I, 5, transfered_by = user)
-			to_chat(user, "<span class='notice'>You wet [I] in [src].</span>")
-			playsound(loc, 'sound/effects/slosh.ogg', 25, 1)
-			update_icon()
-	else
-		. = ..()
-		update_icon()
+/obj/structure/mopbucket/full/Initialize(mapload)
+	. = ..()
+	reagents.add_reagent("water", 100)
 
-/obj/structure/mopbucket/update_icon()
-	cut_overlays()
-	if(reagents.total_volume > 0)
-		add_overlay("mopbucket_water")
+/obj/structure/mopbucket/Destroy()
+	GLOB.janitorial_equipment -= src
+	return ..()
+
+/obj/structure/mopbucket/examine(mob/user)
+	. = ..()
+	if(in_range(user, src))
+		. += "[bicon(src)] [src] contains [reagents.total_volume] units of water left!"
+
+/obj/structure/mopbucket/attackby(obj/item/W as obj, mob/user as mob, params)
+	if(istype(W, /obj/item/mop))
+		if(src.reagents.total_volume >= 2)
+			src.reagents.trans_to(W, 2)
+			to_chat(user, "<span class='notice'>You wet the mop</span>")
+			playsound(src.loc, 'sound/effects/slosh.ogg', 25, 1)
+		if(src.reagents.total_volume < 1)
+			to_chat(user, "<span class='notice'>Out of water!</span>")
+		return
+	return ..()

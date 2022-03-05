@@ -3,9 +3,6 @@
  *
  * In addition to default checks, only allows interaction for a
  * human adjacent user.
- *
- * Copyright (c) 2020 Aleksej Komarov
- * SPDX-License-Identifier: MIT
  */
 
 GLOBAL_DATUM_INIT(human_adjacent_state, /datum/ui_state/human_adjacent_state, new)
@@ -16,4 +13,4 @@ GLOBAL_DATUM_INIT(human_adjacent_state, /datum/ui_state/human_adjacent_state, ne
 	var/dist = get_dist(src_object, user)
 	if((dist > 1) || (!ishuman(user)))
 		// Can't be used unless adjacent and human, even with TK
-		. = min(., UI_UPDATE)
+		. = min(., STATUS_UPDATE)

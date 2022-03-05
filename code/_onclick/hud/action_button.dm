@@ -1,89 +1,65 @@
-#define ACTION_BUTTON_DEFAULT_BACKGROUND "default"
-
-/atom/movable/screen/movable/action_button
+/obj/screen/movable/action_button
 	var/datum/action/linked_action
 	var/actiontooltipstyle = ""
 	screen_loc = null
+	var/ordered = TRUE
 
-	var/button_icon_state
-	var/appearance_cache
-
-	var/id
-	var/ordered = TRUE //If the button gets placed into the default bar.
-
-/atom/movable/screen/movable/action_button/Destroy()
-	. = ..()
-
-/atom/movable/screen/movable/action_button/proc/can_use(mob/user)
-	if (linked_action)
-		return linked_action.owner == user
-	else if (isobserver(user))
-		var/mob/dead/observer/O = user
-		return !O.observetarget
-	else
-		return TRUE
-
-/atom/movable/screen/movable/action_button/MouseDrop(over_object)
-	if(!can_use(usr))
-		return
-	if((istype(over_object, /atom/movable/screen/movable/action_button) && !istype(over_object, /atom/movable/screen/movable/action_button/hide_toggle)))
+/obj/screen/movable/action_button/MouseDrop(over_object)
+	if((istype(over_object, /obj/screen/movable/action_button) && !istype(over_object, /obj/screen/movable/action_button/hide_toggle)))
 		if(locked)
 			to_chat(usr, "<span class='warning'>Action button \"[name]\" is locked, unlock it first.</span>")
+			closeToolTip(usr)
 			return
-		var/atom/movable/screen/movable/action_button/B = over_object
+		var/obj/screen/movable/action_button/B = over_object
 		var/list/actions = usr.actions
-		actions.Swap(actions.Find(src.linked_action), actions.Find(B.linked_action))
+		actions.Swap(actions.Find(linked_action), actions.Find(B.linked_action))
 		moved = FALSE
 		ordered = TRUE
 		B.moved = FALSE
 		B.ordered = TRUE
+		closeToolTip(usr)
 		usr.update_action_buttons()
+	else if(istype(over_object, /obj/screen/movable/action_button/hide_toggle))
+		closeToolTip(usr)
 	else
+		closeToolTip(usr)
 		return ..()
 
-/atom/movable/screen/movable/action_button/Click(location,control,params)
-	if (!can_use(usr))
-		return
-
+/obj/screen/movable/action_button/Click(location,control,params)
 	var/list/modifiers = params2list(params)
 	if(modifiers["shift"])
 		if(locked)
 			to_chat(usr, "<span class='warning'>Action button \"[name]\" is locked, unlock it first.</span>")
 			return TRUE
-		moved = 0
-		usr.update_action_buttons() //redraw buttons that are no longer considered "moved"
+		moved = FALSE
+		usr.update_action_buttons(TRUE) //redraw buttons that are no longer considered "moved"
 		return TRUE
 	if(modifiers["ctrl"])
 		locked = !locked
 		to_chat(usr, "<span class='notice'>Action button \"[name]\" [locked ? "" : "un"]locked.</span>")
-		if(id && usr.client) //try to (un)remember position
-			usr.client.prefs.action_buttons_screen_locs["[name]_[id]"] = locked ? moved : null
 		return TRUE
 	if(usr.next_click > world.time)
 		return
 	usr.next_click = world.time + 1
 	linked_action.Trigger()
-	SEND_SOUND(usr, 'sound/effects/pop.ogg')
-	transform = turn(matrix() * 0.9, pick(-8, 8))
-	alpha = 200
-	animate(src, transform = matrix(), time=4, alpha=255)
 	return TRUE
 
 //Hide/Show Action Buttons ... Button
-/atom/movable/screen/movable/action_button/hide_toggle
+/obj/screen/movable/action_button/hide_toggle
 	name = "Hide Buttons"
-	desc = "Shift-click any button to reset its position, and Control-click it to lock it in place. Alt-click this button to reset all buttons to their default positions."
-	icon = 'icons/mob/actions.dmi'
+	desc = "Shift-click any button to reset its position, and Control-click it to lock/unlock its position. Alt-click this button to reset all buttons to their default positions."
+	icon = 'icons/mob/actions/actions.dmi'
 	icon_state = "bg_default"
-	var/hidden = 0
-	var/hide_icon = 'icons/mob/actions.dmi'
-	var/hide_state = "hide"
-	var/show_state = "show"
+	var/hidden = FALSE
 
-/atom/movable/screen/movable/action_button/hide_toggle/Click(location,control,params)
-	if (!can_use(usr))
-		return
+/obj/screen/movable/action_button/hide_toggle/MouseDrop(over_object)
+	if(istype(over_object, /obj/screen/movable/action_button))
+		closeToolTip(usr)
+	else
+		closeToolTip(usr)
+		return ..()
 
+/obj/screen/movable/action_button/hide_toggle/Click(location,control,params)
 	var/list/modifiers = params2list(params)
 	if(modifiers["shift"])
 		if(locked)
@@ -95,21 +71,13 @@
 	if(modifiers["ctrl"])
 		locked = !locked
 		to_chat(usr, "<span class='notice'>Action button \"[name]\" [locked ? "" : "un"]locked.</span>")
-		if(id && usr.client) //try to (un)remember position
-			usr.client.prefs.action_buttons_screen_locs["[name]_[id]"] = locked ? moved : null
 		return TRUE
 	if(modifiers["alt"])
 		for(var/V in usr.actions)
 			var/datum/action/A = V
-			var/atom/movable/screen/movable/action_button/B = A.button
+			var/obj/screen/movable/action_button/B = A.button
 			B.moved = FALSE
-			if(B.id && usr.client)
-				usr.client.prefs.action_buttons_screen_locs["[B.name]_[B.id]"] = null
-			B.locked = usr.client.prefs.buttons_locked
-		locked = usr.client.prefs.buttons_locked
 		moved = FALSE
-		if(id && usr.client)
-			usr.client.prefs.action_buttons_screen_locs["[name]_[id]"] = null
 		usr.update_action_buttons(TRUE)
 		to_chat(usr, "<span class='notice'>Action button positions have been reset.</span>")
 		return TRUE
@@ -120,58 +88,52 @@
 		name = "Show Buttons"
 	else
 		name = "Hide Buttons"
-	update_icon()
+	UpdateIcon()
 	usr.update_action_buttons()
 
-/atom/movable/screen/movable/action_button/hide_toggle/AltClick(mob/user)
+/obj/screen/movable/action_button/hide_toggle/AltClick(mob/user)
 	for(var/V in user.actions)
 		var/datum/action/A = V
-		var/atom/movable/screen/movable/action_button/B = A.button
+		var/obj/screen/movable/action_button/B = A.button
 		B.moved = FALSE
 	if(moved)
 		moved = FALSE
 	user.update_action_buttons(TRUE)
 	to_chat(user, "<span class='notice'>Action button positions have been reset.</span>")
 
+/obj/screen/movable/action_button/hide_toggle/proc/InitialiseIcon(mob/living/user)
+	if(isalien(user))
+		icon = 'icons/mob/actions/actions.dmi'
+		icon_state = "bg_alien"
+	else
+		icon = initial(icon)
+		icon_state = "bg_default"
+		if(user.client) // Apply the client's UI style
+			icon = ui_style2icon(user.client.prefs.UI_style)
+			icon_state = "template"
+	if(user.client)
+		alpha = user.client.prefs.UI_style_alpha
+		color = user.client.prefs.UI_style_color
+	UpdateIcon()
 
-/atom/movable/screen/movable/action_button/hide_toggle/proc/InitialiseIcon(datum/hud/owner_hud)
-	var/settings = owner_hud.get_action_buttons_icons()
-	icon = settings["bg_icon"]
-	icon_state = settings["bg_state"]
-	hide_icon = settings["toggle_icon"]
-	hide_state = settings["toggle_hide"]
-	show_state = settings["toggle_show"]
-	update_icon()
-
-/atom/movable/screen/movable/action_button/hide_toggle/update_icon()
+/obj/screen/movable/action_button/hide_toggle/proc/UpdateIcon()
 	cut_overlays()
-	add_overlay(mutable_appearance(hide_icon, hidden ? show_state : hide_state))
+	var/image/img = image(initial(icon), src, hidden ? "show" : "hide")
+	img.appearance_flags = RESET_COLOR | RESET_ALPHA
+	overlays += img
 
-
-/atom/movable/screen/movable/action_button/MouseEntered(location,control,params)
+/obj/screen/movable/action_button/MouseEntered(location, control, params)
+	. = ..()
 	if(!QDELETED(src))
-		openToolTip(usr,src,params,title = name,content = desc,theme = actiontooltipstyle)
+		openToolTip(usr, src, params, title = name, content = desc, theme = actiontooltipstyle)
 
-
-/atom/movable/screen/movable/action_button/MouseExited()
+/obj/screen/movable/action_button/MouseExited()
 	closeToolTip(usr)
 
-/datum/hud/proc/get_action_buttons_icons()
-	. = list()
-	.["bg_icon"] = ui_style
-	.["bg_state"] = "template"
-
-	//TODO : Make these fit theme
-	.["toggle_icon"] = 'icons/mob/actions.dmi'
-	.["toggle_hide"] = "hide"
-	.["toggle_show"] = "show"
-
-//see human and alien hud for specific implementations.
-
-/mob/proc/update_action_buttons_icon(status_only = FALSE)
+/mob/proc/update_action_buttons_icon()
 	for(var/X in actions)
 		var/datum/action/A = X
-		A.UpdateButtonIcon(status_only)
+		A.UpdateButtonIcon()
 
 //This is the proc used to update all the action buttons.
 /mob/proc/update_action_buttons(reload_screen)
@@ -190,14 +152,16 @@
 				client.screen += A.button
 	else
 		for(var/datum/action/A in actions)
+			A.override_location() // If the action has a location override, call it
 			A.UpdateButtonIcon()
-			var/atom/movable/screen/movable/action_button/B = A.button
+
+			var/obj/screen/movable/action_button/B = A.button
 			if(B.ordered)
 				button_number++
-			if(B.moved)
-				B.screen_loc = B.moved
-			else
+			if(!B.moved)
 				B.screen_loc = hud_used.ButtonNumberToScreenCoords(button_number)
+			else
+				B.screen_loc = B.moved
 			if(reload_screen)
 				client.screen += B
 
@@ -213,7 +177,6 @@
 		client.screen += hud_used.hide_actions_toggle
 
 
-
 #define AB_MAX_COLUMNS 10
 
 /datum/hud/proc/ButtonNumberToScreenCoords(number) // TODO : Make this zero-indexed for readabilty
@@ -227,7 +190,7 @@
 
 	return "WEST[coord_col]:[coord_col_offset],NORTH[coord_row]:-6"
 
-/datum/hud/proc/SetButtonCoords(atom/movable/screen/button,number)
+/datum/hud/proc/SetButtonCoords(obj/screen/button,number)
 	var/row = round((number-1)/AB_MAX_COLUMNS)
 	var/col = ((number - 1)%(AB_MAX_COLUMNS)) + 1
 	var/x_offset = 32*(col-1) + 4 + 2*col

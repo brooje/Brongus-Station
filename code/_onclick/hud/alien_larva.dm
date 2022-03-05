@@ -1,37 +1,39 @@
-/datum/hud/larva
-	ui_style = 'icons/mob/screen_alien.dmi'
+/mob/living/carbon/alien/larva/create_mob_hud()
+	if(client && !hud_used)
+		hud_used = new /datum/hud/larva(src)
 
 /datum/hud/larva/New(mob/owner)
 	..()
-	var/atom/movable/screen/using
 
-	using = new /atom/movable/screen/act_intent/alien()
+	var/obj/screen/using
+
+	using = new /obj/screen/act_intent/alien()
 	using.icon_state = mymob.a_intent
-	using.hud = src
 	static_inventory += using
 	action_intent = using
 
-	healths = new /atom/movable/screen/healths/alien()
-	healths.hud = src
-	infodisplay += healths
+	using = new /obj/screen/mov_intent()
+	using.icon = 'icons/mob/screen_alien.dmi'
+	using.icon_state = (mymob.m_intent == MOVE_INTENT_RUN ? "running" : "walking")
+	static_inventory += using
+	move_intent = using
 
-	alien_queen_finder = new /atom/movable/screen/alien/alien_queen_finder()
-	alien_queen_finder.hud = src
-	infodisplay += alien_queen_finder
+	mymob.healths = new /obj/screen/healths/alien()
+	infodisplay += mymob.healths
 
-	pull_icon = new /atom/movable/screen/pull()
-	pull_icon.icon = 'icons/mob/screen_alien.dmi'
-	pull_icon.update_icon()
-	pull_icon.screen_loc = ui_above_movement
-	pull_icon.hud = src
-	hotkeybuttons += pull_icon
+	nightvisionicon = new /obj/screen/alien/nightvision()
+	infodisplay += nightvisionicon
 
-	using = new/atom/movable/screen/language_menu
-	using.screen_loc = ui_alien_language_menu
-	using.hud = src
+	mymob.pullin = new /obj/screen/pull()
+	mymob.pullin.icon = 'icons/mob/screen_alien.dmi'
+	mymob.pullin.update_icon(mymob)
+	mymob.pullin.screen_loc = ui_pull_resist
+	hotkeybuttons += mymob.pullin
+
+	using = new /obj/screen/language_menu
+	using.screen_loc = ui_alienlarva_language_menu
 	static_inventory += using
 
-	zone_select = new /atom/movable/screen/zone_sel/alien()
-	zone_select.update_icon()
-	zone_select.hud = src
+	zone_select = new /obj/screen/zone_sel/alien()
+	zone_select.update_icon(mymob)
 	static_inventory += zone_select

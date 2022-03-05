@@ -56,20 +56,20 @@ GLOBAL_REAL(Failsafe, /datum/controller/failsafe)
 						if(4,5)
 							--defcon
 						if(3)
-							message_admins("<span class='adminnotice'>Notice: DEFCON [defcon_pretty()]. The Master Controller has not fired in the last [(5-defcon) * processing_interval] ticks.</span>")
+							message_admins("<span class='adminnotice'>Notice: DEFCON [defcon_pretty()]. The Master Controller has not fired in the last [(5 - defcon) * processing_interval] ticks.</span>")
 							--defcon
 						if(2)
-							to_chat(GLOB.admins, "<span class='boldannounce'>Warning: DEFCON [defcon_pretty()]. The Master Controller has not fired in the last [(5-defcon) * processing_interval] ticks. Automatic restart in [processing_interval] ticks.</span>")
+							to_chat(GLOB.admins, "<span class='boldannounce'>Warning: DEFCON [defcon_pretty()]. The Master Controller has not fired in the last [(5 - defcon) * processing_interval] ticks. Automatic restart in [processing_interval] ticks.</span>")
 							--defcon
 						if(1)
 
-							to_chat(GLOB.admins, "<span class='boldannounce'>Warning: DEFCON [defcon_pretty()]. The Master Controller has still not fired within the last [(5-defcon) * processing_interval] ticks. Killing and restarting...</span>")
+							to_chat(GLOB.admins, "<span class='boldannounce'>Warning: DEFCON [defcon_pretty()]. The Master Controller has still not fired within the last [(5 - defcon) * processing_interval] ticks. Killing and restarting...</span>")
 							--defcon
 							var/rtn = Recreate_MC()
 							if(rtn > 0)
 								defcon = 4
 								master_iteration = 0
-								to_chat(GLOB.admins, "<span class='adminnotice'>MC restarted successfully.</span>")
+								to_chat(GLOB.admins, "<span class='adminnotice'>MC restarted successfully</span>")
 							else if(rtn < 0)
 								log_game("FailSafe: Could not restart MC, runtime encountered. Entering defcon 0")
 								to_chat(GLOB.admins, "<span class='boldannounce'>ERROR: DEFCON [defcon_pretty()]. Could not restart MC, runtime encountered. I will silently keep retrying.</span>")
@@ -84,8 +84,8 @@ GLOBAL_REAL(Failsafe, /datum/controller/failsafe)
 				else
 					defcon = min(defcon + 1,5)
 					master_iteration = Master.iteration
-			if (defcon <= 1)
-				sleep(processing_interval*2)
+			if(defcon <= 1)
+				sleep(processing_interval * 2)
 			else
 				sleep(processing_interval)
 		else
@@ -96,14 +96,7 @@ GLOBAL_REAL(Failsafe, /datum/controller/failsafe)
 	return defcon
 
 /datum/controller/failsafe/stat_entry()
-	var/list/tab_data = list()
-	tab_data["Failsafe Controller"] = list(
-		text="Defcon: [defcon_pretty()] (Interval: [Failsafe.processing_interval] | Iteration: [Failsafe.master_iteration])",
-		action = "statClickDebug",
-		params=list(
-			"targetRef" = REF(src),
-			"class"="controller",
-		),
-		type=STAT_BUTTON,
-	)
-	return tab_data
+	if(!statclick)
+		statclick = new/obj/effect/statclick/debug(null, "Initializing...", src)
+
+	stat("Failsafe Controller:", statclick.update("Defcon: [defcon_pretty()] (Interval: [Failsafe.processing_interval] | Iteration: [Failsafe.master_iteration])"))

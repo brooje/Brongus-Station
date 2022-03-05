@@ -1,21 +1,13 @@
-/**
- * @file
- * @copyright 2020 Aleksej Komarov
- * @license MIT
- */
-
 import { Flex } from './Flex';
 
 export const LabeledControls = props => {
   const {
     children,
-    wrap,
     ...rest
   } = props;
   return (
     <Flex
       mx={-0.5}
-      wrap={wrap}
       align="stretch"
       justify="space-between"
       {...rest}>
@@ -28,12 +20,12 @@ const LabeledControlsItem = props => {
   const {
     label,
     children,
-    mx = 1,
     ...rest
   } = props;
   return (
-    <Flex.Item mx={mx}>
+    <Flex.Item mx={1}>
       <Flex
+        minWidth="52px"
         height="100%"
         direction="column"
         align="center"

@@ -11,12 +11,9 @@
 	var/completed = FALSE
 	var/report_message = "Complete this goal."
 
-/datum/station_goal/proc/prepare_report()
-	addtimer(CALLBACK(src, .proc/send_report), 1200) // 2 min, less than avg 4 for intercept report
-
 /datum/station_goal/proc/send_report()
-	priority_announce("Priority Nanotrasen directive received. Project \"[name]\" details inbound.", "Incoming Priority Message", 'sound/ai/commandreport.ogg')
-	print_command_report(get_report(),"Nanotrasen Directive [pick(GLOB.phonetic_alphabet)] \Roman[rand(1,50)]", announce=FALSE)
+	GLOB.priority_announcement.Announce("Priority Nanotrasen directive received. Project \"[name]\" details inbound.", "Incoming Priority Message", 'sound/AI/commandreport.ogg')
+	print_command_report(get_report(), "Nanotrasen Directive [pick(GLOB.phonetic_alphabet)] \Roman[rand(1,50)]", FALSE)
 	on_report()
 
 /datum/station_goal/proc/on_report()
@@ -29,11 +26,11 @@
 /datum/station_goal/proc/check_completion()
 	return completed
 
-/datum/station_goal/proc/get_result()
+/datum/station_goal/proc/print_result()
 	if(check_completion())
-		return "<li>[name] :  <span class='greentext'>Completed!</span></li>"
+		to_chat(world, "<b>Station Goal</b>: [name]:  <span class='greenannounce'>Completed!</span>")
 	else
-		return "<li>[name] : <span class='redtext'>Failed!</span></li>"
+		to_chat(world, "<b>Station Goal</b>: [name]: <span class='boldannounce'>Failed!</span>")
 
 /datum/station_goal/Destroy()
 	SSticker.mode.station_goals -= src
@@ -42,7 +39,7 @@
 /datum/station_goal/Topic(href, href_list)
 	..()
 
-	if(!check_rights(R_ADMIN) || !usr.client.holder.CheckAdminHref(href, href_list))
+	if(!check_rights(R_EVENT))
 		return
 
 	if(href_list["announce"])
@@ -50,18 +47,3 @@
 		send_report()
 	else if(href_list["remove"])
 		qdel(src)
-
-/*
-//Crew has to create alien intelligence detector
-// Requires a lot of minerals
-// Dish requires a lot of power
-// Needs five? AI's for decoding purposes
-/datum/station_goal/seti
-	name = "SETI Project"
-
-//Crew Sweep
-//Blood samples and special scans of amount of people on roundstart manifest.
-//Should keep sec busy.
-//Maybe after completion you'll get some ling detecting gear or some station wide DNA scan ?
-
-*/

@@ -1,17 +1,17 @@
 /* Simple object type, calls a proc when "stepped" on by something */
 
 /obj/effect/step_trigger
-	var/affect_ghosts = 0
-	var/stopper = 1 // stops throwers
+	var/affect_ghosts = FALSE
+	var/stopper = TRUE // stops throwers
 	var/mobs_only = FALSE
 	invisibility = INVISIBILITY_ABSTRACT // nope cant see this shit
 	anchored = TRUE
 
 /obj/effect/step_trigger/proc/Trigger(atom/movable/A)
-	return 0
+	return FALSE
 
-/obj/effect/step_trigger/Crossed(H as mob|obj)
-	..()
+/obj/effect/step_trigger/Crossed(H, oldloc)
+	. = ..()
 	if(!H)
 		return
 	if(isobserver(H) && !affect_ghosts)
@@ -19,7 +19,6 @@
 	if(!ismob(H) && mobs_only)
 		return
 	Trigger(H)
-
 
 /obj/effect/step_trigger/singularity_act()
 	return
@@ -52,7 +51,7 @@
 	var/list/affecting = list()
 
 /obj/effect/step_trigger/thrower/Trigger(atom/A)
-	if(!A || !ismovableatom(A))
+	if(!A || !ismovable(A))
 		return
 	var/atom/movable/AM = A
 	var/curtiles = 0
@@ -64,7 +63,7 @@
 	if(isliving(AM))
 		var/mob/living/M = AM
 		if(immobilize)
-			M.mobility_flags &= ~MOBILITY_MOVE
+			M.canmove = FALSE
 
 	affecting.Add(AM)
 	while(AM && !stopthrow)
@@ -101,8 +100,7 @@
 	if(isliving(AM))
 		var/mob/living/M = AM
 		if(immobilize)
-			M.mobility_flags |= MOBILITY_MOVE
-		M.update_mobility()
+			M.canmove = TRUE
 
 /* Stops things thrown by a thrower, doesn't do anything */
 

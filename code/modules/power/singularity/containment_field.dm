@@ -1,18 +1,16 @@
-
-
 /obj/machinery/field/containment
-	name = "containment field"
+	name = "Containment Field"
 	desc = "An energy field."
 	icon = 'icons/obj/singularity.dmi'
 	icon_state = "Contain_F"
-	density = FALSE
+	anchored = 1
+	density = 0
 	move_resist = INFINITY
 	resistance_flags = INDESTRUCTIBLE | LAVA_PROOF | FIRE_PROOF | UNACIDABLE | ACID_PROOF
+	flags_2 = RAD_NO_CONTAMINATE_2
 	use_power = NO_POWER_USE
-	interaction_flags_atom = NONE
-	interaction_flags_machine = NONE
 	light_range = 4
-	layer = ABOVE_OBJ_LAYER
+	layer = OBJ_LAYER + 0.1
 	var/obj/machinery/field/generator/FG1 = null
 	var/obj/machinery/field/generator/FG2 = null
 
@@ -21,13 +19,12 @@
 	FG2.fields -= src
 	return ..()
 
-//ATTACK HAND IGNORING PARENT RETURN VALUE
 /obj/machinery/field/containment/attack_hand(mob/user)
 	if(get_dist(src, user) > 1)
-		return FALSE
+		return 0
 	else
-		shock(user)
-		return TRUE
+		shock_field(user)
+		return 1
 
 /obj/machinery/field/containment/attackby(obj/item/W, mob/user, params)
 	shock(user)
@@ -36,15 +33,16 @@
 /obj/machinery/field/containment/play_attack_sound(damage_amount, damage_type = BRUTE, damage_flag = 0)
 	switch(damage_type)
 		if(BURN)
-			playsound(loc, 'sound/effects/empulse.ogg', 75, 1)
+			playsound(loc, 'sound/effects/empulse.ogg', 75, TRUE)
 		if(BRUTE)
-			playsound(loc, 'sound/effects/empulse.ogg', 75, 1)
+			playsound(loc, 'sound/effects/empulse.ogg', 75, TRUE)
 
 /obj/machinery/field/containment/blob_act(obj/structure/blob/B)
 	return FALSE
 
-/obj/machinery/field/containment/ex_act(severity, target)
-	return FALSE
+
+/obj/machinery/field/containment/ex_act(severity)
+	return 0
 
 /obj/machinery/field/containment/attack_animal(mob/living/simple_animal/M)
 	if(!FG1 || !FG2)
@@ -57,79 +55,73 @@
 	else
 		..()
 
-/obj/machinery/field/containment/Crossed(mob/mover)
+/obj/machinery/field/containment/Crossed(mob/mover, oldloc)
 	if(isliving(mover))
-		shock(mover)
+		shock_field(mover)
 
-	if(ismachinery(mover) || isstructure(mover) || ismecha(mover))
+	if(istype(mover, /obj/machinery) || istype(mover, /obj/structure) || istype(mover, /obj/mecha))
 		bump_field(mover)
 
 /obj/machinery/field/containment/proc/set_master(master1,master2)
 	if(!master1 || !master2)
-		return FALSE
+		return 0
 	FG1 = master1
 	FG2 = master2
-	return TRUE
+	return 1
 
-/obj/machinery/field/containment/shock(mob/living/user)
+/obj/machinery/field/containment/shock_field(mob/living/user)
 	if(!FG1 || !FG2)
 		qdel(src)
-		return FALSE
+		return 0
 	..()
 
 /obj/machinery/field/containment/Move()
 	qdel(src)
-	return FALSE
-
 
 // Abstract Field Class
 // Used for overriding certain procs
 
 /obj/machinery/field
-	var/hasShocked = FALSE //Used to add a delay between shocks. In some cases this used to crash servers by spawning hundreds of sparks every second.
+	var/hasShocked = 0 //Used to add a delay between shocks. In some cases this used to crash servers by spawning hundreds of sparks every second.
 
-/obj/machinery/field/Bumped(atom/movable/mover)
+/obj/machinery/field/CanPass(atom/movable/mover, turf/target, height=0)
 	if(hasShocked)
-		return
-	if(isliving(mover))
-		shock(mover)
-		return
-	if(ismachinery(mover) || isstructure(mover) || ismecha(mover))
+		return 0
+	if(isliving(mover)) // Don't let mobs through
+		shock_field(mover)
+		return 0
+	if(istype(mover, /obj/machinery) || istype(mover, /obj/structure) || istype(mover, /obj/mecha))
 		bump_field(mover)
-		return
-
-
-/obj/machinery/field/CanPass(atom/movable/mover, turf/target)
-	if(hasShocked || isliving(mover) || ismachinery(mover) || isstructure(mover) || ismecha(mover))
-		return FALSE
+		return 0
 	return ..()
 
-/obj/machinery/field/proc/shock(mob/living/user)
-	var/shock_damage = min(rand(30,40),rand(30,40))
+/obj/machinery/field/proc/shock_field(mob/living/user)
+	if(isliving(user))
+		var/shock_damage = min(rand(30,40),rand(30,40))
 
-	if(iscarbon(user))
-		user.Paralyze(300)
-		user.electrocute_act(shock_damage, src, 1)
+		if(isliving(user) && !issilicon(user))
+			var/stun = min(shock_damage, 15)
+			user.Stun(stun)
+			user.Weaken(10)
+			user.electrocute_act(shock_damage, src, 1)
 
-	else if(issilicon(user))
-		if(prob(20))
-			user.Stun(40)
-		user.take_overall_damage(0, shock_damage)
-		user.visible_message("<span class='danger'>[user.name] was shocked by the [src.name]!</span>", \
-		"<span class='userdanger'>Energy pulse detected, system damaged!</span>", \
-		"<span class='italics'>You hear an electrical crack.</span>")
+		else if(issilicon(user))
+			if(prob(20))
+				user.Stun(2)
+			user.take_overall_damage(0, shock_damage)
+			user.visible_message("<span class='danger'>[user.name] was shocked by [src]!</span>", \
+			"<span class='userdanger'>Energy pulse detected, system damaged!</span>", \
+			"<span class='italics'>You hear an electrical crack.</span>")
 
-	user.updatehealth()
-	bump_field(user)
-
-/obj/machinery/field/proc/clear_shock()
-	hasShocked = FALSE
+		user.updatehealth()
+		bump_field(user)
 
 /obj/machinery/field/proc/bump_field(atom/movable/AM as mob|obj)
 	if(hasShocked)
-		return FALSE
-	hasShocked = TRUE
-	do_sparks(5, TRUE, AM.loc)
+		return 0
+	hasShocked = 1
+	do_sparks(5, 1, AM.loc)
 	var/atom/target = get_edge_target_turf(AM, get_dir(src, get_step_away(AM, src)))
 	AM.throw_at(target, 200, 4)
-	addtimer(CALLBACK(src, .proc/clear_shock), 5)
+	spawn(5)
+		hasShocked = 0

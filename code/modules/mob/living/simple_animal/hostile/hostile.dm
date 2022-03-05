@@ -51,23 +51,23 @@
 	var/lose_patience_timer_id //id for a timer to call LoseTarget(), used to stop mobs fixating on a target they can't reach
 	var/lose_patience_timeout = 300 //30 seconds by default, so there's no major changes to AI behaviour, beyond actually bailing if stuck forever
 
-/mob/living/simple_animal/hostile/Initialize()
+/mob/living/simple_animal/hostile/Initialize(mapload)
 	. = ..()
 
 	if(!targets_from)
 		targets_from = src
 	wanted_objects = typecacheof(wanted_objects)
 
-
 /mob/living/simple_animal/hostile/Destroy()
 	targets_from = null
+	target = null
 	return ..()
 
-/mob/living/simple_animal/hostile/Life()
+/mob/living/simple_animal/hostile/Life(seconds, times_fired)
 	. = ..()
-	if(!.) //dead
-		walk(src, 0) //stops walking
-		return 0
+	if(!.)
+		walk(src, 0)
+		return FALSE
 
 /mob/living/simple_animal/hostile/handle_automated_action()
 	if(AIStatus == AI_OFF)
@@ -82,7 +82,7 @@
 			DestroyPathToTarget()
 		if(!MoveToTarget(possible_targets))     //if we lose our target
 			if(AIShouldSleep(possible_targets))	// we try to acquire a new one
-				toggle_ai(AI_IDLE)			// otherwise we go idle
+				toggle_ai(AI_IDLE)				// otherwise we go idle
 	return 1
 
 /mob/living/simple_animal/hostile/handle_automated_movement()
@@ -92,25 +92,25 @@
 		if(sidestep_per_cycle > 1) //For more than one just spread them equally - this could changed to some sensible distribution later
 			var/sidestep_delay = SSnpcpool.wait / sidestep_per_cycle
 			for(var/i in 1 to sidestep_per_cycle)
-				addtimer(cb, (i - 1)*sidestep_delay)
+				addtimer(cb, (i - 1) * sidestep_delay)
 		else //Otherwise randomize it to make the players guessing.
-			addtimer(cb,rand(1,SSnpcpool.wait))
+			addtimer(cb,rand(1, SSnpcpool.wait))
 
 /mob/living/simple_animal/hostile/proc/sidestep()
 	if(!target || !isturf(target.loc) || !isturf(loc) || stat == DEAD)
 		return
-	var/target_dir = get_dir(src,target)
+	var/target_dir = get_dir(src, target)
 
-	var/static/list/cardinal_sidestep_directions = list(-90,-45,0,45,90)
-	var/static/list/diagonal_sidestep_directions = list(-45,0,45)
+	var/static/list/cardinal_sidestep_directions = list(-90, -45, 0, 45, 90)
+	var/static/list/diagonal_sidestep_directions = list(-45, 0, 45)
 	var/chosen_dir = 0
 	if (target_dir & (target_dir - 1))
 		chosen_dir = pick(diagonal_sidestep_directions)
 	else
 		chosen_dir = pick(cardinal_sidestep_directions)
 	if(chosen_dir)
-		chosen_dir = turn(target_dir,chosen_dir)
-		Move(get_step(src,chosen_dir))
+		chosen_dir = turn(target_dir, chosen_dir)
+		Move(get_step(src, chosen_dir))
 		face_atom(target) //Looks better if they keep looking at you when dodging
 
 /mob/living/simple_animal/hostile/attacked_by(obj/item/I, mob/living/user)
@@ -129,17 +129,17 @@
 
 /mob/living/simple_animal/hostile/proc/ListTargets()//Step 1, find out what we can see
 	if(!search_objects)
-		var/static/target_list = typecacheof(list(/obj/machinery/porta_turret, /obj/mecha)) //mobs are handled via ismob(A)
-		. = list()
-		for(var/atom/A as() in dview(vision_range, get_turf(targets_from), SEE_INVISIBLE_MINIMUM))
-			if((ismob(A) && A != src) || target_list[A.type])
-				. += A
-	else
-		. = list()
-		for (var/atom/movable/A in oview(vision_range, targets_from))
-			. += A
+		. = hearers(vision_range, targets_from) - src //Remove self, so we don't suicide
 
-/mob/living/simple_animal/hostile/proc/FindTarget(var/list/possible_targets, var/HasTargetsList = 0)//Step 2, filter down possible targets to things we actually care about
+		var/static/hostile_machines = typecacheof(list(/obj/machinery/porta_turret, /obj/mecha))
+
+		for(var/HM in typecache_filter_list(range(vision_range, targets_from), hostile_machines))
+			if(can_see(targets_from, HM, vision_range))
+				. += HM
+	else
+		. = oview(vision_range, targets_from)
+
+/mob/living/simple_animal/hostile/proc/FindTarget(list/possible_targets, HasTargetsList = 0)//Step 2, filter down possible targets to things we actually care about
 	. = list()
 	if(!HasTargetsList)
 		possible_targets = ListTargets()
@@ -155,8 +155,6 @@
 	GiveTarget(Target)
 	return Target //We now have a target
 
-
-
 /mob/living/simple_animal/hostile/proc/PossibleThreats()
 	. = list()
 	for(var/pos_targ in ListTargets())
@@ -167,8 +165,6 @@
 		if(CanAttack(A))
 			. += A
 			continue
-
-
 
 /mob/living/simple_animal/hostile/proc/Found(atom/A)//This is here as a potential override to pick a specific target if available
 	return
@@ -196,7 +192,7 @@
 		if(M.status_flags & GODMODE)
 			return FALSE
 
-	if(see_invisible < the_target.invisibility)//Target's invisible to us, forget it
+	if(see_invisible < the_target.invisibility) //Target's invisible to us, forget it
 		return FALSE
 	if(search_objects < 2)
 		if(isliving(the_target))
@@ -204,8 +200,6 @@
 			var/faction_check = faction_check_mob(L)
 			if(robust_searching)
 				if(faction_check && !attack_same)
-					return FALSE
-				if(L.stat == UNCONSCIOUS && HAS_TRAIT(L, TRAIT_FAKEDEATH) && stat_attack < 3 )//Simplemobs don't see through fake death if you're out cold and they don't attack already dead mobs
 					return FALSE
 				if(L.stat > stat_attack)
 					return FALSE
@@ -224,9 +218,9 @@
 
 		if(istype(the_target, /obj/machinery/porta_turret))
 			var/obj/machinery/porta_turret/P = the_target
-			if(P.in_faction(src)) //Don't attack if the turret is in the same faction
+			if(P.faction in faction)
 				return FALSE
-			if(P.has_cover &&!P.raised) //Don't attack invincible turrets
+			if(!P.raised) //Don't attack invincible turrets
 				return FALSE
 			if(P.stat & BROKEN) //Or turrets that are already broken
 				return FALSE
@@ -316,9 +310,9 @@
 		approaching_target = FALSE
 	walk_to(src, target, minimum_distance, delay)
 
-/mob/living/simple_animal/hostile/adjustHealth(amount, updating_health = TRUE, forced = FALSE)
+/mob/living/simple_animal/hostile/adjustHealth(damage, updating_health = TRUE)
 	. = ..()
-	if(!ckey && !stat && search_objects < 3 && . > 0)//Not unconscious, and we don't ignore mobs
+	if(!ckey && !stat && search_objects < 3 && damage > 0)//Not unconscious, and we don't ignore mobs
 		if(search_objects)//Turn off item searching and ignore whatever item we were looking at, we're more concerned with fight or flight
 			target = null
 			LoseSearchObjects()
@@ -328,7 +322,6 @@
 		else if(target != null && prob(40))//No more pulling a mob forever and having a second player attack it, it can switch targets now if it finds a more suitable one
 			FindTarget()
 
-
 /mob/living/simple_animal/hostile/proc/AttackingTarget()
 	SEND_SIGNAL(src, COMSIG_HOSTILE_ATTACKINGTARGET, target)
 	in_melee = TRUE
@@ -337,9 +330,8 @@
 /mob/living/simple_animal/hostile/proc/Aggro()
 	vision_range = aggro_vision_range
 	if(target && emote_taunt.len && prob(taunt_chance))
-		INVOKE_ASYNC(src, /mob.proc/emote, "me", 1, "[pick(emote_taunt)] at [target].")
+		emote("me", 1, "[pick(emote_taunt)] at [target].")
 		taunt_chance = max(taunt_chance-7,2)
-
 
 /mob/living/simple_animal/hostile/proc/LoseAggro()
 	stop_automated_movement = 0
@@ -356,10 +348,13 @@
 //////////////END HOSTILE MOB TARGETTING AND AGGRESSION////////////
 
 /mob/living/simple_animal/hostile/death(gibbed)
+	// Only execute the below if we successfully died
+	. = ..(gibbed)
+	if(!.)
+		return FALSE
 	LoseTarget()
-	..(gibbed)
 
-/mob/living/simple_animal/hostile/proc/summon_backup(distance, exact_faction_match)
+/mob/living/simple_animal/hostile/proc/summon_backup(distance)
 	do_alert_animation(src)
 	playsound(loc, 'sound/machines/chime.ogg', 50, 1, -1)
 	for(var/mob/living/simple_animal/hostile/M in oview(distance, targets_from))
@@ -381,9 +376,7 @@
 /mob/living/simple_animal/hostile/proc/OpenFire(atom/A)
 	if(CheckFriendlyFire(A))
 		return
-
-	if(!(simple_mob_flags & SILENCE_RANGED_MESSAGE))
-		visible_message("<span class='danger'><b>[src]</b> [ranged_message] at [A]!</span>")
+	visible_message("<span class='danger'><b>[src]</b> [ranged_message] at [A]!</span>")
 
 
 	if(rapid > 1)
@@ -394,7 +387,6 @@
 		Shoot(A)
 	ranged_cooldown = world.time + ranged_cooldown_time
 
-
 /mob/living/simple_animal/hostile/proc/Shoot(atom/targeted_atom)
 	if( QDELETED(targeted_atom) || targeted_atom == targets_from.loc || targeted_atom == targets_from )
 		return
@@ -402,37 +394,35 @@
 	if(casingtype)
 		var/obj/item/ammo_casing/casing = new casingtype(startloc)
 		playsound(src, projectilesound, 100, 1)
-		casing.fire_casing(targeted_atom, src, null, null, null, ran_zone(), 0, 1,  src)
+		casing.fire(targeted_atom, src, zone_override = ran_zone())
 	else if(projectiletype)
 		var/obj/item/projectile/P = new projectiletype(startloc)
 		playsound(src, projectilesound, 100, 1)
+		P.current = startloc
 		P.starting = startloc
 		P.firer = src
-		P.fired_from = src
 		P.yo = targeted_atom.y - startloc.y
 		P.xo = targeted_atom.x - startloc.x
 		if(AIStatus != AI_ON)//Don't want mindless mobs to have their movement screwed up firing in space
 			newtonian_move(get_dir(targeted_atom, targets_from))
 		P.original = targeted_atom
-		P.preparePixelProjectile(targeted_atom, src)
+		P.preparePixelProjectile(targeted_atom, get_turf(targeted_atom), src)
 		P.fire()
 		return P
-
 
 /mob/living/simple_animal/hostile/proc/CanSmashTurfs(turf/T)
 	return iswallturf(T) || ismineralturf(T)
 
-
 /mob/living/simple_animal/hostile/Move(atom/newloc, dir , step_x , step_y)
 	if(dodging && approaching_target && prob(dodge_prob) && moving_diagonally == 0 && isturf(loc) && isturf(newloc))
-		return dodge(newloc,dir)
+		return dodge(newloc, dir)
 	else
 		return ..()
 
 /mob/living/simple_animal/hostile/proc/dodge(moving_to,move_direction)
 	//Assuming we move towards the target we want to swerve toward them to get closer
-	var/cdir = turn(move_direction,45)
-	var/ccdir = turn(move_direction,-45)
+	var/cdir = turn(move_direction, 45)
+	var/ccdir = turn(move_direction, -45)
 	dodging = FALSE
 	. = Move(get_step(loc,pick(cdir,ccdir)))
 	if(!.)//Can't dodge there so we just carry on
@@ -460,7 +450,7 @@
 		var/dir_to_target = get_dir(targets_from, target)
 		var/dir_list = list()
 		if(dir_to_target in GLOB.diagonals) //it's diagonal, so we need two directions to hit
-			for(var/direction in GLOB.cardinals)
+			for(var/direction in GLOB.cardinal)
 				if(direction & dir_to_target)
 					dir_list += direction
 		else
@@ -468,13 +458,11 @@
 		for(var/direction in dir_list) //now we hit all of the directions we got in this fashion, since it's the only directions we should actually need
 			DestroyObjectsInDirection(direction)
 
-
 /mob/living/simple_animal/hostile/proc/DestroySurroundings() // for use with megafauna destroying everything around them
 	if(environment_smash)
 		EscapeConfinement()
-		for(var/dir in GLOB.cardinals)
+		for(var/dir in GLOB.cardinal)
 			DestroyObjectsInDirection(dir)
-
 
 /mob/living/simple_animal/hostile/proc/EscapeConfinement()
 	if(buckled)
@@ -483,9 +471,8 @@
 		var/atom/A = targets_from.loc
 		A.attack_animal(src)//Bang on it till we get out
 
-
 /mob/living/simple_animal/hostile/proc/FindHidden()
-	if(istype(target.loc, /obj/structure/closet) || istype(target.loc, /obj/machinery/disposal) || istype(target.loc, /obj/machinery/sleeper))
+	if(istype(target.loc, /obj/structure/closet) || istype(target.loc, /obj/machinery/disposal) || istype(target.loc, /obj/machinery/sleeper) || istype(target.loc, /obj/machinery/bodyscanner) || istype(target.loc, /obj/machinery/recharge_station))
 		var/atom/A = target.loc
 		Goto(A,move_to_delay,minimum_distance)
 		if(A.Adjacent(targets_from))
@@ -501,7 +488,7 @@
 
 
 ////// AI Status ///////
-/mob/living/simple_animal/hostile/proc/AICanContinue(var/list/possible_targets)
+/mob/living/simple_animal/hostile/proc/AICanContinue(list/possible_targets)
 	switch(AIStatus)
 		if(AI_ON)
 			. = 1
@@ -512,7 +499,7 @@
 			else
 				. = 0
 
-/mob/living/simple_animal/hostile/proc/AIShouldSleep(var/list/possible_targets)
+/mob/living/simple_animal/hostile/proc/AIShouldSleep(list/possible_targets)
 	return !FindTarget(possible_targets, 1)
 
 
@@ -545,15 +532,15 @@
 	var/list/tlist
 	var/turf/T = get_turf(src)
 
-	if (!T)
+	if(!T)
 		return
 
-	if (!length(SSmobs.clients_by_zlevel[T.z])) // It's fine to use .len here but doesn't compile on 511
+	if(!length(SSmobs.clients_by_zlevel[T.z])) // It's fine to use .len here but doesn't compile on 511
 		toggle_ai(AI_Z_OFF)
 		return
 
 	var/cheap_search = isturf(T) && !is_station_level(T.z)
-	if (cheap_search)
+	if(cheap_search)
 		tlist = ListTargetsLazy(T.z)
 	else
 		tlist = ListTargets()
@@ -563,13 +550,13 @@
 			FindTarget()
 		toggle_ai(AI_ON)
 
-/mob/living/simple_animal/hostile/proc/ListTargetsLazy(var/_Z)//Step 1, find out what we can see
+/mob/living/simple_animal/hostile/proc/ListTargetsLazy(_Z)//Step 1, find out what we can see
 	var/static/hostile_machines = typecacheof(list(/obj/machinery/porta_turret, /obj/mecha))
 	. = list()
-	for (var/I in SSmobs.clients_by_zlevel[_Z])
+	for(var/I in SSmobs.clients_by_zlevel[_Z])
 		var/mob/M = I
-		if (get_dist(M, src) < vision_range)
-			if (isturf(M.loc))
+		if(get_dist(M, src) < vision_range)
+			if(isturf(M.loc))
 				. += M
-			else if (M.loc.type in hostile_machines)
+			else if(M.loc.type in hostile_machines)
 				. += M.loc

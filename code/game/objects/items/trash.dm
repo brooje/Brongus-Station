@@ -1,51 +1,54 @@
+//Items labled as 'trash' for the trash bag.
+//TODO: Make this an item var or something...
+
 //Added by Jack Rost
 /obj/item/trash
-	icon = 'icons/obj/janitor.dmi'
-	lefthand_file = 'icons/mob/inhands/misc/food_lefthand.dmi'
-	righthand_file = 'icons/mob/inhands/misc/food_righthand.dmi'
-	desc = "This is rubbish."
+	icon = 'icons/obj/trash.dmi'
 	w_class = WEIGHT_CLASS_TINY
+	desc = "This is rubbish."
 	resistance_flags = FLAMMABLE
 
+/obj/item/trash/decompile_act(obj/item/matter_decompiler/C, mob/user)
+	C.stored_comms["metal"] += 2
+	C.stored_comms["wood"] += 1
+	C.stored_comms["glass"] += 1
+	qdel(src)
+	return TRUE
+
 /obj/item/trash/raisins
-	name = "\improper 4no raisins"
+	name = "4no raisins"
 	icon_state= "4no_raisins"
 
 /obj/item/trash/candy
-	name = "candy"
+	name = "Candy"
 	icon_state= "candy"
 
 /obj/item/trash/cheesie
-	name = "cheesie honkers"
+	name = "Cheesie honkers"
 	icon_state = "cheesie_honkers"
 
 /obj/item/trash/chips
-	name = "chips"
+	name = "Chips"
 	icon_state = "chips"
 
-/obj/item/trash/boritos
-	name = "boritos bag"
-	icon_state = "boritos"
-	grind_results = list(/datum/reagent/aluminium = 1) //from the mylar bag
-
 /obj/item/trash/popcorn
-	name = "popcorn"
+	name = "Popcorn"
 	icon_state = "popcorn"
 
 /obj/item/trash/sosjerky
-	name = "\improper Scaredy's Private Reserve Beef Jerky"
+	name = "Scaredy's Private Reserve Beef Jerky"
 	icon_state = "sosjerky"
 
+/obj/item/trash/spacetwinkie
+	name = "Space Twinkie"
+	icon_state = "space_twinkie"
+
 /obj/item/trash/syndi_cakes
-	name = "syndi-cakes"
+	name = "Syndi cakes"
 	icon_state = "syndi_cakes"
 
-/obj/item/trash/energybar
-	name = "energybar wrapper"
-	icon_state = "energybar"
-
 /obj/item/trash/waffles
-	name = "waffles tray"
+	name = "Waffles"
 	icon_state = "waffles"
 
 /obj/item/trash/plate
@@ -53,16 +56,32 @@
 	icon_state = "plate"
 	resistance_flags = NONE
 
+/obj/item/trash/snack_bowl
+	name = "snack bowl"
+	icon_state	= "snack_bowl"
+
+/obj/item/trash/fried_vox
+	name = "Kentucky Fried Vox"
+	icon_state = "fried_vox_empty"
+	item_state = "fried_vox_empty"
+	slot_flags = SLOT_HEAD
+	dog_fashion = /datum/dog_fashion/head/fried_vox_empty
+	sprite_sheets = list(
+	"Skrell" = 'icons/mob/clothing/species/skrell/head.dmi',
+	"Drask" = 'icons/mob/clothing/species/drask/head.dmi',
+	"Kidan" = 'icons/mob/clothing/species/kidan/head.dmi'
+	)
+
 /obj/item/trash/pistachios
-	name = "pistachios pack"
+	name = "Pistachios pack"
 	icon_state = "pistachios_pack"
 
 /obj/item/trash/semki
-	name = "semki pack"
+	name = "Semki pack"
 	icon_state = "semki_pack"
 
 /obj/item/trash/tray
-	name = "tray"
+	name = "Tray"
 	icon_state = "tray"
 	resistance_flags = NONE
 
@@ -71,42 +90,37 @@
 	icon = 'icons/obj/candle.dmi'
 	icon_state = "candle4"
 
+/obj/item/trash/liquidfood
+	name = "\improper \"LiquidFood\" ration"
+	icon_state = "liquidfood"
+
 /obj/item/trash/can
 	name = "crushed can"
 	icon_state = "cola"
+	var/is_glass = 0
+	var/is_plastic = 0
 	resistance_flags = NONE
-	grind_results = list(/datum/reagent/aluminium = 10)
 
-/obj/item/trash/can/food/peaches
-	name = "canned peaches"
-	icon = 'icons/obj/food/food.dmi'
-	icon_state = "peachcan_empty"
+/obj/item/trash/gum
+	name = "chewed gum"
+	desc = "NOT free candy."
+	icon_state = "gum"
 
-/obj/item/trash/can/food/peaches/maint
-	name = "Maintenance Peaches"
-	icon_state = "peachcanmaint_empty"
+/obj/item/trash/tastybread
+	name = "bread tube"
+	icon_state = "tastybread"
 
-/obj/item/trash/can/food/beans
-	name = "tin of beans"
-	icon = 'icons/obj/food/food.dmi'
-	icon_state = "beans_empty"
+/obj/item/trash/spentcasing
+	icon = 'icons/obj/ammo.dmi'
+	name = "bullet casing"
+	desc = "A spent bullet casing. Smells like cordite."
+	icon_state = "gshell"
 
-/obj/item/trash/can/Initialize()
-	. = ..()
-	pixel_x = rand(-4,4)
-	pixel_y = rand(-4,4)
+/obj/item/trash/tapetrash
+	name = "old duct tape"
+	icon_state = "tape"
+	desc = "Not sticky anymore."
+	throw_range = 1
 
-/obj/item/trash/attack(mob/M, mob/living/user)
+/obj/item/trash/attack(mob/M as mob, mob/living/user as mob)
 	return
-
-/obj/item/trash/coal
-	name = "lump of coal"
-	icon = 'icons/obj/mining.dmi'
-	icon_state = "slag"
-	desc = "Someone's gotten on the naughty list."
-	grind_results = list(/datum/reagent/carbon = 20)
-
-/obj/item/trash/coal/burn()
-	visible_message("[src] fuses into a diamond! Someone wasn't so naughty after all...")
-	new /obj/item/stack/ore/diamond(loc)
-	qdel(src)

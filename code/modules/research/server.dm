@@ -1,251 +1,370 @@
-/obj/machinery/rnd/server
-	name = "\improper R&D Server"
-	desc = "A computer system running a deep neural network that processes arbitrary information to produce data useable in the development of new technologies. In layman's terms, it makes research points."
+/obj/machinery/r_n_d/server
+	name = "R&D Server"
 	icon = 'icons/obj/machines/research.dmi'
-	icon_state = "RD-server-on"
-	var/datum/techweb/stored_research
-	//Code for point mining here.
-	var/overheated = FALSE
-	var/working = TRUE
-	var/research_disabled = FALSE
+	icon_state = "RD-server"
+	var/datum/research/files
+	var/health = 100
+	var/list/id_with_upload = list()		//List of R&D consoles with upload to server access.
+	var/list/id_with_download = list()	//List of R&D consoles with download from server access.
+	var/id_with_upload_string = ""		//String versions for easy editing in map editor.
+	var/id_with_download_string = ""
 	var/server_id = 0
-	// some notes on this number
-	// as of 4/29/2020, the techweb was set that fed a constant of 52.3 no matter how many servers there were
-	// A coeffecent of sqrt(100/<servercount>) is set up on a per some older code.  Since there are normaly 2 servers this comes out to
-	// sqrt(100/2) = 7.07, then 52.3 /  7.07 = 7.40.  Since we have two servers per map, these are added together
-	// 7.40./2 = 3.70 (note, all these values are rounded).  This is howw this number was found.
-	var/base_mining_income = 3.70
+	var/heat_gen = 100
+	var/heating_power = 40000
+	var/delay = 10
+	req_access = list(ACCESS_RD) //Only the R&D can change server settings.
+	var/plays_sound = 0
 
-	// Heating is wierd.  Since  the servers are stored in a room that sucks air in one vent, into a pipe network, to a
-	// T1 freezer, then out another vent at standard presure, the rooms temps could vary as wieldy as 100K.  The T1 freezer
-	// has 10000 heat power at the start, so each of the servers produce that but only heat a quarter of the turf
-	// This allows the servers to rapidly heat up in under 5 min to the shut off point and make it annoying to cool back
-	// down, giving time for RD to fire the guy who shut off the cooler
+/obj/machinery/r_n_d/server/New()
+	..()
+	component_parts = list()
+	component_parts += new /obj/item/circuitboard/rdserver(null)
+	component_parts += new /obj/item/stock_parts/scanning_module(null)
+	component_parts += new /obj/item/stack/cable_coil(null,1)
+	component_parts += new /obj/item/stack/cable_coil(null,1)
+	RefreshParts()
+	initialize_serv(); //Agouri // fuck you agouri
 
-	var/heating_power = 10000		// Changed the value from 40000.  Just enough for a T1 freezer to keep up with 2 of them
-	var/heating_effecency = 0.25
-	var/temp_tolerance_low = T0C
-	var/temp_tolerance_high = T20C
-	var/temp_tolerance_damage = T0C + 200		// Most CPUS get up to 200C they start breaking.  TODO: Start doing damage to the server?
-	var/temp_penalty_coefficient = 0.5	//1 = -1 points per degree above high tolerance. 0.5 = -0.5 points per degree above high tolerance.
-	var/current_temp = -1
-	req_access = list(ACCESS_RD) //ONLY THE R&D CAN CHANGE SERVER SETTINGS.
-
-/obj/machinery/rnd/server/Initialize(mapload)
-	. = ..()
-
-	server_id = 0
-	while(server_id == 0)
-		var/test_id = rand(1,65535)
-		// Humm. we should make a lookup in glob for a hash look up on machines...latter
-		for(var/obj/machinery/rnd/server/S in SSresearch.servers)
-			if(test_id == S.server_id)
-				test_id = 0
-		server_id = test_id
-
-	name += " [uppertext(num2hex(server_id, -1))]" //gives us a random four-digit hex number as part of the name. Y'know, for fluff.
-	SSresearch.servers |= src
-	stored_research = SSresearch.science_tech
-	var/obj/item/circuitboard/machine/B = new /obj/item/circuitboard/machine/rdserver(null)
-	B.apply_default_parts(src)
-	// The +10 is so the sparks work
+/obj/machinery/r_n_d/server/upgraded/New()
+	..()
+	component_parts = list()
+	component_parts += new /obj/item/circuitboard/rdserver(null)
+	component_parts += new /obj/item/stock_parts/scanning_module/phasic(null)
+	component_parts += new /obj/item/stack/cable_coil(null,1)
+	component_parts += new /obj/item/stack/cable_coil(null,1)
 	RefreshParts()
 
-/obj/machinery/rnd/server/Destroy()
-	SSresearch.servers -= src
+/obj/machinery/r_n_d/server/Destroy()
+	griefProtection()
 	return ..()
 
-/obj/machinery/rnd/server/RefreshParts()
+/obj/machinery/r_n_d/server/RefreshParts()
 	var/tot_rating = 0
 	for(var/obj/item/stock_parts/SP in src)
 		tot_rating += SP.rating
-	heating_power = heating_power / max(1, tot_rating)
+	heat_gen /= max(1, tot_rating)
 
-/obj/machinery/rnd/server/update_icon()
-	if (panel_open)
-		icon_state = "RD-server-on_t"
+/obj/machinery/r_n_d/server/update_icon()
+	if(stat & NOPOWER)
+		icon_state = "[initial(icon_state)]-off"
 		return
-	if (stat & EMPED || stat & NOPOWER)
-		icon_state = "RD-server-off"
-		return
-	if (research_disabled || overheated)
-		icon_state = "RD-server-halt"
-		return
-	icon_state = "RD-server-on"
+	icon_state = "[initial(icon_state)]-on"
 
-/obj/machinery/rnd/server/power_change()
+/obj/machinery/r_n_d/server/power_change()
 	. = ..()
-	refresh_working()
-	return
-
-/obj/machinery/rnd/server/process()
-	if(!working)
-		current_temp = -1
-		return
-	var/turf/L = get_turf(src)
-	var/datum/gas_mixture/env
-	if(istype(L))
-		env = L.return_air()
-		// This is from the RD server code.  It works well enough but I need to move over the
-		// sspace heater code so we can caculate power used per tick as well and making this both
-		// exothermic and an endothermic component
-		if(env && env.return_temperature() < T20C + 80)
-
-			var/transfer_moles = 0.25 * env.total_moles()
-
-			var/datum/gas_mixture/removed = env.remove(transfer_moles)
-
-			if(removed)
-				var/heat_capacity = removed.heat_capacity()
-				if(heat_capacity == 0 || heat_capacity == null)
-					heat_capacity = 1
-				removed.set_temperature(min((removed.return_temperature()*heat_capacity + heating_power)/heat_capacity, 1000))
-
-			current_temp = removed.return_temperature()
-			env.merge(removed)
-			src.air_update_turf()
-		else
-			current_temp = env ? env.return_temperature() : -1
-
-/obj/machinery/rnd/server/proc/get_env_temp()
-	// if we are on and ran though one tick
-	if(working && current_temp >= 0)
-		return current_temp
-	else
-		// otherwise we get the temp from the turf
-		var/turf/L = get_turf(src)
-		var/datum/gas_mixture/env
-		if(istype(L))
-			env = L.return_air()
-		return env ? env.return_temperature() : T20C			// env might be null at round start.  This stops runtimes
-
-/obj/machinery/rnd/server/proc/refresh_working()
-	var/current_temp  = get_env_temp()
-
-	// Once we go over the damage temp, the breaker is flipped
-	// Power is still going to the server
-	if(!overheated && current_temp >= temp_tolerance_damage)
-		investigate_log("[src] overheated!", INVESTIGATE_RESEARCH)		// Do we need this?
-		overheated = TRUE
-
-	// If we are over heated, the server will not restart till
-	// eveything is at a safe temp
-	if(overheated && current_temp <= temp_tolerance_low)
-		overheated = FALSE
-
-	// If we are overheateed, start shooting out sparks
-	// don't shoot them if we have no power
-	if(overheated && !(stat & NOPOWER) && prob(40))
-		do_sparks(5, FALSE, src)
-
-	if(overheated || research_disabled || stat & EMPED || stat & NOPOWER)
-		working = FALSE
-	else
-		working = TRUE
-
 	update_icon()
 
-/obj/machinery/rnd/server/emp_act()
-	. = ..()
-	if(. & EMP_PROTECT_SELF)
-		return
-	stat |= EMPED
-	// Side note, make a little status screen on the server to show the reboot
-	addtimer(CALLBACK(src, .proc/unemp), 600)
-	refresh_working()
+/obj/machinery/r_n_d/server/proc/initialize_serv()
+	if(!files)
+		files = new /datum/research(src)
+	var/list/temp_list
+	if(!id_with_upload.len)
+		temp_list = list()
+		temp_list = splittext(id_with_upload_string, ";")
+		for(var/N in temp_list)
+			id_with_upload += text2num(N)
+	if(!id_with_download.len)
+		temp_list = list()
+		temp_list = splittext(id_with_download_string, ";")
+		for(var/N in temp_list)
+			id_with_download += text2num(N)
 
-/obj/machinery/rnd/server/proc/unemp()
-	stat &= ~EMPED
-	refresh_working()
+/obj/machinery/r_n_d/server/process()
+	if(prob(3) && plays_sound)
+		playsound(loc, "computer_ambience", 50, 1)
 
-/obj/machinery/rnd/server/proc/toggle_disable()
-	research_disabled = !research_disabled
-	refresh_working()
-
-/obj/machinery/rnd/server/proc/mine()
-	// Cheap way to refresh if we are operational or not.  mine() is run on the tech web
-	// subprocess.  This saves us having to run our own subprocess
-	refresh_working()
-	if(working)
-		var/penalty = max((get_env_temp() - temp_tolerance_high), 0) * temp_penalty_coefficient
-		return list(TECHWEB_POINT_TYPE_GENERIC = max(base_mining_income - penalty, 0))
+	var/datum/gas_mixture/environment = loc.return_air()
+	switch(environment.temperature)
+		if(0 to T0C)
+			health = min(100, health + 1)
+		if(T0C to (T20C + 20))
+			health = clamp(health, 0, 100)
+		if((T20C + 20) to (T0C + 70))
+			health = max(0, health - 1)
+	if(health <= 0)
+		/*griefProtection() This seems to get called twice before running any code that deletes/damages the server or it's files anwyay.
+							refreshParts and the hasReq procs that get called by this are laggy and do not need to be called by every server on the map every tick */
+		var/updateRD = 0
+		files.known_designs = list()
+		for(var/v in files.known_tech)
+			var/datum/tech/T = files.known_tech[v]
+			// Slowly decrease research if health drops below 0
+			if(prob(1))
+				updateRD++
+				T.level--
+		if(updateRD)
+			files.RefreshResearch()
+	if(delay)
+		delay--
 	else
-		return list(TECHWEB_POINT_TYPE_GENERIC = 0)
+		produce_heat(heat_gen)
+		delay = initial(delay)
+
+/obj/machinery/r_n_d/server/emp_act(severity)
+	griefProtection()
+	..()
+
+
+/obj/machinery/r_n_d/server/ex_act(severity)
+	griefProtection()
+	return ..()
+
+/obj/machinery/r_n_d/server/blob_act(obj/structure/blob/B)
+	griefProtection()
+	return ..()
+
+// Backup files to CentComm to help admins recover data after griefer attacks
+/obj/machinery/r_n_d/server/proc/griefProtection()
+	for(var/obj/machinery/r_n_d/server/centcom/C in GLOB.machines)
+		files.push_data(C.files)
+
+/obj/machinery/r_n_d/server/proc/produce_heat(heat_amt)
+	if(!(stat & (NOPOWER|BROKEN))) // Blatantly stolen from space heater.
+		var/turf/simulated/L = loc
+		if(istype(L))
+			var/datum/gas_mixture/env = L.return_air()
+			if(env.temperature < (heat_amt+T0C))
+
+				var/transfer_moles = 0.25 * env.total_moles()
+
+				var/datum/gas_mixture/removed = env.remove(transfer_moles)
+
+				if(removed)
+
+					var/heat_capacity = removed.heat_capacity()
+					if(heat_capacity == 0 || heat_capacity == null)
+						heat_capacity = 1
+					removed.temperature = min((removed.temperature*heat_capacity + heating_power)/heat_capacity, 1000)
+
+				env.merge(removed)
+				air_update_turf()
+
+/obj/machinery/r_n_d/server/attackby(obj/item/O as obj, mob/user as mob, params)
+	if(disabled)
+		return
+
+	if(shocked)
+		shock(user,50)
+
+	if(istype(O, /obj/item/screwdriver))
+		default_deconstruction_screwdriver(user, "RD-server-on_t", "RD-server-on", O)
+		return 1
+
+	if(exchange_parts(user, O))
+		return 1
+
+	if(panel_open)
+		if(istype(O, /obj/item/crowbar))
+			griefProtection()
+			default_deconstruction_crowbar(user, O)
+			return 1
+	else
+		return ..()
+
+/obj/machinery/r_n_d/server/attack_hand(mob/user as mob)
+	if(disabled)
+		return
+
+	if(shocked)
+		shock(user,50)
+	return
+
+/obj/machinery/r_n_d/server/centcom
+	name = "CentComm. Central R&D Database"
+	server_id = -1
+
+/obj/machinery/r_n_d/server/centcom/Initialize()
+	..()
+	var/list/no_id_servers = list()
+	var/list/server_ids = list()
+	for(var/obj/machinery/r_n_d/server/S in GLOB.machines)
+		switch(S.server_id)
+			if(-1)
+				continue
+			if(0)
+				no_id_servers += S
+			else
+				server_ids += S.server_id
+
+	for(var/obj/machinery/r_n_d/server/S in no_id_servers)
+		var/num = 1
+		while(!S.server_id)
+			if(num in server_ids)
+				num++
+			else
+				S.server_id = num
+				server_ids += num
+		no_id_servers -= S
+
+/obj/machinery/r_n_d/server/centcom/process()
+	return PROCESS_KILL	//don't need process()
+
 
 /obj/machinery/computer/rdservercontrol
-	name = "R&D Server Controller"
-	desc = "Used to manage access to research and manufacturing databases."
+	name = "\improper R&D server controller"
 	icon_screen = "rdcomp"
 	icon_keyboard = "rd_key"
-	req_access = list(ACCESS_RD)
-	circuit = /obj/item/circuitboard/computer/rdservercontrol
+	light_color = LIGHT_COLOR_FADEDPURPLE
+	circuit = /obj/item/circuitboard/rdservercontrol
+	var/screen = 0
+	var/obj/machinery/r_n_d/server/temp_server
+	var/list/servers = list()
+	var/list/consoles = list()
+	var/badmin = 0
 
-
-
-
-/obj/machinery/computer/rdservercontrol/ui_state(mob/user)
-	return GLOB.default_state
-
-/obj/machinery/computer/rdservercontrol/ui_interact(mob/user, datum/tgui/ui)
-	ui = SStgui.try_update_ui(user, src, ui)
-	if(!ui)
-		ui = new(user, src, "RDConsole")
-		ui.open()
-
-/obj/machinery/computer/rdservercontrol/ui_data(mob/user)
-	var/list/data = list()
-	var/servers[0]
-	for(var/obj/machinery/rnd/server/S in SSresearch.servers)
-		servers += list(list(
-			"name" = S.name,
-			"server_id" = S.server_id,
-			"temperature" = S.get_env_temp(),
-			"temperature_warning" = S.temp_tolerance_high,
-			"temperature_max" = S.temp_tolerance_damage,
-			"enabled" = !S.research_disabled,
-			"overheated" = S.overheated,
-		))
-	data["servers"] = servers
-
-	var/datum/techweb/stored_research = SSresearch.science_tech
-	if(stored_research.research_logs.len)
-		var/rlogs[0]
-		for(var/i=stored_research.research_logs.len, i>0, i--)
-			var/list/L = stored_research.research_logs[i]
-			rlogs += list(list(
-				"entry" = i,
-				"research_name" = L[1],
-				"cost" = L[2],
-				"researcher_name" = L[3],
-				"location" = L[4],
-			))
-		data["logs"] = rlogs
-
-	return data
-
-/obj/machinery/computer/rdservercontrol/ui_act(action, params)
+/obj/machinery/computer/rdservercontrol/Topic(href, href_list)
 	if(..())
 		return
-	if(!allowed(usr))
-		to_chat(usr, "<span class='warning'>Access denied.</span>")
+
+	add_fingerprint(usr)
+	usr.set_machine(src)
+	if(!src.allowed(usr) && !emagged)
+		to_chat(usr, "<span class='warning'>You do not have the required access level</span>")
 		return
-	switch(action)
-		if("enable_server")
-			var/test_id = params["server_id"]
-			if(istext(test_id))
-				test_id = text2num(test_id)		// Not sure why its sent as a string
 
-			for(var/obj/machinery/rnd/server/S in SSresearch.servers)
-				if(S.server_id == test_id)
-					S.toggle_disable()
+	if(href_list["main"])
+		screen = 0
 
-					investigate_log("[S.name] was turned [S.research_disabled ? "off" : "on"] by [key_name(usr)]", INVESTIGATE_RESEARCH)
-					. = TRUE
+	else if(href_list["access"] || href_list["data"] || href_list["transfer"])
+		temp_server = null
+		consoles = list()
+		servers = list()
+		for(var/obj/machinery/r_n_d/server/S in GLOB.machines)
+			if(S.server_id == text2num(href_list["access"]) || S.server_id == text2num(href_list["data"]) || S.server_id == text2num(href_list["transfer"]))
+				temp_server = S
+				break
+		if(href_list["access"])
+			screen = 1
+			for(var/obj/machinery/computer/rdconsole/C in GLOB.machines)
+				if(C.sync)
+					consoles += C
+		else if(href_list["data"])
+			screen = 2
+		else if(href_list["transfer"])
+			screen = 3
+			for(var/obj/machinery/r_n_d/server/S in GLOB.machines)
+				if(S == src)
+					continue
+				servers += S
+
+	else if(href_list["upload_toggle"])
+		var/num = text2num(href_list["upload_toggle"])
+		if(num in temp_server.id_with_upload)
+			temp_server.id_with_upload -= num
+		else
+			temp_server.id_with_upload += num
+
+	else if(href_list["download_toggle"])
+		var/num = text2num(href_list["download_toggle"])
+		if(num in temp_server.id_with_download)
+			temp_server.id_with_download -= num
+		else
+			temp_server.id_with_download += num
+
+	else if(href_list["reset_tech"])
+		var/choice = alert("Technology Data Reset", "Are you sure you want to reset this technology to its default data? Data lost cannot be recovered.", "Continue", "Cancel")
+		if(choice == "Continue")
+			for(var/I in temp_server.files.known_tech)
+				var/datum/tech/T = temp_server.files.known_tech[I]
+				if(T.id == href_list["reset_tech"])
+					T.level = 1
 					break
+		temp_server.files.RefreshResearch()
 
-/obj/machinery/computer/rdservercontrol/emag_act(mob/user)
-	if(obj_flags & EMAGGED)
+	else if(href_list["reset_design"])
+		var/choice = alert("Design Data Deletion", "Are you sure you want to delete this design? Data lost cannot be recovered.", "Continue", "Cancel")
+		if(choice == "Continue")
+			for(var/I in temp_server.files.known_designs)
+				var/datum/design/D = temp_server.files.known_designs[I]
+				if(D.id == href_list["reset_design"])
+					temp_server.files.known_designs -= D.id
+					break
+		temp_server.files.RefreshResearch()
+
+	updateUsrDialog()
+	return
+
+/obj/machinery/computer/rdservercontrol/attack_hand(mob/user as mob)
+	if(stat & (BROKEN|NOPOWER))
 		return
-	playsound(src, "sparks", 75, 1)
-	obj_flags |= EMAGGED
-	to_chat(user, "<span class='notice'>You disable the security protocols.</span>")
+	user.set_machine(src)
+	var/dat = ""
+
+	switch(screen)
+		if(0) //Main Menu
+			dat += "Connected Servers:<BR><BR>"
+
+			for(var/obj/machinery/r_n_d/server/S in GLOB.machines)
+				if(istype(S, /obj/machinery/r_n_d/server/centcom) && !badmin)
+					continue
+				dat += "[S.name] || "
+				dat += "<A href='?src=[UID()];access=[S.server_id]'>Access Rights</A> | "
+				dat += "<A href='?src=[UID()];data=[S.server_id]'>Data Management</A>"
+				if(badmin) dat += " | <A href='?src=[UID()];transfer=[S.server_id]'>Server-to-Server Transfer</A>"
+				dat += "<BR>"
+
+		if(1) //Access rights menu
+			dat += "[temp_server.name] Access Rights<BR><BR>"
+			dat += "Consoles with Upload Access<BR>"
+			for(var/obj/machinery/computer/rdconsole/C in consoles)
+				var/turf/console_turf = get_turf(C)
+				dat += "* <A href='?src=[UID()];upload_toggle=[C.id]'>[console_turf.loc]" //FYI, these are all numeric ids, eventually.
+				if(C.id in temp_server.id_with_upload)
+					dat += " (Remove)</A><BR>"
+				else
+					dat += " (Add)</A><BR>"
+			dat += "Consoles with Download Access<BR>"
+			for(var/obj/machinery/computer/rdconsole/C in consoles)
+				var/turf/console_turf = get_turf(C)
+				dat += "* <A href='?src=[UID()];download_toggle=[C.id]'>[console_turf.loc]"
+				if(C.id in temp_server.id_with_download)
+					dat += " (Remove)</A><BR>"
+				else
+					dat += " (Add)</A><BR>"
+			dat += "<HR><A href='?src=[UID()];main=1'>Main Menu</A>"
+
+		if(2) //Data Management menu
+			dat += "[temp_server.name] Data Management<BR><BR>"
+			dat += "Known Technologies<BR>"
+			for(var/I in temp_server.files.known_tech)
+				var/datum/tech/T = temp_server.files.known_tech[I]
+				if(T.level <= 0)
+					continue
+				dat += "* [T.name] "
+				dat += "<A href='?src=[UID()];reset_tech=[T.id]'>(Reset)</A><BR>" //FYI, these are all strings.
+			dat += "Known Designs<BR>"
+			for(var/I in temp_server.files.known_designs)
+				var/datum/design/D = temp_server.files.known_designs[I]
+				dat += "* [D.name] "
+				dat += "<A href='?src=[UID()];reset_design=[D.id]'>(Delete)</A><BR>"
+			dat += "<HR><A href='?src=[UID()];main=1'>Main Menu</A>"
+
+		if(3) //Server Data Transfer
+			dat += "[temp_server.name] Server to Server Transfer<BR><BR>"
+			dat += "Send Data to what server?<BR>"
+			for(var/obj/machinery/r_n_d/server/S in servers)
+				dat += "[S.name] <A href='?src=[UID()];send_to=[S.server_id]'> (Transfer)</A><BR>"
+			dat += "<HR><A href='?src=[UID()];main=1'>Main Menu</A>"
+	user << browse("<TITLE>R&D Server Control</TITLE><HR>[dat]", "window=server_control;size=575x400")
+	onclose(user, "server_control")
+	return
+
+/obj/machinery/computer/rdservercontrol/emag_act(user as mob)
+	if(!emagged)
+		playsound(src.loc, 'sound/effects/sparks4.ogg', 75, 1)
+		emagged = 1
+		to_chat(user, "<span class='notice'>You you disable the security protocols</span>")
+	src.updateUsrDialog()
+
+/obj/machinery/r_n_d/server/core
+	name = "Core R&D Server"
+	id_with_upload_string = "1;3"
+	id_with_download_string = "1;3"
+	server_id = 1
+	plays_sound = 1
+
+/obj/machinery/r_n_d/server/robotics
+	name = "Robotics R&D Server"
+	id_with_upload_string = "1;2;4"
+	id_with_download_string = "1;2;4"
+	server_id = 2

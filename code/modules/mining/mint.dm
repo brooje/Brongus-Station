@@ -6,130 +6,107 @@
 	icon = 'icons/obj/economy.dmi'
 	icon_state = "coinpress0"
 	density = TRUE
-	input_dir = EAST
-
-
-	var/obj/item/storage/bag/money/bag_to_use
-	var/produced_coins = 0 // how many coins the machine has made in it's last cycle
+	anchored = TRUE
+	var/newCoins = 0   //how many coins the machine made in it's last load
 	var/processing = FALSE
-	var/chosen = /datum/material/iron //which material will be used to make coins
+	var/chosen = MAT_METAL //which material will be used to make coins
+	var/coinsToProduce = 10
+	speed_process = TRUE
 
 
-/obj/machinery/mineral/mint/Initialize()
-	. = ..()
-	AddComponent(/datum/component/material_container, list(
-		/datum/material/iron,
-		/datum/material/plasma,
-		/datum/material/silver,
-		/datum/material/gold,
-		/datum/material/uranium,
-		/datum/material/titanium,
-		/datum/material/diamond,
-		/datum/material/bananium,
-		/datum/material/plastic
-	), MINERAL_MATERIAL_AMOUNT * 75, FALSE, /obj/item/stack)
-	chosen = getmaterialref(chosen)
-
+/obj/machinery/mineral/mint/New()
+	..()
+	AddComponent(/datum/component/material_container, list(MAT_METAL, MAT_PLASMA, MAT_SILVER, MAT_GOLD, MAT_URANIUM, MAT_DIAMOND, MAT_BANANIUM, MAT_TRANQUILLITE), MINERAL_MATERIAL_AMOUNT * 50, FALSE, /obj/item/stack)
 
 /obj/machinery/mineral/mint/process()
 	var/turf/T = get_step(src, input_dir)
-	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
-
-	for(var/obj/item/stack/O in T)
-		var/inserted = materials.insert_item(O)
-		if(inserted)
-			qdel(O)
-
-	if(processing)
-		var/datum/material/M = chosen
-
-		if(!M)
-			processing = FALSE
-			icon_state = "coinpress0"
-			return
-
-		icon_state = "coinpress1"
-		var/coin_mat = MINERAL_MATERIAL_AMOUNT
-
-		for(var/sheets in 1 to 2)
-			if(materials.use_amount_mat(coin_mat, chosen))
-				for(var/coin_to_make in 1 to 5)
-					create_coins()
-					produced_coins++
-			else
-				var/found_new = FALSE
-				for(var/datum/material/inserted_material in materials.materials)
-					var/amount = materials.get_material_amount(inserted_material)
-
-					if(amount)
-						chosen = inserted_material
-						found_new = TRUE
-
-				if(!found_new)
-					processing = FALSE
-	else
-		icon_state = "coinpress0"
-
-
-/obj/machinery/mineral/mint/ui_state(mob/user)
-	return GLOB.default_state
-
-/obj/machinery/mineral/mint/ui_interact(mob/user, datum/tgui/ui)
-	ui = SStgui.try_update_ui(user, src, ui)
-	if(!ui)
-		ui = new(user, src, "Mint")
-		ui.open()
-
-/obj/machinery/mineral/mint/ui_data()
-	var/list/data = list()
-	data["inserted_materials"] = list()
-	data["chosen_material"] = null
-
-	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
-	for(var/datum/material/inserted_material in materials.materials)
-		var/amount = materials.get_material_amount(inserted_material)
-
-		if(!amount)
-			continue
-		data["inserted_materials"] += list(list(
-			"material" = inserted_material.name,
-			"amount" = amount,
-		))
-		if(chosen == inserted_material)
-			data["chosen_material"] = inserted_material.name
-
-	data["produced_coins"] = produced_coins
-	data["processing"] = processing
-
-	return data;
-
-/obj/machinery/mineral/mint/ui_act(action, params, datum/tgui/ui)
-
-	. = ..()
-	if(.)
+	if(!T)
 		return
 
-	switch(action)
-		if ("startpress")
-			if (!processing)
-				produced_coins = 0
-			processing = TRUE
-		if ("stoppress")
-			processing = FALSE
-		if ("changematerial")
-			var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
-			for(var/datum/material/mat in materials.materials)
-				if (params["material_name"] == mat.name)
-					chosen = mat
+	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
+	for(var/obj/item/stack/sheet/O in T)
+		materials.insert_stack(O, O.amount)
 
-/obj/machinery/mineral/mint/proc/create_coins()
+/obj/machinery/mineral/mint/attack_hand(mob/user)
+	if(..())
+		return
+	var/dat = "<b>Coin Press</b><br>"
+
+	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
+	for(var/mat_id in materials.materials)
+		var/datum/material/M = materials.materials[mat_id]
+		if(!M.amount && chosen != mat_id)
+			continue
+		dat += "<br><b>[M.name] amount:</b> [M.amount] cm<sup>3</sup> "
+		if(chosen == mat_id)
+			dat += "<b>Chosen</b>"
+		else
+			dat += "<A href='?src=[UID()];choose=[mat_id]'>Choose</A>"
+
+	var/datum/material/M = materials.materials[chosen]
+
+	dat += "<br><br>Will produce [coinsToProduce] [lowertext(M.name)] coins if enough materials are available.<br>"
+	dat += "<A href='?src=[UID()];chooseAmt=-10'>-10</A> "
+	dat += "<A href='?src=[UID()];chooseAmt=-5'>-5</A> "
+	dat += "<A href='?src=[UID()];chooseAmt=-1'>-1</A> "
+	dat += "<A href='?src=[UID()];chooseAmt=1'>+1</A> "
+	dat += "<A href='?src=[UID()];chooseAmt=5'>+5</A> "
+	dat += "<A href='?src=[UID()];chooseAmt=10'>+10</A> "
+
+	dat += "<br><br>In total this machine produced <font color='green'><b>[newCoins]</b></font> coins."
+	dat += "<br><A href='?src=[UID()];makeCoins=[1]'>Make coins</A>"
+	user << browse(dat, "window=mint")
+
+/obj/machinery/mineral/mint/Topic(href, href_list)
+	if(..())
+		return
+	usr.set_machine(src)
+	add_fingerprint(usr)
+	if(processing == 1)
+		to_chat(usr, "<span class='notice'>The machine is processing.</span>")
+		return
+	var/datum/component/material_container/materials = GetComponent(/datum/component/material_container)
+	if(href_list["choose"])
+		if(materials.materials[href_list["choose"]])
+			chosen = href_list["choose"]
+	if(href_list["chooseAmt"])
+		coinsToProduce = clamp(coinsToProduce + text2num(href_list["chooseAmt"]), 0, 1000)
+	if(href_list["makeCoins"])
+		var/temp_coins = coinsToProduce
+		processing = TRUE
+		icon_state = "coinpress1"
+		var/coin_mat = MINERAL_MATERIAL_AMOUNT * 0.2
+		var/datum/material/M = materials.materials[chosen]
+		if(!M || !M.coin_type)
+			updateUsrDialog()
+			return
+
+		while(coinsToProduce > 0 && materials.can_use_amount(coin_mat, chosen))
+			if(!create_coins(M.coin_type))
+				visible_message("<span class='notice'>[src] stops printing to prevent an overflow.</span>")
+				break
+			materials.use_amount_type(coin_mat, chosen)
+			coinsToProduce--
+			newCoins++
+			updateUsrDialog()
+			sleep(5)
+
+		icon_state = "coinpress0"
+		processing = FALSE
+		coinsToProduce = temp_coins
+	updateUsrDialog()
+
+/obj/machinery/mineral/mint/proc/create_coins(P)
 	var/turf/T = get_step(src,output_dir)
-	var/temp_list = list()
-	temp_list[chosen] = 400
-	if(T)
-		var/obj/item/O = new /obj/item/coin(src)
-		O.set_custom_materials(temp_list)
-		if(QDELETED(bag_to_use) || (bag_to_use.loc != T) || !SEND_SIGNAL(bag_to_use, COMSIG_TRY_STORAGE_INSERT, O, null, TRUE)) //important to send the signal so we don't overfill the bag.
-			bag_to_use = new(src) //make a new bag if we can't find or use the old one.
-			unload_mineral(bag_to_use) //just forcemove memes.
-			O.forceMove(bag_to_use) //don't bother sending the signal, the new bag is empty and all that.
+	if(!T)
+		return FALSE
+	var/obj/item/O = new P(src)
+	var/obj/item/storage/bag/money/M = locate(/obj/item/storage/bag/money, T)
+	if(!M)
+		M = new /obj/item/storage/bag/money(src)
+		unload_mineral(M)
+	else if(!M.can_be_inserted(O, FALSE)) // First coin will always fit. But will the Xth?
+		qdel(O)
+		return FALSE
+	O.forceMove(M)
+	return TRUE

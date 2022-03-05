@@ -1,158 +1,233 @@
 /obj/structure/closet/secure_closet/medical1
 	name = "medicine closet"
-	desc = "Filled to the brim with medical junk."
+	desc = "Filled with medical junk."
 	icon_state = "med"
+	open_door_sprite = "med_door"
+	icon_opened = "med_open"
 	req_access = list(ACCESS_MEDICAL)
 
-/obj/structure/closet/secure_closet/medical1/PopulateContents()
-	..()
-	var/static/items_inside = list(
-		/obj/item/reagent_containers/glass/beaker = 2,
-		/obj/item/reagent_containers/dropper = 2,
-		/obj/item/storage/belt/medical = 1,
-		/obj/item/storage/box/syringes = 1,
-		/obj/item/reagent_containers/glass/bottle/toxin = 1,
-		/obj/item/reagent_containers/glass/bottle/morphine = 2,
-		/obj/item/reagent_containers/glass/bottle/epinephrine= 3,
-		/obj/item/reagent_containers/glass/bottle/charcoal = 3,
-		/obj/item/storage/box/rxglasses = 1,
-		/obj/item/stack/ducts/fifty = 4,
-		/obj/item/construction/plumbing = 2,
-		/obj/item/plunger = 2)
-	generate_items_inside(items_inside,src)
+/obj/structure/closet/secure_closet/medical1/populate_contents()
+	new /obj/item/storage/box/autoinjectors(src)
+	new /obj/item/storage/box/syringes(src)
+	new /obj/item/storage/box/pillbottles(src)
+	new /obj/item/storage/box/patch_packs(src)
+	new /obj/item/storage/box/iv_bags(src)
+	new /obj/item/reagent_containers/dropper(src)
+	new /obj/item/reagent_containers/dropper(src)
+	new /obj/item/reagent_containers/glass/beaker(src)
+	new /obj/item/reagent_containers/glass/beaker(src)
+	new /obj/item/reagent_containers/glass/bottle/epinephrine(src)
+	new /obj/item/reagent_containers/glass/bottle/epinephrine(src)
+	new /obj/item/reagent_containers/glass/bottle/charcoal(src)
+	new /obj/item/reagent_containers/glass/bottle/charcoal(src)
+
 
 /obj/structure/closet/secure_closet/medical2
-	name = "anesthetic closet"
+	name = "anesthetic locker"
 	desc = "Used to knock people out."
+	icon_state = "med"
+	open_door_sprite = "med_door"
+	icon_opened = "med_open"
 	req_access = list(ACCESS_SURGERY)
 
-/obj/structure/closet/secure_closet/medical2/PopulateContents()
-	..()
-	for(var/i in 1 to 3)
-		new /obj/item/tank/internals/anesthetic(src)
-	for(var/i in 1 to 3)
-		new /obj/item/clothing/mask/breath/medical(src)
+/obj/structure/closet/secure_closet/medical2/populate_contents()
+	new /obj/item/tank/internals/anesthetic(src)
+	new /obj/item/tank/internals/anesthetic(src)
+	new /obj/item/tank/internals/anesthetic(src)
+	new /obj/item/clothing/mask/breath/medical(src)
+	new /obj/item/clothing/mask/breath/medical(src)
+	new /obj/item/clothing/mask/breath/medical(src)
+
 
 /obj/structure/closet/secure_closet/medical3
 	name = "medical doctor's locker"
 	req_access = list(ACCESS_SURGERY)
 	icon_state = "med_secure"
+	open_door_sprite = "white_secure_door"
 
-/obj/structure/closet/secure_closet/medical3/PopulateContents()
-	..()
-	new /obj/item/clothing/head/beret/med(src)
+/obj/structure/closet/secure_closet/medical3/populate_contents()
+	if(prob(50))
+		new /obj/item/storage/backpack/medic(src)
+	else
+		new /obj/item/storage/backpack/satchel_med(src)
+	new /obj/item/storage/backpack/duffel/medical(src)
+	new /obj/item/clothing/under/rank/medical(src)
+	new /obj/item/clothing/suit/storage/labcoat(src)
+	new /obj/item/clothing/shoes/white(src)
 	new /obj/item/radio/headset/headset_med(src)
-	new /obj/item/defibrillator/loaded(src)
 	new /obj/item/clothing/gloves/color/latex/nitrile(src)
+	new /obj/item/defibrillator/loaded(src)
+	new /obj/item/handheld_defibrillator(src)
+	new /obj/item/handheld_defibrillator(src)
 	new /obj/item/storage/belt/medical(src)
 	new /obj/item/clothing/glasses/hud/health(src)
-	new /obj/item/clothing/glasses/hud/health(src)
-	new /obj/item/clothing/glasses/hud/health(src)
-	return
+	new /obj/item/clothing/shoes/sandal/white(src)
 
-/obj/structure/closet/secure_closet/medicaldanger
-	name = "group T medical closet"
-	desc = "Filled to the brim with potentially dangerous drugs. Keep away from assistants."
+
+//Exam Room
+/obj/structure/closet/secure_closet/exam
+	name = "exam room closet"
+	desc = "Filled with exam room materials."
+	icon_state = "med"
+	open_door_sprite = "med_door"
+	icon_opened = "med_open"
 	req_access = list(ACCESS_MEDICAL)
-	icon_state = "med_secure"
 
-/obj/structure/closet/secure_closet/medicaldanger/PopulateContents()
-	..()
-	new /obj/item/reagent_containers/glass/bottle/formaldehyde(src)
-	new /obj/item/reagent_containers/glass/bottle/formaldehyde(src)
-	new /obj/item/reagent_containers/glass/bottle/charcoal(src)
-	new /obj/item/reagent_containers/glass/bottle/chloralhydrate(src)
-	new /obj/item/reagent_containers/glass/bottle/morphine(src)
-	new /obj/item/reagent_containers/glass/bottle/sodium_thiopental(src)
-	new /obj/item/storage/pill_bottle/epinephrine(src)
-	new /obj/item/storage/pill_bottle/charcoal(src)
-	new /obj/item/reagent_containers/syringe/calomel(src)
-	new /obj/item/reagent_containers/syringe/diphenhydramine(src)
-	new /obj/item/reagent_containers/hypospray/medipen/atropine(src) //just one
+/obj/structure/closet/secure_closet/exam/populate_contents()
 	new /obj/item/storage/box/syringes(src)
-	return
+	new /obj/item/reagent_containers/dropper(src)
+	new /obj/item/storage/belt/medical(src)
+	new /obj/item/clothing/mask/surgical(src)
+	new /obj/item/clothing/glasses/hud/health(src)
+	new /obj/item/clothing/gloves/color/latex/nitrile(src)
+	new /obj/item/clothing/accessory/stethoscope(src)
+	new /obj/item/flashlight/pen(src)
+	new /obj/item/storage/firstaid/regular(src)
+	new /obj/item/storage/firstaid/adv(src)
+	new /obj/item/storage/firstaid/brute(src)
+	new /obj/item/storage/firstaid/fire(src)
+	new /obj/item/storage/firstaid/o2(src)
+	new /obj/item/storage/firstaid/toxin(src)
+
+
+// Psychiatrist's pill bottle
+/obj/item/storage/pill_bottle/psychiatrist
+	name = "psychiatrist's pill bottle"
+	desc = "Contains various pills to calm or sedate patients."
+	wrapper_color = COLOR_PALE_BTL_GREEN
+
+// Why the hell is this in the closets folder?
+/obj/item/storage/pill_bottle/psychiatrist/New()
+	..()
+	new /obj/item/reagent_containers/food/pill/haloperidol(src)
+	new /obj/item/reagent_containers/food/pill/haloperidol(src)
+	new /obj/item/reagent_containers/food/pill/haloperidol(src)
+	new /obj/item/reagent_containers/food/pill/methamphetamine(src)
+	new /obj/item/reagent_containers/food/pill/methamphetamine(src)
+	new /obj/item/reagent_containers/food/pill/methamphetamine(src)
+	new /obj/item/reagent_containers/food/pill/patch/nicotine(src)
+	new /obj/item/reagent_containers/food/pill/patch/nicotine(src)
+	new /obj/item/reagent_containers/food/pill/patch/nicotine(src)
+	new /obj/item/reagent_containers/food/pill/hydrocodone(src)
+	new /obj/item/reagent_containers/food/pill/hydrocodone(src)
+
+/obj/structure/closet/secure_closet/psychiatrist
+	name = "psychiatrist's locker"
+	req_access = list(ACCESS_PSYCHIATRIST)
+	icon_state = "med_secure"
+	open_door_sprite = "white_secure_door"
+
+/obj/structure/closet/secure_closet/psychiatrist/populate_contents()
+	new /obj/item/clothing/suit/straight_jacket(src)
+	new /obj/item/reagent_containers/syringe(src)
+	new /obj/item/reagent_containers/glass/bottle/ether(src)
+	new /obj/item/clipboard(src)
+	new /obj/item/storage/fancy/cigarettes/cigpack_med(src)
+	new /obj/item/storage/fancy/cigarettes/cigpack_med(src)
+	new /obj/item/storage/fancy/cigarettes/cigpack_med(src)
+	new /obj/item/storage/pill_bottle/psychiatrist(src)
+	new /obj/random/plushie(src)
+	for(var/i in 0 to 3)
+		var/candy = pick(subtypesof(/obj/item/reagent_containers/food/snacks/candy/fudge))
+		new candy(src)
 
 /obj/structure/closet/secure_closet/CMO
-	name = "\proper chief medical officer's locker"
+	name = "chief medical officer's locker"
 	req_access = list(ACCESS_CMO)
 	icon_state = "cmo"
+	open_door_sprite = "cmo_door"
 
-/obj/structure/closet/secure_closet/CMO/PopulateContents()
-	..()
-	new /obj/item/clothing/head/beret/cmo(src)
-	new /obj/item/clothing/neck/cloak/cmo(src)
-	new /obj/item/storage/backpack/duffelbag/med(src)
+/obj/structure/closet/secure_closet/CMO/populate_contents()
+	if(prob(50))
+		new /obj/item/storage/backpack/medic(src)
+	else
+		new /obj/item/storage/backpack/satchel_med(src)
+	new /obj/item/storage/backpack/duffel/medical(src)
 	new /obj/item/clothing/suit/bio_suit/cmo(src)
 	new /obj/item/clothing/head/bio_hood/cmo(src)
-	new /obj/item/clothing/suit/toggle/labcoat/cmo(src)
-	new /obj/item/clothing/under/rank/medical/chief_medical_officer(src)
-	new /obj/item/clothing/shoes/sneakers/brown	(src)
-	new /obj/item/cartridge/cmo(src)
+	new /obj/item/clothing/shoes/white(src)
+	switch(pick("blue", "green", "purple"))
+		if("blue")
+			new /obj/item/clothing/under/rank/medical/blue(src)
+			new /obj/item/clothing/head/surgery/blue(src)
+		if("green")
+			new /obj/item/clothing/under/rank/medical/green(src)
+			new /obj/item/clothing/head/surgery/green(src)
+		if("purple")
+			new /obj/item/clothing/under/rank/medical/purple(src)
+			new /obj/item/clothing/head/surgery/purple(src)
+	new /obj/item/clothing/suit/storage/labcoat/cmo(src)
+	new /obj/item/clothing/under/rank/chief_medical_officer(src)
+	new /obj/item/clothing/suit/mantle/labcoat/chief_medical_officer(src)
+	new /obj/item/clothing/shoes/brown	(src)
 	new /obj/item/radio/headset/heads/cmo(src)
-	new /obj/item/megaphone/command(src)
-	new /obj/item/defibrillator/compact/loaded(src)
 	new /obj/item/clothing/gloves/color/latex/nitrile(src)
+	new /obj/item/defibrillator/compact/advanced/loaded(src)
+	new /obj/item/handheld_defibrillator(src)
 	new /obj/item/storage/belt/medical(src)
-	new /obj/item/healthanalyzer/advanced(src)
-	new /obj/item/assembly/flash/handheld(src)
+	new /obj/item/flash(src)
 	new /obj/item/reagent_containers/hypospray/CMO(src)
-	new /obj/item/autosurgeon/cmo(src)
+	new /obj/item/organ/internal/cyberimp/eyes/hud/medical(src)
 	new /obj/item/door_remote/chief_medical_officer(src)
-	new /obj/item/clothing/neck/petcollar(src)
-	new /obj/item/pet_carrier(src)
-	new /obj/item/wallframe/defib_mount(src)
-	new /obj/item/circuitboard/machine/techfab/department/medical(src)
-	new /obj/item/storage/photo_album/CMO(src)
-	new /obj/item/reagent_containers/food/drinks/bottle/synthflesh(src)
-	new /obj/item/card/id/departmental_budget/med(src)
-	new /obj/item/extrapolator(src)
+	new /obj/item/reagent_containers/food/drinks/mug/cmo(src)
+	new /obj/item/clothing/accessory/medal/medical(src)
+	new /obj/item/storage/briefcase(src)
+	new /obj/item/clothing/mask/gas(src)
+
 
 /obj/structure/closet/secure_closet/animal
-	name = "animal control"
+	name = "animal control locker"
 	req_access = list(ACCESS_SURGERY)
 
-/obj/structure/closet/secure_closet/animal/PopulateContents()
-	..()
+/obj/structure/closet/secure_closet/animal/populate_contents()
 	new /obj/item/assembly/signaler(src)
-	for(var/i in 1 to 3)
-		new /obj/item/electropack(src)
+	new /obj/item/radio/electropack(src)
+	new /obj/item/radio/electropack(src)
+	new /obj/item/radio/electropack(src)
+
 
 /obj/structure/closet/secure_closet/chemical
 	name = "chemical closet"
 	desc = "Store dangerous chemicals in here."
+	icon_state = "chemical"
+	open_door_sprite = "med_door"
+	icon_opened = "med_open"
 	req_access = list(ACCESS_CHEMISTRY)
-	icon_door = "chemical"
 
-/obj/structure/closet/secure_closet/chemical/PopulateContents()
-	..()
+/obj/structure/closet/secure_closet/chemical/populate_contents()
 	new /obj/item/storage/box/pillbottles(src)
 	new /obj/item/storage/box/pillbottles(src)
-	new /obj/item/storage/box/medsprays(src)
-	new /obj/item/storage/box/medsprays(src)
-	new /obj/item/stack/ducts/fifty(src)
-	new /obj/item/stack/ducts/fifty(src)
-	new /obj/item/stack/ducts/fifty(src)
-	new /obj/item/stack/ducts/fifty(src)
-	new /obj/item/construction/plumbing(src)
-	new /obj/item/construction/plumbing(src)
-	new	/obj/item/plunger(src)
-	new	/obj/item/plunger(src)
+	new /obj/item/storage/box/patch_packs(src)
+	new /obj/item/storage/box/patch_packs(src)
 
-/obj/structure/closet/secure_closet/chemical/heisenberg //contains one of each beaker, syringe etc.
-	name = "advanced chemical closet"
+/obj/structure/closet/secure_closet/paramedic
+	name = "paramedic EVA gear"
+	desc = "A locker with a Paramedic EVA suit."
+	icon_state = "med"
+	open_door_sprite = "med_door"
+	icon_opened = "med_open"
+	req_access = list(ACCESS_PARAMEDIC)
 
-/obj/structure/closet/secure_closet/chemical/heisenberg/PopulateContents()
-	..()
-	new /obj/item/reagent_containers/dropper(src)
-	new /obj/item/reagent_containers/dropper(src)
-	new /obj/item/storage/box/syringes/variety(src)
-	new /obj/item/storage/box/beakers/variety(src)
-	new /obj/item/clothing/glasses/science(src)
-	new /obj/item/stack/ducts/fifty(src)
-	new /obj/item/stack/ducts/fifty(src)
-	new /obj/item/stack/ducts/fifty(src)
-	new /obj/item/stack/ducts/fifty(src)
-	new /obj/item/construction/plumbing(src)
-	new /obj/item/construction/plumbing(src)
-	new	/obj/item/plunger(src)
-	new	/obj/item/plunger(src)
+/obj/structure/closet/secure_closet/paramedic/populate_contents()
+	new /obj/item/clothing/suit/space/eva/paramedic(src)
+	new /obj/item/clothing/head/helmet/space/eva/paramedic(src)
+	new /obj/item/sensor_device(src)
+	new /obj/item/key/ambulance(src)
+	new /obj/item/pinpointer/crew(src)
+	new /obj/item/handheld_defibrillator(src)
+
+/obj/structure/closet/secure_closet/reagents
+	name = "chemical storage closet"
+	desc = "Store dangerous chemicals in here."
+	icon_state = "chemical"
+	open_door_sprite = "med_door"
+	icon_opened = "med_open"
+	req_access = list(ACCESS_CHEMISTRY)
+
+/obj/structure/closet/secure_closet/reagents/populate_contents()
+	new /obj/item/reagent_containers/glass/bottle/reagent/phenol(src)
+	new /obj/item/reagent_containers/glass/bottle/reagent/ammonia(src)
+	new /obj/item/reagent_containers/glass/bottle/reagent/oil(src)
+	new /obj/item/reagent_containers/glass/bottle/reagent/acetone(src)
+	new /obj/item/reagent_containers/glass/bottle/reagent/acid(src)
+	new /obj/item/reagent_containers/glass/bottle/reagent/diethylamine(src)

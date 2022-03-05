@@ -4,50 +4,48 @@ SUBSYSTEM_DEF(dbcore)
 	wait = 1 MINUTES
 	init_order = INIT_ORDER_DBCORE
 
-	var/schema_mismatch = 0
-	var/db_minor = 0
-	var/db_major = 0
+	/// Is the DB schema valid
+	var/schema_valid = TRUE
+	/// Timeout of failed connections
+	var/failed_connection_timeout = 0
+	/// Amount of failed connections
 	var/failed_connections = 0
 
+	/// Last error to occur
 	var/last_error
+	/// List of currenty processing queries
 	var/list/active_queries = list()
 
-	var/connection  // Arbitrary handle returned from rust_g.
+	/// SQL errors that have occured mid round
+	var/total_errors = 0
 
+	/// Connection handle. This is an arbitrary handle returned from rust_g.
+	var/connection
+
+	offline_implications = "The server will no longer check for undeleted SQL Queries. No immediate action is needed."
+
+/datum/controller/subsystem/dbcore/stat_entry()
+	..("A: [length(active_queries)]")
+
+// This is in Initialize() so that its actually seen in chat
 /datum/controller/subsystem/dbcore/Initialize()
-	//We send warnings to the admins during subsystem init, as the clients will be New'd and messages
-	//will queue properly with goonchat
-	switch(schema_mismatch)
-		if(1)
-			message_admins("Database schema ([db_major].[db_minor]) doesn't match the latest schema version ([DB_MAJOR_VERSION].[DB_MINOR_VERSION]), this may lead to undefined behaviour or errors")
-		if(2)
-			message_admins("Could not get schema version from database")
+	if(!schema_valid)
+		to_chat(world, "<span class='boldannounce'>Database schema ([GLOB.configuration.database.version]) doesn't match the latest schema version ([SQL_VERSION]). Roundstart has been delayed.</span>")
 
 	return ..()
 
 /datum/controller/subsystem/dbcore/fire()
 	for(var/I in active_queries)
-		var/datum/DBQuery/Q = I
-		if(world.time - Q.last_activity_time > (5 MINUTES))
-			log_sql("Undeleted query: \"[Q.sql]\" ARGS: \"[list2params(Q.arguments)]\" LA: [Q.last_activity] LAT: [Q.last_activity_time]")
+		var/datum/db_query/Q = I
+		if(world.time - Q.last_activity_time > 5 MINUTES)
+			log_debug("Found undeleted query, please check the server logs and notify coders.")
+			log_sql("Undeleted query: \"[Q.sql]\" LA: [Q.last_activity] LAT: [Q.last_activity_time]")
 			qdel(Q)
 		if(MC_TICK_CHECK)
 			return
 
 /datum/controller/subsystem/dbcore/Recover()
 	connection = SSdbcore.connection
-
-/datum/controller/subsystem/dbcore/Shutdown()
-	//This is as close as we can get to the true round end before Disconnect() without changing where it's called, defeating the reason this is a subsystem
-	if(SSdbcore.Connect())
-		var/datum/DBQuery/query_round_shutdown = SSdbcore.NewQuery(
-			"UPDATE [format_table_name("round")] SET shutdown_datetime = Now(), end_state = :end_state WHERE id = :round_id",
-			list("end_state" = SSticker.end_state, "round_id" = GLOB.round_id)
-		)
-		query_round_shutdown.Execute()
-		qdel(query_round_shutdown)
-	if(IsConnected())
-		Disconnect()
 
 //nu
 /datum/controller/subsystem/dbcore/can_vv_get(var_name)
@@ -58,37 +56,38 @@ SUBSYSTEM_DEF(dbcore)
 		return FALSE
 	return ..()
 
+/**
+  * Connection Creator
+  *
+  * This proc basically does a few sanity checks before connecting, then attempts to make a connection
+  * When connecting, RUST_G will initialize a thread pool for queries to use to run asynchronously
+  */
 /datum/controller/subsystem/dbcore/proc/Connect()
 	if(IsConnected())
 		return TRUE
 
-	if(failed_connections > 5)	//If it failed to establish a connection more than 5 times in a row, don't bother attempting to connect anymore.
+	if(!GLOB.configuration.database.enabled)
 		return FALSE
 
-	if(!CONFIG_GET(flag/sql_enabled))
-		return FALSE
+	if(failed_connection_timeout <= world.time) //it's been more than 5 seconds since we failed to connect, reset the counter
+		failed_connections = 0
 
-	var/user = CONFIG_GET(string/feedback_login)
-	var/pass = CONFIG_GET(string/feedback_password)
-	var/db = CONFIG_GET(string/feedback_database)
-	var/address = CONFIG_GET(string/address)
-	var/port = CONFIG_GET(number/port)
-	var/timeout = max(CONFIG_GET(number/async_query_timeout), CONFIG_GET(number/blocking_query_timeout))
-	var/thread_limit = CONFIG_GET(number/bsql_thread_limit)
+	if(failed_connections > 5)	//If it failed to establish a connection more than 5 times in a row, don't bother attempting to connect for 5 seconds.
+		failed_connection_timeout = world.time + 50
+		return FALSE
 
 	var/result = json_decode(rustg_sql_connect_pool(json_encode(list(
-		"host" = address,
-		"port" = port,
-		"user" = user,
-		"pass" = pass,
-		"db_name" = db,
-		"max_threads" = 5,
-		"read_timeout" = timeout,
-		"write_timeout" = timeout,
-		"max_threads" = thread_limit,
+		"host" = GLOB.configuration.database.address,
+		"port" = GLOB.configuration.database.port,
+		"user" = GLOB.configuration.database.username,
+		"pass" = GLOB.configuration.database.password,
+		"db_name" = GLOB.configuration.database.db,
+		"read_timeout" = GLOB.configuration.database.async_query_timeout,
+		"write_timeout" = GLOB.configuration.database.async_query_timeout,
+		"max_threads" = GLOB.configuration.database.async_thread_limit,
 	))))
 	. = (result["status"] == "ok")
-	if (.)
+	if(.)
 		connection = result["handle"]
 	else
 		connection = null
@@ -96,212 +95,252 @@ SUBSYSTEM_DEF(dbcore)
 		log_sql("Connect() failed | [last_error]")
 		++failed_connections
 
+/**
+  * Schema Version Checker
+  *
+  * Basically verifies that the DB schema in the config is the same as the version the game is expecting.
+  * If it is a valid version, the DB will then connect.
+  */
 /datum/controller/subsystem/dbcore/proc/CheckSchemaVersion()
-	if(CONFIG_GET(flag/sql_enabled))
+	if(GLOB.configuration.database.enabled)
+		// The unit tests have their own version of this check, which wont hold the server up infinitely, so this is disabled if we are running unit tests
+		#ifndef UNIT_TESTS
+		if(GLOB.configuration.database.enabled && GLOB.configuration.database.version != SQL_VERSION)
+			GLOB.configuration.database.enabled = FALSE
+			schema_valid = FALSE
+			SSticker.ticker_going = FALSE
+			SEND_TEXT(world.log, "Database connection failed: Invalid SQL Versions")
+			return FALSE
+		#endif
 		if(Connect())
-			log_world("Database connection established.")
-			var/datum/DBQuery/query_db_version = NewQuery("SELECT major, minor FROM [format_table_name("schema_revision")] ORDER BY date DESC LIMIT 1")
-			query_db_version.Execute()
-			if(query_db_version.NextRow())
-				db_major = text2num(query_db_version.item[1])
-				db_minor = text2num(query_db_version.item[2])
-				if(db_major != DB_MAJOR_VERSION || db_minor != DB_MINOR_VERSION)
-					schema_mismatch = 1 // flag admin message about mismatch
-					log_sql("Database schema ([db_major].[db_minor]) doesn't match the latest schema version ([DB_MAJOR_VERSION].[DB_MINOR_VERSION]), this may lead to undefined behaviour or errors")
-			else
-				schema_mismatch = 2 //flag admin message about no schema version
-				log_sql("Could not get schema version from database")
-			qdel(query_db_version)
+			SEND_TEXT(world.log, "Database connection established")
 		else
-			log_sql("Your server failed to establish a connection with the database.")
+			// log_sql() because then an error will be logged in the same place
+			log_sql("Your server failed to establish a connection with the database")
 	else
-		log_sql("Database is not enabled in configuration.")
+		SEND_TEXT(world.log, "Database is not enabled in configuration")
 
-/datum/controller/subsystem/dbcore/proc/SetRoundID()
-	if(!Connect())
-		return
-	var/datum/DBQuery/query_round_initialize = SSdbcore.NewQuery(
-		"INSERT INTO [format_table_name("round")] (initialize_datetime, server_name, server_ip, server_port) VALUES (Now(), :server_name, INET_ATON(:internet_address), :port)",
-		list(
-			"server_name" = CONFIG_GET(string/serversqlname),
-			"internet_address" = world.internet_address || "0",
-			"port" = "[world.port]"
+/**
+  * Disconnection Handler
+  *
+  * Tells the DLL to clean up any open connections.
+  * This will also reset the failed connection counter
+  */
+/datum/controller/subsystem/dbcore/proc/Disconnect()
+	failed_connections = 0
+	if(connection)
+		rustg_sql_disconnect_pool(connection)
+	connection = null
+
+/**
+  * Shutdown Handler
+  *
+  * Called during world/Reboot() as part of the MC shutdown
+  * Finalises a round in the DB before disconnecting.
+  */
+/datum/controller/subsystem/dbcore/Shutdown()
+	//This is as close as we can get to the true round end before Disconnect() without changing where it's called, defeating the reason this is a subsystem
+	if(SSdbcore.Connect())
+		var/datum/db_query/query_round_shutdown = SSdbcore.NewQuery(
+			"UPDATE round SET shutdown_datetime = Now(), end_state = :end_state WHERE id = :round_id",
+			list("end_state" = SSticker.end_state, "round_id" = GLOB.round_id)
 		)
+		query_round_shutdown.Execute()
+		qdel(query_round_shutdown)
+	if(IsConnected())
+		Disconnect()
+
+/**
+  * Round ID Setter
+  *
+  * Called during world/New() at the earliest point
+  * Declares a round ID in the database and assigns it to a global. Also ensures that server address and ports are set
+  */
+/datum/controller/subsystem/dbcore/proc/SetRoundID()
+	if(!IsConnected())
+		return
+	var/datum/db_query/query_round_initialize = SSdbcore.NewQuery(
+		"INSERT INTO round (initialize_datetime, server_ip, server_port, server_id) VALUES (Now(), INET_ATON(:internet_address), :port, :server_id)",
+		list("internet_address" = world.internet_address || "0", "port" = "[world.port]", "server_id" = GLOB.configuration.system.instance_id)
 	)
 	query_round_initialize.Execute(async = FALSE)
 	GLOB.round_id = "[query_round_initialize.last_insert_id]"
 	qdel(query_round_initialize)
-	var/tries = 0
-	while (tries < 5 && !GLOB.round_id)
-		var/datum/DBQuery/query_round_last_id = SSdbcore.NewQuery("SELECT MAX(id) FROM [format_table_name("round")] WHERE initialize_datetime > date_sub(Now(), interval 15 second) LIMIT 1") // I'm ashamed of it but it fixes the problem. -qwerty
-		query_round_last_id.Execute(async = FALSE)
-		if(query_round_last_id.NextRow(async = FALSE))
-			GLOB.round_id = query_round_last_id.item[1]
-		qdel(query_round_last_id)
-		tries++
 
+/**
+  * Round End Time Setter
+  *
+  * Called during SSticker.setup()
+  * Sets the time that the round started in the DB
+  */
 /datum/controller/subsystem/dbcore/proc/SetRoundStart()
-	if(!Connect())
+	if(!IsConnected())
 		return
-	var/datum/DBQuery/query_round_start = SSdbcore.NewQuery(
-		"UPDATE [format_table_name("round")] SET start_datetime = Now() WHERE id = :round_id",
-		list("round_id" = GLOB.round_id)
+	var/datum/db_query/query_round_start = SSdbcore.NewQuery(
+		"UPDATE round SET start_datetime=NOW(), commit_hash=:hash WHERE id=:round_id",
+		list("hash" = GLOB.revision_info.commit_hash, "round_id" = GLOB.round_id)
 	)
-	query_round_start.Execute()
+	query_round_start.Execute(async = FALSE) // This happens during a time of intense server lag, so should be non-async
 	qdel(query_round_start)
 
+/**
+  * Round End Time Setter
+  *
+  * Called during SSticker.declare_completion()
+  * Sets the time that the round ended in the DB, as well as some other params
+  */
 /datum/controller/subsystem/dbcore/proc/SetRoundEnd()
-	if(!Connect())
+	if(!IsConnected())
 		return
-	var/datum/DBQuery/query_round_end = SSdbcore.NewQuery(
-		"UPDATE [format_table_name("round")] SET end_datetime = Now(), game_mode_result = :game_mode_result, station_name = :station_name WHERE id = :round_id",
+	var/datum/db_query/query_round_end = SSdbcore.NewQuery(
+		"UPDATE round SET end_datetime = Now(), game_mode_result = :game_mode_result WHERE id = :round_id",
 		list("game_mode_result" = SSticker.mode_result, "station_name" = station_name(), "round_id" = GLOB.round_id)
 	)
 	query_round_end.Execute()
 	qdel(query_round_end)
 
-/datum/controller/subsystem/dbcore/proc/Disconnect()
-	failed_connections = 0
-	if (connection)
-		rustg_sql_disconnect_pool(connection)
-	connection = null
-
+/**
+  * IsConnected Helper
+  *
+  * Short helper to check if the DB is connected or not.
+  * Does a few sanity checks, then asks the DLL if we are properly connected
+  */
 /datum/controller/subsystem/dbcore/proc/IsConnected()
-	if (!CONFIG_GET(flag/sql_enabled))
+	if(!GLOB.configuration.database.enabled)
 		return FALSE
-	if (!connection)
+	if(!schema_valid)
+		return FALSE
+	if(!connection)
 		return FALSE
 	return json_decode(rustg_sql_connected(connection))["status"] == "online"
 
+
+/**
+  * Error Message Helper
+  *
+  * Returns the last error that the subsystem encountered.
+  * Will always report "Database disabled by configuration" if the DB is disabled.
+  */
 /datum/controller/subsystem/dbcore/proc/ErrorMsg()
-	if(!CONFIG_GET(flag/sql_enabled))
+	if(!GLOB.configuration.database.enabled)
 		return "Database disabled by configuration"
 	return last_error
 
+/**
+  * Error Reporting Helper
+  *
+  * Pretty much just sets `last_error` to the error argument
+  *
+  * Arguments:
+  * * error - Error text to set `last_error` to
+  */
 /datum/controller/subsystem/dbcore/proc/ReportError(error)
 	last_error = error
 
+
+/**
+  * New Query Invoker
+  *
+  * Checks to make sure this query isnt being invoked by admin fuckery, then returns a new [/datum/db_query]
+  *
+  * Arguments:
+  * * sql_query - SQL query to be ran, with :parameter placeholders
+  * * arguments - Associative list of parameters to be inserted into the query
+  */
 /datum/controller/subsystem/dbcore/proc/NewQuery(sql_query, arguments)
 	if(IsAdminAdvancedProcCall())
-		log_admin_private("ERROR: Advanced admin proc call led to sql query: [sql_query]. Query has been blocked")
-		message_admins("ERROR: Advanced admin proc call led to sql query. Query has been blocked")
+		to_chat(usr, "<span class='boldannounce'>DB query blocked: Advanced ProcCall detected.</span>")
+		message_admins("[key_name(usr)] attempted to create a DB query via advanced proc-call")
+		log_admin("[key_name(usr)] attempted to create a DB query via advanced proc-call")
 		return FALSE
-	return new /datum/DBQuery(connection, sql_query, arguments)
+	return new /datum/db_query(connection, sql_query, arguments)
 
-/datum/controller/subsystem/dbcore/proc/QuerySelect(list/querys, warn = FALSE, qdel = FALSE)
-	if (!islist(querys))
-		if (!istype(querys, /datum/DBQuery))
-			CRASH("Invalid query passed to QuerySelect: [querys]")
+/**
+  * Handler to allow many queries to be executed en masse
+  *
+  * Feed this proc a list of queries and it will execute them all at once, by the power of async magic!
+  *
+  * Arguments:
+  * * querys - List of queries to execute
+  * * warn - Boolean to warn on query failure
+  * * qdel - Boolean to enable auto qdel of queries
+  * * assoc - Boolean to enable support for an associative list of queries
+  * * log - Do we want to generate logs for these queries
+  */
+/datum/controller/subsystem/dbcore/proc/MassExecute(list/querys, warn = FALSE, qdel = FALSE, assoc = FALSE, log = TRUE)
+	if(!islist(querys))
+		if(!istype(querys, /datum/db_query))
+			CRASH("Invalid query passed to MassExecute: [querys]")
 		querys = list(querys)
 
-	for (var/thing in querys)
-		var/datum/DBQuery/query = thing
-		if (warn)
-			INVOKE_ASYNC(query, /datum/DBQuery.proc/warn_execute)
-		else
-			INVOKE_ASYNC(query, /datum/DBQuery.proc/Execute)
+	var/start_time = start_watch()
+	if(log)
+		log_debug("Mass executing [length(querys)] queries...")
 
-	for (var/thing in querys)
-		var/datum/DBQuery/query = thing
+	for(var/thing in querys)
+		var/datum/db_query/query
+		if(assoc)
+			query = querys[thing]
+		else
+			query = thing
+		if(warn)
+			INVOKE_ASYNC(query, /datum/db_query.proc/warn_execute)
+		else
+			INVOKE_ASYNC(query, /datum/db_query.proc/Execute)
+
+	for(var/thing in querys)
+		var/datum/db_query/query
+		if(assoc)
+			query = querys[thing]
+		else
+			query = thing
 		UNTIL(!query.in_progress)
-		if (qdel)
+		if(qdel)
 			qdel(query)
 
+	if(log)
+		log_debug("Executed [length(querys)] queries in [stop_watch(start_time)]s")
 
-
-/*
-Takes a list of rows (each row being an associated list of column => value) and inserts them via a single mass query.
-Rows missing columns present in other rows will resolve to SQL NULL
-You are expected to do your own escaping of the data, and expected to provide your own quotes for strings.
-The duplicate_key arg can be true to automatically generate this part of the query
-	or set to a string that is appended to the end of the query
-Ignore_errors instructes mysql to continue inserting rows if some of them have errors.
-	 the erroneous row(s) aren't inserted and there isn't really any way to know why or why errored
-Delayed insert mode was removed in mysql 7 and only works with MyISAM type tables,
-	It was included because it is still supported in mariadb.
-	It does not work with duplicate_key and the mysql server ignores it in those cases
-*/
-/datum/controller/subsystem/dbcore/proc/MassInsert(table, list/rows, duplicate_key = FALSE, ignore_errors = FALSE, delayed = FALSE, warn = FALSE, async = TRUE, special_columns = null)
-	if (!table || !rows || !istype(rows))
-		return
-
-	// Prepare column list
-	var/list/columns = list()
-	var/list/has_question_mark = list()
-	for (var/list/row in rows)
-		for (var/column in row)
-			columns[column] = "?"
-			has_question_mark[column] = TRUE
-	for (var/column in special_columns)
-		columns[column] = special_columns[column]
-		has_question_mark[column] = findtext(special_columns[column], "?")
-
-	// Prepare SQL query full of placeholders
-	var/list/query_parts = list("INSERT")
-	if (delayed)
-		query_parts += " DELAYED"
-	if (ignore_errors)
-		query_parts += " IGNORE"
-	query_parts += " INTO "
-	query_parts += table
-	query_parts += "\n([columns.Join(", ")])\nVALUES"
-
-	var/list/arguments = list()
-	var/has_row = FALSE
-	for (var/list/row in rows)
-		if (has_row)
-			query_parts += ","
-		query_parts += "\n  ("
-		var/has_col = FALSE
-		for (var/column in columns)
-			if (has_col)
-				query_parts += ", "
-			if (has_question_mark[column])
-				var/name = "p[arguments.len]"
-				query_parts += replacetext(columns[column], "?", ":[name]")
-				arguments[name] = row[column]
-			else
-				query_parts += columns[column]
-			has_col = TRUE
-		query_parts += ")"
-		has_row = TRUE
-
-	if (duplicate_key == TRUE)
-		var/list/column_list = list()
-		for (var/column in columns)
-			column_list += "[column] = VALUES([column])"
-		query_parts += "\nON DUPLICATE KEY UPDATE [column_list.Join(", ")]"
-	else if (duplicate_key != FALSE)
-		query_parts += duplicate_key
-
-	var/datum/DBQuery/Query = NewQuery(query_parts.Join(), arguments)
-	if (warn)
-		. = Query.warn_execute(async)
-	else
-		. = Query.Execute(async)
-	qdel(Query)
-
-/datum/DBQuery
+/**
+  * # db_query
+  *
+  * Datum based handler for all database queries
+  *
+  * Holds information regarding inputs, status, and outputs
+  */
+/datum/db_query
 	// Inputs
+	/// The connection being used with this query
 	var/connection
+	/// The SQL statement being executed with :parameter placeholders
 	var/sql
+	/// An associative list of parameters to be substituted into the statement
 	var/arguments
 
 	// Status information
+	/// Is the query currently in progress
 	var/in_progress
+	/// What was our last error, if any
 	var/last_error
+	/// What was our last activity
 	var/last_activity
+	/// When was our last activity
 	var/last_activity_time
 
 	// Output
+	/// List of all rows returned
 	var/list/list/rows
+	/// Counter of the next row to take
 	var/next_row_to_take = 1
+	/// How many rows were affected by the query
 	var/affected
+	/// ID of the last inserted row
 	var/last_insert_id
+	/// List of data values populated by NextRow()
+	var/list/item
 
-	var/list/item  //list of data values populated by NextRow()
-
-/datum/DBQuery/New(connection, sql, arguments)
+// Sets up some vars and throws it into the SS active query list
+/datum/db_query/New(connection, sql, arguments)
 	SSdbcore.active_queries[src] = TRUE
 	Activity("Created")
 	item = list()
@@ -310,25 +349,56 @@ Delayed insert mode was removed in mysql 7 and only works with MyISAM type table
 	src.sql = sql
 	src.arguments = arguments
 
-/datum/DBQuery/Destroy()
+// Takes it out of the active query list, as well as closing it up
+/datum/db_query/Destroy()
 	Close()
 	SSdbcore.active_queries -= src
 	return ..()
 
-/datum/DBQuery/CanProcCall(proc_name)
-	//fuck off kevinz
+/datum/db_query/CanProcCall(proc_name)
+	// go away
 	return FALSE
 
-/datum/DBQuery/proc/Activity(activity)
+
+/**
+  * Activity Update Handler
+  *
+  * Sets the last activity text to the argument input, as well as updating the activity time
+  *
+  * Arguments:
+  * * activity - Last activity text
+  */
+/datum/db_query/proc/Activity(activity)
 	last_activity = activity
 	last_activity_time = world.time
 
-/datum/DBQuery/proc/warn_execute(async = TRUE)
-	. = Execute(async)
+/**
+  * Wrapped for warning on execution
+  *
+  * You should use this proc when running the SQL statement. It will auto inform the user and the online admins if a query fails
+  *
+  * Arguments:
+  * * async - Are we running this query asynchronously
+  * * log_error - Do we want to log errors this creates? Disable this if you are running sensitive queries where you dont want errors logged in plain text (EG: Auth token stuff)
+  */
+/datum/db_query/proc/warn_execute(async = TRUE, log_error = TRUE)
+	. = Execute(async, log_error)
 	if(!.)
-		to_chat(usr, "<span class='danger'>A SQL error occurred during this operation, check the server logs.</span>")
+		SSdbcore.total_errors++
+		if(usr)
+			to_chat(usr, "<span class='danger'>A SQL error occurred during this operation, please inform an admin or a coder.</span>")
+		message_admins("An SQL error has occured. Please check the server logs, with the following timestamp ID: \[[time_stamp()]]")
 
-/datum/DBQuery/proc/Execute(async = TRUE, log_error = TRUE)
+/**
+  * Main Execution Handler
+  *
+  * Invoked by [warn_execute()]
+  * This handles query error logging, as well as invoking the actual runner
+  * Arguments:
+  * * async - Are we running this query asynchronously
+  * * log_error - Do we want to log errors this creates? Disable this if you are running sensitive queries where you dont want errors logged in plain text (EG: Auth token stuff)
+  */
+/datum/db_query/proc/Execute(async = TRUE, log_error = TRUE)
 	Activity("Execute")
 	if(in_progress)
 		CRASH("Attempted to start a new query while waiting on the old one")
@@ -344,60 +414,107 @@ Delayed insert mode was removed in mysql 7 and only works with MyISAM type table
 	. = run_query(async)
 	var/timed_out = !. && findtext(last_error, "Operation timed out")
 	if(!. && log_error)
-		log_sql("[last_error] | Query used: [sql] | Arguments: [list2params(arguments)]")
+		log_sql("[last_error] | Query used: [sql] | Arguments: [json_encode(arguments)]")
 	if(!async && timed_out)
-		log_query_debug("Query execution started at [start_time]")
-		log_query_debug("Query execution ended at [REALTIMEOFDAY]")
-		log_query_debug("Slow query timeout detected.")
-		log_query_debug("Query used: [sql]")
-		log_query_debug("Arguments: [list2params(arguments)]")
+		log_sql("Query execution started at [start_time]")
+		log_sql("Query execution ended at [REALTIMEOFDAY]")
+		log_sql("Slow query timeout detected.")
+		log_sql("Query used: [sql]")
 		slow_query_check()
 
-/datum/DBQuery/proc/run_query(async)
+/**
+  * Actual Query Runner
+  *
+  * This does the main query with the database and the rust calls themselves
+  *
+  * Arguments:
+  * * async - Are we running this query asynchronously
+  */
+/datum/db_query/proc/run_query(async)
 	var/job_result_str
 
-	if (async)
+	if(async)
 		var/job_id = rustg_sql_query_async(connection, sql, json_encode(arguments))
 		in_progress = TRUE
 		UNTIL((job_result_str = rustg_sql_check_query(job_id)) != RUSTG_JOB_NO_RESULTS_YET)
 		in_progress = FALSE
 
-		if (job_result_str == RUSTG_JOB_ERROR)
+		if(job_result_str == RUSTG_JOB_ERROR)
 			last_error = job_result_str
 			return FALSE
 	else
 		job_result_str = rustg_sql_query_blocking(connection, sql, json_encode(arguments))
 
 	var/result = json_decode(job_result_str)
-	switch (result["status"])
-		if ("ok")
+	switch(result["status"])
+		if("ok")
 			rows = result["rows"]
 			affected = result["affected"]
 			last_insert_id = result["last_insert_id"]
 			return TRUE
-		if ("err")
+		if("err")
 			last_error = result["data"]
 			return FALSE
-		if ("offline")
+		if("offline")
 			last_error = "offline"
 			return FALSE
 
-/datum/DBQuery/proc/slow_query_check()
-	message_admins("HEY! A database query timed out. Did the server just hang? <a href='?_src_=holder;[HrefToken()];slowquery=yes'>\[YES\]</a>|<a href='?_src_=holder;[HrefToken()];slowquery=no'>\[NO\]</a>")
+// Just tells the admins if a query timed out, and asks if the server hung to help error reporting
+/datum/db_query/proc/slow_query_check()
+	message_admins("HEY! A database query timed out. Did the server just hang? <a href='?_src_=holder;slowquery=yes'>\[YES\]</a>|<a href='?_src_=holder;slowquery=no'>\[NO\]</a>")
 
-/datum/DBQuery/proc/NextRow(async = TRUE)
+
+/**
+  * Proc to get the next row in a DB query
+  *
+  * Cycles `item` to the next row in the DB query, if multiple were fetched
+  */
+/datum/db_query/proc/NextRow()
 	Activity("NextRow")
 
-	if (rows && next_row_to_take <= rows.len)
+	if(rows && next_row_to_take <= length(rows))
 		item = rows[next_row_to_take]
 		next_row_to_take++
 		return !!item
 	else
 		return FALSE
 
-/datum/DBQuery/proc/ErrorMsg()
+// Simple helper to get the last error a query had
+/datum/db_query/proc/ErrorMsg()
 	return last_error
 
-/datum/DBQuery/proc/Close()
+// Simple proc to null out data to aid GC
+/datum/db_query/proc/Close()
 	rows = null
 	item = null
+
+// Verb that lets admins force reconnect the DB
+/client/proc/reestablish_db_connection()
+	set category = "Debug"
+	set name = "Reestablish DB Connection"
+	if(!GLOB.configuration.database.enabled)
+		to_chat(usr, "<span class='warning'>The Database is not enabled in the server configuration!</span>")
+		return
+
+	if(SSdbcore.IsConnected())
+		if(!check_rights(R_DEBUG, FALSE))
+			to_chat(usr, "<span class='warning'>The database is already connected! (Only those with +DEBUG can force a reconnection)</span>")
+			return
+
+		var/reconnect = alert("The database is already connected! If you *KNOW* that this is incorrect, you can force a reconnection", "The database is already connected!", "Force Reconnect", "Cancel")
+		if(reconnect != "Force Reconnect")
+			return
+
+		SSdbcore.Disconnect()
+		log_admin("[key_name(usr)] has forced the database to disconnect")
+		message_admins("[key_name_admin(usr)] has <b>forced</b> the database to disconnect!!!")
+
+	log_admin("[key_name(usr)] is attempting to re-establish the DB Connection")
+	message_admins("[key_name_admin(usr)] is attempting to re-establish the DB Connection")
+	SSblackbox.record_feedback("tally", "admin_verb", 1, "Force Reconnect DB") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+
+	SSdbcore.failed_connections = 0 // Reset this
+	if(!SSdbcore.Connect())
+		message_admins("Database connection failed: [SSdbcore.ErrorMsg()]")
+	else
+		message_admins("Database connection re-established")

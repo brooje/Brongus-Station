@@ -1,113 +1,108 @@
-/mob/living/gib(no_brain, no_organs, no_bodyparts)
-	var/prev_lying = lying
-	if(stat != DEAD)
-		death(TRUE)
+//This is the proc for gibbing a mob. Cannot gib ghosts.
+//added different sort of gibs and animations. N
+/mob/living/gib()
+	if(!death(TRUE) && stat != DEAD)
+		return FALSE
+	// hide and freeze for the GC
+	notransform = 1
+	canmove = 0
+	icon = null
+	invisibility = 101
 
-	if(!prev_lying)
-		gib_animation()
-
-	spill_organs(no_brain, no_organs, no_bodyparts)
-
-	if(!no_bodyparts)
-		spread_bodyparts(no_brain, no_organs)
-
-	spawn_gibs(no_bodyparts)
-	qdel(src)
-
-/mob/living/proc/gib_animation()
-	return
-
-/mob/living/proc/spawn_gibs()
-	new /obj/effect/gibspawner/generic(drop_location(), src, get_static_viruses())
-
-/mob/living/proc/spill_organs()
-	return
-
-/mob/living/proc/spread_bodyparts()
-	return
-
-/mob/living/dust(just_ash, drop_items, force)
-	death(TRUE)
-
-	if(drop_items)
-		unequip_everything()
-
-	if(buckled)
-		buckled.unbuckle_mob(src, force = TRUE)
-
-	dust_animation()
-	spawn_dust(just_ash)
-	QDEL_IN(src,5) // since this is sometimes called in the middle of movement, allow half a second for movement to finish, ghosting to happen and animation to play. Looks much nicer and doesn't cause multiple runtimes.
-
-/mob/living/proc/dust_animation()
-	return
-
-/mob/living/proc/spawn_dust(just_ash = FALSE)
-	new /obj/effect/decal/cleanable/ash(loc)
-
-
-/mob/living/death(gibbed)
-	var/was_dead_before = stat == DEAD
-	stat = DEAD
-	unset_machine()
-	timeofdeath = world.time
-	tod = station_time_timestamp()
-	var/turf/T = get_turf(src)
-	for(var/obj/item/I in contents)
-		I.on_mob_death(src, gibbed)
-	for(var/datum/disease/advance/D in diseases)
-		for(var/symptom in D.symptoms)
-			var/datum/symptom/S = symptom
-			S.OnDeath(D)
-	if(mind)
-		if(mind.name && mind.active && !istype(T.loc, /area/ctf))
-			var/rendered = "<span class='deadsay'><b>[mind.name]</b> has died at <b>[get_area_name(T)]</b>.</span>"
-			deadchat_broadcast(rendered, follow_target = src, turf_target = T, message_type=DEADCHAT_DEATHRATTLE)
-		mind.store_memory("Time of death: [tod]", 0)
-	remove_from_alive_mob_list()
-	if(!gibbed && !was_dead_before)
-		add_to_dead_mob_list()
-
-	SetSleeping(0, 0)
-	blind_eyes(1)
-
-	update_action_buttons_icon()
-	update_health_hud()
-	update_mobility()
-
-	med_hud_set_health()
-	med_hud_set_status()
-
-
-	stop_pulling()
-
-	. = ..()
-
-	if (client)
-		reset_perspective(null)
-		reload_fullscreen()
-		client.move_delay = initial(client.move_delay)
-		//This first death of the game will not incur a ghost role cooldown
-		client.next_ghost_role_tick = client.next_ghost_role_tick || suiciding ? world.time + CONFIG_GET(number/ghost_role_cooldown) : world.time
-
-		SSmedals.UnlockMedal(MEDAL_GHOSTS,client)
-
-	for(var/s in ownedSoullinks)
-		var/datum/soullink/S = s
-		S.ownerDies(gibbed)
-	for(var/s in sharedSoullinks)
-		var/datum/soullink/S = s
-		S.sharerDies(gibbed)
-
+	playsound(src.loc, 'sound/goonstation/effects/gib.ogg', 50, 1)
+	gibs(loc, dna)
+	QDEL_IN(src, 0)
 	return TRUE
 
-/mob/living/carbon/death(gibbed)
-	. = ..()
+//This is the proc for turning a mob into ash. Mostly a copy of gib code (above).
+//Originally created for wizard disintegrate. I've removed the virus code since it's irrelevant here.
+//Dusting robots does not eject the MMI, so it's a bit more powerful than gib() /N
+/mob/living/dust()
+	if(!death(TRUE) && stat != DEAD)
+		return FALSE
+	new /obj/effect/decal/cleanable/ash(loc)
+	// hide and freeze them while they get GC'd
+	notransform = 1
+	canmove = 0
+	icon = null
+	invisibility = 101
+	QDEL_IN(src, 0)
+	return TRUE
 
-	set_drugginess(0)
-	set_disgust(0)
+/mob/living/melt()
+	if(!death(TRUE) && stat != DEAD)
+		return FALSE
+	// hide and freeze them while they get GC'd
+	notransform = 1
+	canmove = 0
+	icon = null
+	invisibility = 101
+	QDEL_IN(src, 0)
+	return TRUE
+
+/mob/living/proc/can_die()
+	return !(stat == DEAD || (status_flags & GODMODE))
+
+// Returns true if mob transitioned from live to dead
+// Do a check with `can_die` beforehand if you need to do any
+// handling before `stat` is set
+/mob/living/death(gibbed)
+	if(!can_die())
+		// Whew! Good thing I'm indestructible! (or already dead)
+		return FALSE
+
+	..()
+	stat = DEAD
+
+	timeofdeath = world.time
+	create_log(ATTACK_LOG, "died[gibbed ? " (Gibbed)": ""]")
+
+	SetDizzy(0)
+	SetJitter(0)
+	SetLoseBreath(0)
+
+	if(!gibbed && deathgasp_on_death)
+		emote("deathgasp", force = TRUE)
+
+	if(mind && suiciding)
+		mind.suicided = TRUE
+	reset_perspective(null)
+	hud_used?.reload_fullscreen()
+	update_sight()
+	update_action_buttons_icon()
+
 	update_damage_hud()
-
+	update_health_hud()
+	med_hud_set_health()
+	med_hud_set_status()
 	if(!gibbed && !QDELETED(src))
-		addtimer(CALLBACK(src, .proc/med_hud_set_status), (DEFIB_TIME_LIMIT * 10) + 10)
+		addtimer(CALLBACK(src, .proc/med_hud_set_status), DEFIB_TIME_LIMIT + 1)
 
+	if(!gibbed)
+		update_canmove()
+
+	GLOB.alive_mob_list -= src
+	GLOB.dead_mob_list += src
+	if(mind)
+		mind.store_memory("Time of death: [station_time_timestamp("hh:mm:ss", timeofdeath)]", 0)
+		add_to_respawnable_list()
+
+		if(mind.name && !isbrain(src)) // !isbrain() is to stop it from being called twice
+			var/turf/T = get_turf(src)
+			var/area_name = get_area_name(T)
+			for(var/P in GLOB.dead_mob_list)
+				var/mob/M = P
+				if((M.client?.prefs.toggles2 & PREFTOGGLE_2_DEATHMESSAGE) && (isobserver(M) || M.stat == DEAD))
+					to_chat(M, "<span class='deadsay'><b>[mind.name]</b> has died at <b>[area_name]</b>. (<a href='?src=[M.UID()];jump=\ref[T]'>JMP</a>)</span>")
+
+	if(SSticker && SSticker.mode)
+		SSticker.mode.check_win()
+
+	// u no we dead
+	return TRUE
+
+/mob/living/proc/delayed_gib()
+	visible_message("<span class='danger'><b>[src]</b> starts convulsing violently!</span>", "You feel as if your body is tearing itself apart!")
+	Weaken(15)
+	do_jitter_animation(1000, -1)
+	addtimer(CALLBACK(src, .proc/gib), rand(20, 100))
